@@ -11,6 +11,7 @@ API_BASE_URL = "https://api.sunlitsolar.de/rest"
 API_FAMILY_LIST = "/family/list"
 API_FAMILY_DATA = "/family/{family_id}/data"
 API_DEVICE_STATISTICS = "/v1.1/statistics/static/device"
+API_BATTERY_IO_POWER = "/v1.3/statistics/instantPower/batteryIO"
 
 # Configuration keys
 CONF_API_KEY = "api_key"

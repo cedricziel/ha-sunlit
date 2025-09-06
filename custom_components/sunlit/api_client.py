@@ -12,6 +12,7 @@ from .const import (
     API_FAMILY_LIST,
     API_FAMILY_DATA,
     API_DEVICE_STATISTICS,
+    API_BATTERY_IO_POWER,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -211,6 +212,98 @@ class SunlitApiClient:
         except SunlitApiError as err:
             _LOGGER.error("Failed to fetch statistics for device %s: %s", device_id, err)
             raise
+
+    async def fetch_battery_io_power(
+        self,
+        device_id: str | int,
+        year: str | int,
+        month: str | int,
+        day: str | int,
+    ) -> list[dict[str, Any]]:
+        """Fetch battery input/output power statistics for a specific device and date.
+        
+        Args:
+            device_id: The device ID to fetch statistics for
+            year: Year (e.g., "2025" or 2025)
+            month: Month (e.g., "09" or 9)
+            day: Day (e.g., "06" or 6)
+            
+        Returns:
+            List of power readings with:
+            - key: Time in HH:MM format
+            - batteryInputPower: Input power in watts
+            - batteryOutputPower: Output power in watts
+            
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            # Format date components with leading zeros
+            payload = {
+                "deviceId": int(device_id),
+                "year": str(year),
+                "month": f"{int(month):02d}",
+                "day": f"{int(day):02d}",
+            }
+            
+            response = await self._make_request(
+                "POST",
+                API_BATTERY_IO_POWER,
+                json=payload
+            )
+            
+            # Extract power list from response
+            if "content" in response and "powerList" in response["content"]:
+                power_list = response["content"]["powerList"]
+                _LOGGER.debug(
+                    "Fetched %d power readings for device %s on %s-%s-%s",
+                    len(power_list),
+                    device_id,
+                    payload["year"],
+                    payload["month"],
+                    payload["day"]
+                )
+                return power_list
+            
+            # Return empty list if no power data
+            return []
+            
+        except SunlitApiError as err:
+            _LOGGER.error(
+                "Failed to fetch battery IO power for device %s: %s",
+                device_id,
+                err
+            )
+            raise
+
+    async def fetch_battery_io_power_today(
+        self,
+        device_id: str | int
+    ) -> list[dict[str, Any]]:
+        """Fetch today's battery input/output power statistics.
+        
+        Args:
+            device_id: The device ID to fetch statistics for
+            
+        Returns:
+            List of today's power readings
+            
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        from datetime import datetime
+        
+        now = datetime.now()
+        return await self.fetch_battery_io_power(
+            device_id,
+            now.year,
+            now.month,
+            now.day
+        )
 
     async def test_connection(self) -> bool:
         """Test the API connection and authentication.

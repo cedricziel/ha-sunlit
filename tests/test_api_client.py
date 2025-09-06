@@ -368,3 +368,161 @@ async def test_fetch_device_statistics_connection_error(api_client, mock_session
         await api_client.fetch_device_statistics(41714)
 
     assert "API request failed with status 500" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_fetch_battery_io_power_success(api_client, mock_session):
+    """Test successful fetching of battery IO power statistics."""
+    # Setup response with power data
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "responseTime": 1757166471233,
+            "message": {"DE": "Ok"},
+            "content": {
+                "powerList": [
+                    {
+                        "key": "14:55",
+                        "batteryInputPower": 0.0,
+                        "batteryOutputPower": 0.0
+                    },
+                    {
+                        "key": "15:00",
+                        "batteryInputPower": 164.0,
+                        "batteryOutputPower": 0.0
+                    },
+                    {
+                        "key": "15:03",
+                        "batteryInputPower": 363.0,
+                        "batteryOutputPower": 349.0
+                    },
+                    {
+                        "key": "15:05",
+                        "batteryInputPower": 363.0,
+                        "batteryOutputPower": 352.0
+                    },
+                ]
+            },
+        },
+    )
+
+    # Test
+    power_list = await api_client.fetch_battery_io_power(41714, 2025, 9, 6)
+
+    # Assertions
+    assert len(power_list) == 4
+    assert power_list[0]["key"] == "14:55"
+    assert power_list[0]["batteryInputPower"] == 0.0
+    assert power_list[0]["batteryOutputPower"] == 0.0
+    assert power_list[2]["key"] == "15:03"
+    assert power_list[2]["batteryInputPower"] == 363.0
+    assert power_list[2]["batteryOutputPower"] == 349.0
+
+    # Verify request was made correctly (POST with JSON payload)
+    mock_session.request.assert_called_once()
+    call_args = mock_session.request.call_args
+    assert call_args[0][0] == "POST"
+    assert "/v1.3/statistics/instantPower/batteryIO" in call_args[0][1]
+    assert call_args[1]["json"] == {
+        "deviceId": 41714,
+        "year": "2025",
+        "month": "09",
+        "day": "06"
+    }
+
+
+@pytest.mark.asyncio
+async def test_fetch_battery_io_power_empty(api_client, mock_session):
+    """Test empty power list response."""
+    # Setup response with empty power list
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "message": {"DE": "Ok"},
+            "content": {
+                "powerList": []
+            },
+        },
+    )
+
+    # Test
+    power_list = await api_client.fetch_battery_io_power(41714, 2025, 1, 1)
+
+    # Assertions
+    assert power_list == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_battery_io_power_auth_error(api_client, mock_session):
+    """Test authentication error when fetching battery IO power."""
+    # Setup 401 response
+    setup_mock_response(mock_session, 401)
+
+    # Test
+    with pytest.raises(SunlitAuthError) as exc_info:
+        await api_client.fetch_battery_io_power(41714, 2025, 9, 6)
+
+    assert "Invalid authentication token" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_fetch_battery_io_power_today(api_client, mock_session):
+    """Test fetching today's battery IO power statistics."""
+    from datetime import datetime
+    
+    # Setup response
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "message": {"DE": "Ok"},
+            "content": {
+                "powerList": [
+                    {
+                        "key": "10:00",
+                        "batteryInputPower": 100.0,
+                        "batteryOutputPower": 95.0
+                    }
+                ]
+            },
+        },
+    )
+
+    # Test
+    power_list = await api_client.fetch_battery_io_power_today(41714)
+
+    # Assertions
+    assert len(power_list) == 1
+    assert power_list[0]["key"] == "10:00"
+    
+    # Verify correct date was used
+    now = datetime.now()
+    call_args = mock_session.request.call_args
+    assert call_args[1]["json"]["year"] == str(now.year)
+    assert call_args[1]["json"]["month"] == f"{now.month:02d}"
+    assert call_args[1]["json"]["day"] == f"{now.day:02d}"
+
+
+@pytest.mark.asyncio
+async def test_fetch_battery_io_power_date_formatting(api_client, mock_session):
+    """Test that dates are properly formatted with leading zeros."""
+    # Setup response
+    setup_mock_response(
+        mock_session,
+        200,
+        {"code": 0, "content": {"powerList": []}},
+    )
+
+    # Test with single digit month and day
+    await api_client.fetch_battery_io_power(41714, 2025, 3, 5)
+
+    # Verify date formatting in request
+    call_args = mock_session.request.call_args
+    assert call_args[1]["json"]["month"] == "03"
+    assert call_args[1]["json"]["day"] == "05"
+    assert call_args[1]["json"]["year"] == "2025"
