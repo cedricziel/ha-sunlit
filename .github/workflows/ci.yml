@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: "3.11"
+  PYTHON_VERSION: "3.12"
 
 jobs:
   lint:
@@ -89,14 +89,6 @@ jobs:
             --cov-report=html \
             --timeout=30 \
             -v
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.xml
-          flags: unittests
-          name: codecov-${{ matrix.python-version }}
-        if: matrix.python-version == '3.11'
 
   validate-hacs:
     name: Validate HACS
