@@ -17,6 +17,7 @@ from .const import (
     API_DEVICE_LIST,
     API_SPACE_SOC,
     API_SPACE_CURRENT_STRATEGY,
+    API_SPACE_STRATEGY_HISTORY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -476,6 +477,60 @@ class SunlitApiClient:
         except SunlitApiError as err:
             _LOGGER.error(
                 "Failed to fetch strategy for family %s: %s", family_id, err
+            )
+            raise
+
+    async def fetch_space_strategy_history(
+        self, family_id: str | int, page: int = 0, size: int = 20
+    ) -> dict[str, Any]:
+        """Fetch strategy change history for a family.
+
+        Args:
+            family_id: The family ID to fetch strategy history for
+            page: Page number for pagination (default: 0)
+            size: Number of items per page (default: 20)
+
+        Returns:
+            Dictionary containing paginated strategy history:
+            - content: List of strategy history entries, each containing:
+                - modifyDate: Timestamp of strategy change
+                - strategy: Strategy type (e.g., "EnergyStorageOnly", "SmartStrategy")
+                - smartStrategyMode: Mode for smart strategy
+                - status: Success/Failure status
+                - batteryStatus: Battery status
+                - socMax/socMin: SOC limits at time of change
+                - executeTimeStart/executeTimeEnd: Execution time window
+                - and other strategy parameters
+            - totalElements: Total number of history entries
+            - totalPages: Total number of pages
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload = {"familyId": int(family_id)}
+            response = await self._make_request(
+                "POST", API_SPACE_STRATEGY_HISTORY, json=payload
+            )
+
+            # Extract data from response
+            if "content" in response:
+                data = response["content"]
+                content_list = data.get("content", [])
+                _LOGGER.debug(
+                    "Fetched %d strategy history entries for family %s",
+                    len(content_list),
+                    family_id,
+                )
+                return data
+
+            return {"content": [], "totalElements": 0}
+
+        except SunlitApiError as err:
+            _LOGGER.error(
+                "Failed to fetch strategy history for family %s: %s", family_id, err
             )
             raise
 

@@ -142,6 +142,8 @@ def _get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
         return SensorDeviceClass.BATTERY
     elif "battery" in key.lower() or "level" in key.lower():
         return SensorDeviceClass.BATTERY
+    elif key == "last_strategy_change":
+        return SensorDeviceClass.TIMESTAMP
     elif key == "has_fault":
         return None  # Binary-like sensor but as regular sensor
     return None
@@ -201,7 +203,14 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
     def native_value(self) -> Any:
         """Return the state of the sensor."""
         if self.coordinator.data and "family" in self.coordinator.data:
-            return self.coordinator.data["family"].get(self.entity_description.key)
+            value = self.coordinator.data["family"].get(self.entity_description.key)
+            
+            # Convert timestamp from milliseconds to datetime for timestamp sensors
+            if self.entity_description.key == "last_strategy_change" and value:
+                from datetime import datetime, timezone
+                return datetime.fromtimestamp(value / 1000, tz=timezone.utc)
+            
+            return value
         return None
 
     @property
@@ -225,10 +234,41 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes."""
-        return {
+        attrs = {
             "family_id": self._family_id,
             "family_name": self._family_name,
         }
+        
+        # Add strategy history if available
+        if (
+            self.entity_description.key == "last_strategy_change"
+            and self.coordinator.data
+            and "family" in self.coordinator.data
+        ):
+            history = self.coordinator.data["family"].get("strategy_history", [])
+            if history:
+                # Format history for display
+                formatted_history = []
+                for entry in history[:10]:  # Last 10 entries
+                    if entry.get("modifyDate"):
+                        from datetime import datetime
+                        timestamp = datetime.fromtimestamp(
+                            entry["modifyDate"] / 1000
+                        ).isoformat()
+                    else:
+                        timestamp = "Unknown"
+                    
+                    formatted_history.append({
+                        "timestamp": timestamp,
+                        "strategy": entry.get("strategy", "Unknown"),
+                        "status": entry.get("status", "Unknown"),
+                        "mode": entry.get("smartStrategyMode"),
+                        "soc_min": entry.get("socMin"),
+                        "soc_max": entry.get("socMax"),
+                    })
+                attrs["history"] = formatted_history
+        
+        return attrs
 
 
 class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):

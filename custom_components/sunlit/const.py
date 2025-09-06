@@ -16,6 +16,7 @@ API_BATTERY_IO_POWER = "/v1.3/statistics/instantPower/batteryIO"
 API_DEVICE_LIST = "/v1.2/device/list"
 API_SPACE_SOC = "/v1.1/space/soc"
 API_SPACE_CURRENT_STRATEGY = "/v1.1/space/currentStrategy"
+API_SPACE_STRATEGY_HISTORY = "/v1.1/space/strategyHistory"
 
 # Configuration keys
 CONF_API_KEY = "api_key"
@@ -77,4 +78,9 @@ FAMILY_SENSORS = {
     "battery_device_status": "Battery Device Status",
     "inverter_device_status": "Inverter Device Status",
     "meter_device_status": "Meter Device Status",
+    # Strategy history sensors
+    "last_strategy_change": "Last Strategy Change",
+    "last_strategy_type": "Last Strategy Type",
+    "last_strategy_status": "Last Strategy Status",
+    "strategy_changes_today": "Strategy Changes Today",
 }

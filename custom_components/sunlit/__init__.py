@@ -107,6 +107,14 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
             except Exception as err:
                 _LOGGER.debug("Could not fetch current strategy data: %s", err)
                 current_strategy = {}
+            
+            try:
+                strategy_history = await self.api_client.fetch_space_strategy_history(
+                    self.family_id
+                )
+            except Exception as err:
+                _LOGGER.debug("Could not fetch strategy history data: %s", err)
+                strategy_history = {}
 
             _LOGGER.debug(
                 "Received %d devices for family %s", len(devices), self.family_name
@@ -256,6 +264,39 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                 sensor_data["family"]["current_soc_max"] = current_strategy.get(
                     "socMax"
                 )
+            
+            # Process strategy history data
+            if strategy_history and "content" in strategy_history:
+                history_entries = strategy_history["content"]
+                if history_entries:
+                    # Get most recent entry
+                    latest_entry = history_entries[0]  # Already sorted by date desc
+                    
+                    # Add sensors for latest strategy change
+                    sensor_data["family"]["last_strategy_change"] = latest_entry.get(
+                        "modifyDate"
+                    )
+                    sensor_data["family"]["last_strategy_type"] = latest_entry.get(
+                        "strategy"
+                    )
+                    sensor_data["family"]["last_strategy_status"] = latest_entry.get(
+                        "status"
+                    )
+                    
+                    # Count changes in last 24 hours
+                    from datetime import datetime, timedelta
+                    now = datetime.now()
+                    day_ago = now - timedelta(days=1)
+                    day_ago_ms = int(day_ago.timestamp() * 1000)
+                    
+                    changes_today = sum(
+                        1 for entry in history_entries
+                        if entry.get("modifyDate", 0) >= day_ago_ms
+                    )
+                    sensor_data["family"]["strategy_changes_today"] = changes_today
+                    
+                    # Store last 10 entries in extra attributes
+                    sensor_data["family"]["strategy_history"] = history_entries[:10]
 
             _LOGGER.debug(
                 "Processed sensor data for family %s: %s", self.family_name, sensor_data
