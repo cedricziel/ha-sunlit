@@ -15,6 +15,8 @@ from .const import (
     API_DEVICE_STATISTICS,
     API_BATTERY_IO_POWER,
     API_DEVICE_LIST,
+    API_SPACE_SOC,
+    API_SPACE_CURRENT_STRATEGY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -279,7 +281,7 @@ class SunlitApiClient:
             Dictionary containing device details including:
             - deviceId: Device identifier
             - deviceSn: Device serial number
-            - deviceType: Type of device (e.g., SHELLY_3EM_METER, ENERGY_STORAGE_BATTERY)
+            - deviceType: Type of device (SHELLY_3EM_METER, ENERGY_STORAGE_BATTERY)
             - status: Online/Offline status
             - familyItem: Family the device belongs to
             - manufacturer: Device manufacturer
@@ -323,7 +325,7 @@ class SunlitApiClient:
         Args:
             family_id: The family ID to fetch devices for
             device_type: Type of devices to fetch (default: "ALL")
-                        Examples: "ALL", "ENERGY_STORAGE_BATTERY", "SHELLY_3EM_METER", etc.
+                        Examples: "ALL", "ENERGY_STORAGE_BATTERY", "SHELLY_3EM_METER"
 
         Returns:
             List of device dictionaries containing:
@@ -371,6 +373,112 @@ class SunlitApiClient:
             )
             raise
 
+    async def fetch_space_soc(self, space_id: str | int) -> dict[str, Any]:
+        """Fetch battery SOC limits configuration for a space/family.
+
+        Args:
+            space_id: The space/family ID to fetch SOC configuration for
+
+        Returns:
+            Dictionary containing SOC configuration:
+            - hwSupportOnePercentage: Hardware supports 1% granularity
+            - hwSbmsLimitedDiscSocMin: Hardware discharge SOC minimum
+            - hwSbmsLimitedChgSocMax: Hardware charge SOC maximum
+            - batteryBmsDiscSocMin: Battery BMS discharge SOC minimum
+            - batteryBmsChgSocMax: Battery BMS charge SOC maximum
+            - strategySocMax: Strategy SOC maximum
+            - strategySocMin: Strategy SOC minimum
+            - haDodMinSoc: Home automation depth of discharge minimum SOC
+            - evDodMinSoc: EV depth of discharge minimum SOC
+            - chgDodMaxSoc: Charge depth of discharge maximum SOC
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload = {"spaceId": int(space_id)}
+            response = await self._make_request("POST", API_SPACE_SOC, json=payload)
+
+            # Extract data from response
+            if "content" in response:
+                data = response["content"]
+                _LOGGER.debug(
+                    "Fetched SOC config for space %s: hw_min=%s, hw_max=%s",
+                    space_id,
+                    data.get("hwSbmsLimitedDiscSocMin"),
+                    data.get("hwSbmsLimitedChgSocMax"),
+                )
+                return data
+
+            return {}
+
+        except SunlitApiError as err:
+            _LOGGER.error(
+                "Failed to fetch SOC configuration for space %s: %s", space_id, err
+            )
+            raise
+
+    async def fetch_space_current_strategy(
+        self, family_id: str | int
+    ) -> dict[str, Any]:
+        """Fetch current battery strategy and device status for a family.
+
+        Args:
+            family_id: The family ID to fetch strategy for
+
+        Returns:
+            Dictionary containing strategy and status information:
+            - strategy: Current strategy name
+            - smartStrategyMode: Smart strategy mode
+            - batteryFull: Whether battery is full
+            - latestModifiedStatus: Latest modification status
+            - deviceStatus: Overall device status
+            - ratedPower: Rated power in watts
+            - maxOutPutPower: Maximum output power
+            - batteryStatus: Battery status
+            - batteryDeviceStatus: Battery device online/offline status
+            - inverterDeviceStatus: Inverter device online/offline status
+            - meterDeviceStatus: Meter device online/offline status
+            - socMax: Current SOC maximum
+            - socMin: Current SOC minimum
+            - hwSocMax: Hardware SOC maximum
+            - hwSocMin: Hardware SOC minimum
+            - deviceTypes: List of available device types
+            - failInverterSns: List of failed inverter serial numbers
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload = {"familyId": int(family_id)}
+            response = await self._make_request(
+                "POST", API_SPACE_CURRENT_STRATEGY, json=payload
+            )
+
+            # Extract data from response
+            if "content" in response:
+                data = response["content"]
+                _LOGGER.debug(
+                    "Fetched strategy for family %s: %s, battery=%s, status=%s",
+                    family_id,
+                    data.get("strategy"),
+                    data.get("batteryStatus"),
+                    data.get("deviceStatus"),
+                )
+                return data
+
+            return {}
+
+        except SunlitApiError as err:
+            _LOGGER.error(
+                "Failed to fetch strategy for family %s: %s", family_id, err
+            )
+            raise
+
     async def test_connection(self) -> bool:
         """Test the API connection and authentication.
 
@@ -382,7 +490,7 @@ class SunlitApiClient:
             SunlitConnectionError: Connection failed
         """
         try:
-            families = await self.fetch_families()
+            await self.fetch_families()
             return True
         except (SunlitAuthError, SunlitConnectionError):
             raise

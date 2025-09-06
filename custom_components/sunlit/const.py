@@ -14,6 +14,8 @@ API_DEVICE_DETAILS = "/device/{device_id}"
 API_DEVICE_STATISTICS = "/v1.1/statistics/static/device"
 API_BATTERY_IO_POWER = "/v1.3/statistics/instantPower/batteryIO"
 API_DEVICE_LIST = "/v1.2/device/list"
+API_SPACE_SOC = "/v1.1/space/soc"
+API_SPACE_CURRENT_STRATEGY = "/v1.1/space/currentStrategy"
 
 # Configuration keys
 CONF_API_KEY = "api_key"
@@ -57,4 +59,22 @@ FAMILY_SENSORS = {
     "total_input_power": "Total Input Power",
     "total_output_power": "Total Output Power",
     "has_fault": "Has Fault",
+    # SOC configuration sensors
+    "hw_soc_min": "Hardware SOC Minimum",
+    "hw_soc_max": "Hardware SOC Maximum",
+    "battery_soc_min": "Battery SOC Minimum",
+    "battery_soc_max": "Battery SOC Maximum",
+    "strategy_soc_min": "Strategy SOC Minimum",
+    "strategy_soc_max": "Strategy SOC Maximum",
+    "current_soc_min": "Current SOC Minimum",
+    "current_soc_max": "Current SOC Maximum",
+    # Strategy and status sensors
+    "battery_strategy": "Battery Strategy",
+    "battery_full": "Battery Full",
+    "rated_power": "Rated Power",
+    "max_output_power": "Max Output Power",
+    "battery_status": "Battery Status",
+    "battery_device_status": "Battery Device Status",
+    "inverter_device_status": "Inverter Device Status",
+    "meter_device_status": "Meter Device Status",
 }

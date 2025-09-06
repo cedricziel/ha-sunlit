@@ -10,7 +10,6 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
     DataUpdateCoordinator,
     UpdateFailed,
 )
@@ -93,6 +92,21 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             # Fetch device list for the family
             devices = await self.api_client.fetch_device_list(self.family_id)
+            
+            # Fetch space/family level data
+            try:
+                space_soc = await self.api_client.fetch_space_soc(self.family_id)
+            except Exception as err:
+                _LOGGER.debug("Could not fetch space SOC data: %s", err)
+                space_soc = {}
+            
+            try:
+                current_strategy = await self.api_client.fetch_space_current_strategy(
+                    self.family_id
+                )
+            except Exception as err:
+                _LOGGER.debug("Could not fetch current strategy data: %s", err)
+                current_strategy = {}
 
             _LOGGER.debug(
                 "Received %d devices for family %s", len(devices), self.family_name
@@ -188,6 +202,60 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                 total_output_power if total_output_power > 0 else None
             )
             sensor_data["family"]["has_fault"] = any(d.get("fault") for d in devices)
+            
+            # Add space SOC data to family sensors
+            if space_soc:
+                sensor_data["family"]["hw_soc_min"] = space_soc.get(
+                    "hwSbmsLimitedDiscSocMin"
+                )
+                sensor_data["family"]["hw_soc_max"] = space_soc.get(
+                    "hwSbmsLimitedChgSocMax"
+                )
+                sensor_data["family"]["battery_soc_min"] = space_soc.get(
+                    "batteryBmsDiscSocMin"
+                )
+                sensor_data["family"]["battery_soc_max"] = space_soc.get(
+                    "batteryBmsChgSocMax"
+                )
+                sensor_data["family"]["strategy_soc_min"] = space_soc.get(
+                    "strategySocMin"
+                )
+                sensor_data["family"]["strategy_soc_max"] = space_soc.get(
+                    "strategySocMax"
+                )
+            
+            # Add current strategy data to family sensors
+            if current_strategy:
+                sensor_data["family"]["battery_strategy"] = current_strategy.get(
+                    "strategy"
+                )
+                sensor_data["family"]["battery_full"] = current_strategy.get(
+                    "batteryFull"
+                )
+                sensor_data["family"]["rated_power"] = current_strategy.get(
+                    "ratedPower"
+                )
+                sensor_data["family"]["max_output_power"] = current_strategy.get(
+                    "maxOutPutPower"
+                )
+                sensor_data["family"]["battery_status"] = current_strategy.get(
+                    "batteryStatus"
+                )
+                sensor_data["family"]["battery_device_status"] = current_strategy.get(
+                    "batteryDeviceStatus"
+                )
+                sensor_data["family"]["inverter_device_status"] = current_strategy.get(
+                    "inverterDeviceStatus"
+                )
+                sensor_data["family"]["meter_device_status"] = current_strategy.get(
+                    "meterDeviceStatus"
+                )
+                sensor_data["family"]["current_soc_min"] = current_strategy.get(
+                    "socMin"
+                )
+                sensor_data["family"]["current_soc_max"] = current_strategy.get(
+                    "socMax"
+                )
 
             _LOGGER.debug(
                 "Processed sensor data for family %s: %s", self.family_name, sensor_data

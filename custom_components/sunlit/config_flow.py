@@ -103,7 +103,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 for family_id in selected_family_ids:
                     # Find family details from available families
                     family_data = next(
-                        (f for f in self.available_families if str(f["id"]) == family_id),
+                        (
+                            f for f in self.available_families
+                            if str(f["id"]) == family_id
+                        ),
                         None
                     )
                     if family_data:
@@ -128,7 +131,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Create options for family selection
         family_options = {
-            str(family["id"]): f"{family['name']} - {family.get('address', 'Unknown')} ({family.get('deviceCount', 0)} devices)"
+            str(family["id"]): (
+                f"{family['name']} - {family.get('address', 'Unknown')} "
+                f"({family.get('deviceCount', 0)} devices)"
+            )
             for family in self.available_families
         }
 

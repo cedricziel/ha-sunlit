@@ -138,6 +138,8 @@ def _get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
         return SensorDeviceClass.POWER
     elif "energy" in key.lower():
         return SensorDeviceClass.ENERGY
+    elif "soc" in key.lower():
+        return SensorDeviceClass.BATTERY
     elif "battery" in key.lower() or "level" in key.lower():
         return SensorDeviceClass.BATTERY
     elif key == "has_fault":
@@ -162,6 +164,8 @@ def _get_unit_for_sensor(key: str) -> str | None:
         return UnitOfPower.WATT
     elif "energy" in key.lower():
         return UnitOfEnergy.KILO_WATT_HOUR
+    elif "soc" in key.lower():
+        return PERCENTAGE
     elif "battery_level" in key or "average_battery_level" in key:
         return PERCENTAGE
     elif "earnings" in key:
