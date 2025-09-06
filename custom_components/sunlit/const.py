@@ -72,11 +72,16 @@ FAMILY_SENSORS = {
     # Power configuration sensors
     "rated_power": "Rated Power",
     "max_output_power": "Max Output Power",
+    # Status sensors (text state)
+    "battery_strategy": "Battery Strategy",
+    "battery_status": "Battery Status",
+    "battery_device_status": "Battery Device Status",
+    "inverter_device_status": "Inverter Device Status",
+    "meter_device_status": "Meter Device Status",
     # Strategy history sensors
     "last_strategy_change": "Last Strategy Change",
+    "last_strategy_type": "Last Strategy Type",
+    "last_strategy_status": "Last Strategy Status",
     "strategy_changes_today": "Strategy Changes Today",
-    # Note: The following have been moved to other platforms:
-    # - has_fault, battery_full → binary_sensor
-    # - battery_strategy, battery_status, *_device_status → select
-    # - last_strategy_type, last_strategy_status → select
+    # Note: has_fault and battery_full have been moved to binary_sensor platform
 }

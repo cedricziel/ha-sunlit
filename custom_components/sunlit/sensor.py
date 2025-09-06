@@ -52,14 +52,8 @@ async def async_setup_entry(
         if coordinator.data:
             # Create family aggregate sensors
             if "family" in coordinator.data:
-                # Skip binary sensor and select fields
-                skip_fields = {
-                    "has_fault", "battery_full",  # binary sensors
-                    "battery_strategy", "battery_status",  # select entities
-                    "battery_device_status", "inverter_device_status",
-                    "meter_device_status", "last_strategy_type",
-                    "last_strategy_status"
-                }
+                # Skip binary sensor fields (they're handled by binary_sensor platform)
+                skip_fields = {"has_fault", "battery_full"}
                 for key in coordinator.data["family"]:
                     if key in FAMILY_SENSORS and key not in skip_fields:
                         sensor_description = SensorEntityDescription(
@@ -99,8 +93,8 @@ async def async_setup_entry(
                             sensor_map = BATTERY_SENSORS
 
                         # Create sensors for this device
-                        # Skip binary sensor and select fields
-                        skip_device_fields = {"fault", "off", "status"}
+                        # Skip binary sensor fields (handled by binary_sensor platform)
+                        skip_device_fields = {"fault", "off"}
                         for key in device_data:
                             if key in sensor_map and key not in skip_device_fields:
                                 sensor_description = SensorEntityDescription(
@@ -127,15 +121,32 @@ async def async_setup_entry(
                                     sensor._attr_icon = icon
                                 sensors.append(sensor)
 
-                        # Status is now handled by select entity
+                        # Add status sensor for all devices (text state)
+                        if "status" in device_data:
+                            sensor_description = SensorEntityDescription(
+                                key="status",
+                                name="Status",
+                            )
+                            sensor = SunlitDeviceSensor(
+                                coordinator=coordinator,
+                                description=sensor_description,
+                                entry_id=config_entry.entry_id,
+                                family_id=coordinator.family_id,
+                                family_name=coordinator.family_name,
+                                device_id=device_id,
+                                device_info_data=device_info,
+                            )
+                            # Set status icon
+                            sensor._attr_icon = "mdi:information-outline"
+                            sensors.append(sensor)
 
     async_add_entities(sensors, True)
 
 
 def _get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     """Get the appropriate device class for a sensor."""
-    # Check for status fields first (they're text, not numeric)
-    if "status" in key.lower():
+    # Check for status and strategy fields first (they're text, not numeric)
+    if "status" in key.lower() or "strategy" in key.lower():
         return None
     # battery_full is a boolean, not a battery percentage
     elif key == "battery_full":
@@ -239,6 +250,16 @@ def _get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     elif "energy" in key:
         return "mdi:lightning-bolt"
     # Status related
+    elif "battery_device_status" in key:
+        return "mdi:battery-sync"
+    elif "inverter_device_status" in key:
+        return "mdi:solar-panel"
+    elif "meter_device_status" in key:
+        return "mdi:meter-electric"
+    elif "battery_status" in key:
+        return "mdi:battery-heart"
+    elif "last_strategy_status" in key:
+        return "mdi:check-circle"
     elif "status" in key:
         return "mdi:information-outline"
     elif "online" in key:
@@ -248,6 +269,8 @@ def _get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     elif "fault" in key:
         return "mdi:alert-circle"
     # Strategy related
+    elif "last_strategy_type" in key:
+        return "mdi:history"
     elif "strategy" in key:
         return "mdi:cog"
     # Device count
