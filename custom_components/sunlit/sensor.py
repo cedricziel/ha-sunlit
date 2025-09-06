@@ -140,6 +140,9 @@ def _get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     # battery_full is a boolean, not a battery percentage
     elif key == "battery_full":
         return None
+    # total_power_generation is actually energy despite the name
+    elif key == "total_power_generation":
+        return SensorDeviceClass.ENERGY
     elif "power" in key.lower():
         return SensorDeviceClass.POWER
     elif "energy" in key.lower():
@@ -157,8 +160,11 @@ def _get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
 
 def _get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     """Get the appropriate state class for a sensor."""
+    # Special case: total_power_generation is cumulative energy
+    if key == "total_power_generation":
+        return SensorStateClass.TOTAL_INCREASING
     # Energy sensors need special handling
-    if "energy" in key.lower():
+    elif "energy" in key.lower():
         if "total" in key.lower():
             # Total energy counters that never reset
             return SensorStateClass.TOTAL_INCREASING
@@ -177,7 +183,10 @@ def _get_state_class_for_sensor(key: str) -> SensorStateClass | None:
 
 def _get_unit_for_sensor(key: str) -> str | None:
     """Get the appropriate unit for a sensor."""
-    if "power" in key.lower():
+    # Special case: total_power_generation is actually energy in kWh
+    if key == "total_power_generation":
+        return UnitOfEnergy.KILO_WATT_HOUR
+    elif "power" in key.lower():
         return UnitOfPower.WATT
     elif "energy" in key.lower():
         return UnitOfEnergy.KILO_WATT_HOUR
