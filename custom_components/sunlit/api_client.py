@@ -11,6 +11,7 @@ from .const import (
     API_BASE_URL,
     API_FAMILY_LIST,
     API_FAMILY_DATA,
+    API_DEVICE_DETAILS,
     API_DEVICE_STATISTICS,
     API_BATTERY_IO_POWER,
 )
@@ -304,6 +305,52 @@ class SunlitApiClient:
             now.month,
             now.day
         )
+
+    async def fetch_device_details(self, device_id: str | int) -> dict[str, Any]:
+        """Fetch detailed information for a specific device.
+        
+        Args:
+            device_id: The device ID to fetch details for
+            
+        Returns:
+            Dictionary containing device details including:
+            - deviceId: Device identifier
+            - deviceSn: Device serial number  
+            - deviceType: Type of device (e.g., SHELLY_3EM_METER, ENERGY_STORAGE_BATTERY)
+            - status: Online/Offline status
+            - familyItem: Family the device belongs to
+            - manufacturer: Device manufacturer
+            - firmwareVersion: Current firmware version
+            - and other device-specific fields
+            
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        endpoint = API_DEVICE_DETAILS.replace("{device_id}", str(device_id))
+        
+        try:
+            # This is a GET endpoint - no JSON payload
+            response = await self._make_request("GET", endpoint)
+            
+            # Extract data from response
+            if "content" in response:
+                data = response["content"]
+                _LOGGER.debug(
+                    "Fetched details for device %s (type: %s, status: %s)",
+                    device_id,
+                    data.get("deviceType", "Unknown"),
+                    data.get("status", "Unknown")
+                )
+                return data
+            
+            # If no content wrapper, return raw response
+            return response
+            
+        except SunlitApiError as err:
+            _LOGGER.error("Failed to fetch details for device %s: %s", device_id, err)
+            raise
 
     async def test_connection(self) -> bool:
         """Test the API connection and authentication.

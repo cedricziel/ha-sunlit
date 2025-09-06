@@ -526,3 +526,148 @@ async def test_fetch_battery_io_power_date_formatting(api_client, mock_session):
     assert call_args[1]["json"]["month"] == "03"
     assert call_args[1]["json"]["day"] == "05"
     assert call_args[1]["json"]["year"] == "2025"
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_details_success(api_client, mock_session):
+    """Test successful fetching of device details for a Shelly meter."""
+    # Setup response with Shelly meter details
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "responseTime": 1757166462946,
+            "message": {"DE": "Ok"},
+            "content": {
+                "deviceId": 55478,
+                "deviceSn": "XXXXXXXXXXXX",
+                "createDate": 1742636857000,
+                "firmwareVersion": None,
+                "familyItem": {
+                    "id": 34038,
+                    "name": "Garage"
+                },
+                "status": "Offline",
+                "manufacturer": "Shelly3EM",
+                "deviceType": "SHELLY_3EM_METER",
+                "ssid": "WLAN-XXXXX",
+                "stationName": None,
+                "collectorSn": None,
+                "maxOutputPower": None,
+                "maxAllowedPower": None,
+                "ratedPower": None,
+                "xmChannel": True,
+                "subStatus": None,
+                "collectorFirmwareVersion": None,
+                "hwVersion": None,
+                "batteryChargingBoxDto": None,
+                "batteryBoxStatus": "NotExist",
+                "supportReboot": None,
+                "systemMultiStatus": None
+            },
+        },
+    )
+
+    # Test
+    details = await api_client.fetch_device_details(55478)
+
+    # Assertions
+    assert details["deviceId"] == 55478
+    assert details["deviceSn"] == "XXXXXXXXXXXX"
+    assert details["deviceType"] == "SHELLY_3EM_METER"
+    assert details["status"] == "Offline"
+    assert details["manufacturer"] == "Shelly3EM"
+    assert details["familyItem"]["id"] == 34038
+    assert details["familyItem"]["name"] == "Garage"
+    assert details["batteryBoxStatus"] == "NotExist"
+
+    # Verify request was made correctly (GET with no JSON payload)
+    mock_session.request.assert_called_once()
+    call_args = mock_session.request.call_args
+    assert call_args[0][0] == "GET"
+    assert "/device/55478" in call_args[0][1]
+    assert "json" not in call_args[1]  # No JSON payload for GET request
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_details_battery(api_client, mock_session):
+    """Test fetching device details for a battery device."""
+    # Setup response with battery device details
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "message": {"DE": "Ok"},
+            "content": {
+                "deviceId": 41714,
+                "deviceSn": "XXXXXXXXXXXX",
+                "deviceType": "ENERGY_STORAGE_BATTERY",
+                "status": "Online",
+                "familyItem": {
+                    "id": 34038,
+                    "name": "Garage"
+                },
+                "manufacturer": "SunlitBattery",
+                "firmwareVersion": "1.2.3",
+                "maxOutputPower": 5000,
+                "ratedPower": 5000,
+                "batteryBoxStatus": "Normal",
+            },
+        },
+    )
+
+    # Test
+    details = await api_client.fetch_device_details(41714)
+
+    # Assertions
+    assert details["deviceId"] == 41714
+    assert details["deviceType"] == "ENERGY_STORAGE_BATTERY"
+    assert details["status"] == "Online"
+    assert details["firmwareVersion"] == "1.2.3"
+    assert details["maxOutputPower"] == 5000
+    assert details["batteryBoxStatus"] == "Normal"
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_details_not_found(api_client, mock_session):
+    """Test device not found error."""
+    # Setup response with error code
+    setup_mock_response(
+        mock_session,
+        200,
+        {"code": 1, "message": "Device not found"},
+    )
+
+    # Test
+    with pytest.raises(SunlitApiError) as exc_info:
+        await api_client.fetch_device_details(99999)
+
+    assert "API error: Device not found" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_details_auth_error(api_client, mock_session):
+    """Test authentication error when fetching device details."""
+    # Setup 401 response
+    setup_mock_response(mock_session, 401)
+
+    # Test
+    with pytest.raises(SunlitAuthError) as exc_info:
+        await api_client.fetch_device_details(55478)
+
+    assert "Invalid authentication token" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_details_connection_error(api_client, mock_session):
+    """Test connection error when fetching device details."""
+    # Setup 500 response
+    setup_mock_response(mock_session, 500, text_data="Internal Server Error")
+
+    # Test
+    with pytest.raises(SunlitConnectionError) as exc_info:
+        await api_client.fetch_device_details(55478)
+
+    assert "API request failed with status 500" in str(exc_info.value)
