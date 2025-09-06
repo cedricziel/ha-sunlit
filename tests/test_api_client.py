@@ -293,13 +293,13 @@ async def test_fetch_device_statistics_success(api_client, mock_session):
                     "batteryMpptInVol": 29.0,
                     "batteryMpptInCur": 12.3,
                     "batteryMpptInPower": 356.7,
-                    "mpptName": "MPPT1"
+                    "mpptName": "MPPT1",
                 },
                 "batteryMppt2Data": {
                     "batteryMpptInVol": 0,
                     "batteryMpptInCur": 0,
                     "batteryMpptInPower": 0.0,
-                    "mpptName": "MPPT2"
+                    "mpptName": "MPPT2",
                 },
                 "mpptCollectTime": 1757166462661,
             },
@@ -386,22 +386,22 @@ async def test_fetch_battery_io_power_success(api_client, mock_session):
                     {
                         "key": "14:55",
                         "batteryInputPower": 0.0,
-                        "batteryOutputPower": 0.0
+                        "batteryOutputPower": 0.0,
                     },
                     {
                         "key": "15:00",
                         "batteryInputPower": 164.0,
-                        "batteryOutputPower": 0.0
+                        "batteryOutputPower": 0.0,
                     },
                     {
                         "key": "15:03",
                         "batteryInputPower": 363.0,
-                        "batteryOutputPower": 349.0
+                        "batteryOutputPower": 349.0,
                     },
                     {
                         "key": "15:05",
                         "batteryInputPower": 363.0,
-                        "batteryOutputPower": 352.0
+                        "batteryOutputPower": 352.0,
                     },
                 ]
             },
@@ -429,7 +429,7 @@ async def test_fetch_battery_io_power_success(api_client, mock_session):
         "deviceId": 41714,
         "year": "2025",
         "month": "09",
-        "day": "06"
+        "day": "06",
     }
 
 
@@ -443,9 +443,7 @@ async def test_fetch_battery_io_power_empty(api_client, mock_session):
         {
             "code": 0,
             "message": {"DE": "Ok"},
-            "content": {
-                "powerList": []
-            },
+            "content": {"powerList": []},
         },
     )
 
@@ -473,7 +471,7 @@ async def test_fetch_battery_io_power_auth_error(api_client, mock_session):
 async def test_fetch_battery_io_power_today(api_client, mock_session):
     """Test fetching today's battery IO power statistics."""
     from datetime import datetime
-    
+
     # Setup response
     setup_mock_response(
         mock_session,
@@ -486,7 +484,7 @@ async def test_fetch_battery_io_power_today(api_client, mock_session):
                     {
                         "key": "10:00",
                         "batteryInputPower": 100.0,
-                        "batteryOutputPower": 95.0
+                        "batteryOutputPower": 95.0,
                     }
                 ]
             },
@@ -499,7 +497,7 @@ async def test_fetch_battery_io_power_today(api_client, mock_session):
     # Assertions
     assert len(power_list) == 1
     assert power_list[0]["key"] == "10:00"
-    
+
     # Verify correct date was used
     now = datetime.now()
     call_args = mock_session.request.call_args
@@ -544,10 +542,7 @@ async def test_fetch_device_details_success(api_client, mock_session):
                 "deviceSn": "XXXXXXXXXXXX",
                 "createDate": 1742636857000,
                 "firmwareVersion": None,
-                "familyItem": {
-                    "id": 34038,
-                    "name": "Garage"
-                },
+                "familyItem": {"id": 34038, "name": "Garage"},
                 "status": "Offline",
                 "manufacturer": "Shelly3EM",
                 "deviceType": "SHELLY_3EM_METER",
@@ -564,7 +559,7 @@ async def test_fetch_device_details_success(api_client, mock_session):
                 "batteryChargingBoxDto": None,
                 "batteryBoxStatus": "NotExist",
                 "supportReboot": None,
-                "systemMultiStatus": None
+                "systemMultiStatus": None,
             },
         },
     )
@@ -605,10 +600,7 @@ async def test_fetch_device_details_battery(api_client, mock_session):
                 "deviceSn": "XXXXXXXXXXXX",
                 "deviceType": "ENERGY_STORAGE_BATTERY",
                 "status": "Online",
-                "familyItem": {
-                    "id": 34038,
-                    "name": "Garage"
-                },
+                "familyItem": {"id": 34038, "name": "Garage"},
                 "manufacturer": "SunlitBattery",
                 "firmwareVersion": "1.2.3",
                 "maxOutputPower": 5000,
@@ -669,5 +661,144 @@ async def test_fetch_device_details_connection_error(api_client, mock_session):
     # Test
     with pytest.raises(SunlitConnectionError) as exc_info:
         await api_client.fetch_device_details(55478)
+
+    assert "API request failed with status 500" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_list_success(api_client, mock_session):
+    """Test successful device list fetch with multiple device types."""
+    # Setup successful response with various device types
+    response_data = {
+        "code": 0,
+        "responseTime": 1757166459864,
+        "message": {"DE": "Ok"},
+        "content": {
+            "content": [
+                {
+                    "deviceId": 55478,
+                    "deviceSn": "XXXXXXXXXXF4",  # Anonymized
+                    "deviceType": "SHELLY_3EM_METER",
+                    "status": "Offline",
+                    "fault": False,
+                    "off": True,
+                    "totalAcPower": 3050.78,
+                    "dailyBuyEnergy": 7.21,
+                    "dailyRetEnergy": 0.12,
+                    "totalBuyEnergy": 3744.46,
+                    "totalRetEnergy": 53.38,
+                    "batteryLevel": None,
+                },
+                {
+                    "deviceId": 55438,
+                    "deviceSn": "EXXXXXXXXX549",  # Anonymized
+                    "deviceType": "YUNENG_MICRO_INVERTER",
+                    "status": "Offline",
+                    "fault": False,
+                    "off": True,
+                    "today": {
+                        "currentPower": 645,
+                        "totalPowerGeneration": 1.33186,
+                        "totalEarnings": {"earnings": 0.41, "currency": "EUR"},
+                    },
+                    "batteryLevel": None,
+                },
+                {
+                    "deviceId": 41714,
+                    "deviceSn": "dcbdccbffe3d",
+                    "deviceType": "ENERGY_STORAGE_BATTERY",
+                    "status": "Online",
+                    "fault": False,
+                    "off": False,
+                    "batteryLevel": 10.0,
+                    "inputPowerTotal": 96.0,
+                    "outputPowerTotal": 92.0,
+                    "heaterStatusList": [False, False, False],
+                },
+            ],
+            "pageable": {"pageNumber": 0, "pageSize": 20},
+            "totalElements": 3,
+            "totalPages": 1,
+            "numberOfElements": 3,
+            "first": True,
+            "last": True,
+            "empty": False,
+        },
+    }
+    setup_mock_response(mock_session, 200, response_data)
+
+    # Test fetching all devices
+    devices = await api_client.fetch_device_list(34038)
+
+    assert len(devices) == 3
+    assert devices[0]["deviceType"] == "SHELLY_3EM_METER"
+    assert devices[1]["deviceType"] == "YUNENG_MICRO_INVERTER"
+    assert devices[2]["deviceType"] == "ENERGY_STORAGE_BATTERY"
+    assert devices[2]["batteryLevel"] == 10.0
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_list_with_type_filter(api_client, mock_session):
+    """Test device list fetch with device type filter."""
+    # Setup response with only battery devices
+    response_data = {
+        "code": 0,
+        "content": {
+            "content": [
+                {
+                    "deviceId": 41714,
+                    "deviceSn": "dcbdccbffe3d",
+                    "deviceType": "ENERGY_STORAGE_BATTERY",
+                    "status": "Online",
+                    "batteryLevel": 10.0,
+                }
+            ],
+            "totalElements": 1,
+        },
+    }
+    setup_mock_response(mock_session, 200, response_data)
+
+    # Test fetching only battery devices
+    devices = await api_client.fetch_device_list(34038, "ENERGY_STORAGE_BATTERY")
+
+    assert len(devices) == 1
+    assert devices[0]["deviceType"] == "ENERGY_STORAGE_BATTERY"
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_list_empty(api_client, mock_session):
+    """Test device list fetch with no devices."""
+    # Setup empty response
+    response_data = {
+        "code": 0,
+        "content": {"content": [], "totalElements": 0, "empty": True},
+    }
+    setup_mock_response(mock_session, 200, response_data)
+
+    devices = await api_client.fetch_device_list(40488)
+
+    assert devices == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_list_auth_error(api_client, mock_session):
+    """Test device list fetch handles authentication errors."""
+    # Setup 401 response
+    setup_mock_response(mock_session, 401)
+
+    with pytest.raises(SunlitAuthError) as exc_info:
+        await api_client.fetch_device_list(34038)
+
+    assert "Invalid authentication token" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_list_connection_error(api_client, mock_session):
+    """Test device list fetch handles connection errors."""
+    # Setup 500 response
+    setup_mock_response(mock_session, 500, text_data="Internal Server Error")
+
+    with pytest.raises(SunlitConnectionError) as exc_info:
+        await api_client.fetch_device_list(34038)
 
     assert "API request failed with status 500" in str(exc_info.value)
