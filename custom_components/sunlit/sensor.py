@@ -61,15 +61,18 @@ async def async_setup_entry(
                             state_class=_get_state_class_for_sensor(key),
                             native_unit_of_measurement=_get_unit_for_sensor(key),
                         )
-                        sensors.append(
-                            SunlitFamilySensor(
-                                coordinator=coordinator,
-                                description=sensor_description,
-                                entry_id=config_entry.entry_id,
-                                family_id=coordinator.family_id,
-                                family_name=coordinator.family_name,
-                            )
+                        sensor = SunlitFamilySensor(
+                            coordinator=coordinator,
+                            description=sensor_description,
+                            entry_id=config_entry.entry_id,
+                            family_id=coordinator.family_id,
+                            family_name=coordinator.family_name,
                         )
+                        # Set icon if available
+                        icon = _get_icon_for_sensor(key)
+                        if icon:
+                            sensor._attr_icon = icon
+                        sensors.append(sensor)
 
             # Create individual device sensors
             if "devices" in coordinator.data:
@@ -99,26 +102,7 @@ async def async_setup_entry(
                                         key
                                     ),
                                 )
-                                sensors.append(
-                                    SunlitDeviceSensor(
-                                        coordinator=coordinator,
-                                        description=sensor_description,
-                                        entry_id=config_entry.entry_id,
-                                        family_id=coordinator.family_id,
-                                        family_name=coordinator.family_name,
-                                        device_id=device_id,
-                                        device_info_data=device_info,
-                                    )
-                                )
-
-                        # Add status sensor for all devices
-                        if "status" in device_data:
-                            sensor_description = SensorEntityDescription(
-                                key="status",
-                                name="Status",
-                            )
-                            sensors.append(
-                                SunlitDeviceSensor(
+                                sensor = SunlitDeviceSensor(
                                     coordinator=coordinator,
                                     description=sensor_description,
                                     entry_id=config_entry.entry_id,
@@ -127,7 +111,30 @@ async def async_setup_entry(
                                     device_id=device_id,
                                     device_info_data=device_info,
                                 )
+                                # Set icon if available
+                                icon = _get_icon_for_sensor(key, device_type)
+                                if icon:
+                                    sensor._attr_icon = icon
+                                sensors.append(sensor)
+
+                        # Add status sensor for all devices
+                        if "status" in device_data:
+                            sensor_description = SensorEntityDescription(
+                                key="status",
+                                name="Status",
                             )
+                            sensor = SunlitDeviceSensor(
+                                coordinator=coordinator,
+                                description=sensor_description,
+                                entry_id=config_entry.entry_id,
+                                family_id=coordinator.family_id,
+                                family_name=coordinator.family_name,
+                                device_id=device_id,
+                                device_info_data=device_info,
+                            )
+                            # Set status icon
+                            sensor._attr_icon = "mdi:information-outline"
+                            sensors.append(sensor)
 
     async_add_entities(sensors, True)
 
@@ -160,8 +167,11 @@ def _get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
 
 def _get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     """Get the appropriate state class for a sensor."""
+    # Static configuration values don't need state class
+    if key in ["rated_power", "max_output_power"]:
+        return None
     # Special case: total_power_generation is cumulative energy
-    if key == "total_power_generation":
+    elif key == "total_power_generation":
         return SensorStateClass.TOTAL_INCREASING
     # Energy sensors need special handling
     elif "energy" in key.lower():
@@ -176,7 +186,9 @@ def _get_state_class_for_sensor(key: str) -> SensorStateClass | None:
             return SensorStateClass.TOTAL_INCREASING
     elif "power" in key.lower():
         return SensorStateClass.MEASUREMENT
-    elif key in ["device_count", "online_devices", "offline_devices"]:
+    elif key in [
+        "device_count", "online_devices", "offline_devices", "strategy_changes_today"
+    ]:
         return SensorStateClass.MEASUREMENT
     return None
 
@@ -186,7 +198,8 @@ def _get_unit_for_sensor(key: str) -> str | None:
     # Special case: total_power_generation is actually energy in kWh
     if key == "total_power_generation":
         return UnitOfEnergy.KILO_WATT_HOUR
-    elif "power" in key.lower():
+    # Ensure rated_power and max_output_power get W units
+    elif key in ["rated_power", "max_output_power"] or "power" in key.lower():
         return UnitOfPower.WATT
     elif "energy" in key.lower():
         return UnitOfEnergy.KILO_WATT_HOUR
@@ -196,6 +209,60 @@ def _get_unit_for_sensor(key: str) -> str | None:
         return PERCENTAGE
     elif "earnings" in key:
         return "EUR"  # Could be made configurable
+    return None
+
+
+def _get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
+    """Get the appropriate icon for a sensor."""
+    # Solar/Inverter related
+    if device_type == "YUNENG_MICRO_INVERTER" or "generation" in key:
+        return "mdi:solar-power"
+    # Battery related
+    elif "battery_full" in key:
+        return "mdi:battery-check"
+    elif "battery_level" in key or "average_battery_level" in key:
+        return "mdi:battery-50"
+    elif "soc" in key:
+        return "mdi:battery-outline"
+    elif device_type == "ENERGY_STORAGE_BATTERY":
+        if "input" in key:
+            return "mdi:battery-charging"
+        elif "output" in key:
+            return "mdi:battery-arrow-down"
+        else:
+            return "mdi:battery"
+    # Grid/Meter related
+    elif device_type == "SHELLY_3EM_METER" or "buy" in key or "ret" in key:
+        if "buy" in key:
+            return "mdi:transmission-tower-import"
+        elif "ret" in key or "return" in key:
+            return "mdi:transmission-tower-export"
+        else:
+            return "mdi:transmission-tower"
+    # Power related
+    elif "power" in key:
+        return "mdi:flash"
+    # Energy related
+    elif "energy" in key:
+        return "mdi:lightning-bolt"
+    # Status related
+    elif "status" in key:
+        return "mdi:information-outline"
+    elif "online" in key:
+        return "mdi:check-network"
+    elif "offline" in key:
+        return "mdi:close-network"
+    elif "fault" in key:
+        return "mdi:alert-circle"
+    # Strategy related
+    elif "strategy" in key:
+        return "mdi:cog"
+    # Device count
+    elif "device_count" in key or "devices" in key:
+        return "mdi:counter"
+    # Earnings
+    elif "earnings" in key:
+        return "mdi:cash"
     return None
 
 
