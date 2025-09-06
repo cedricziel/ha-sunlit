@@ -29,41 +29,21 @@ async def async_setup_entry(
     
     sensors = []
     
-    # Handle both single coordinator (legacy) and multiple coordinators (families)
-    if isinstance(coordinators, dict):
-        # Multiple family coordinators
-        for _, coordinator in coordinators.items():
-            if coordinator.data:
-                for key, _ in coordinator.data.items():
-                    sensor_description = SensorEntityDescription(
-                        key=key,
-                        name=f"{coordinator.family_name} {key.replace('_', ' ').title()}",
-                    )
-                    sensors.append(
-                        SunlitSensor(
-                            coordinator=coordinator,
-                            description=sensor_description,
-                            entry_id=config_entry.entry_id,
-                            family_id=coordinator.family_id,
-                            family_name=coordinator.family_name,
-                        )
-                    )
-    else:
-        # Single coordinator (shouldn't happen with new code, but kept for safety)
-        coordinator = coordinators
+    # Process multiple family coordinators
+    for _, coordinator in coordinators.items():
         if coordinator.data:
             for key, _ in coordinator.data.items():
                 sensor_description = SensorEntityDescription(
                     key=key,
-                    name=key.replace("_", " ").title(),
+                    name=f"{coordinator.family_name} {key.replace('_', ' ').title()}",
                 )
                 sensors.append(
                     SunlitSensor(
                         coordinator=coordinator,
                         description=sensor_description,
                         entry_id=config_entry.entry_id,
-                        family_id="legacy",
-                        family_name="Legacy",
+                        family_id=coordinator.family_id,
+                        family_name=coordinator.family_name,
                     )
                 )
     
@@ -112,7 +92,6 @@ class SunlitSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes."""
         return {
-            "api_url": self.coordinator.api_url,
             "family_id": self._family_id,
             "family_name": self._family_name,
             "last_update": self.coordinator.last_update_success_time,

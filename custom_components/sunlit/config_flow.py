@@ -6,20 +6,20 @@ import hashlib
 import logging
 from typing import Any
 
-import aiohttp
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import config_validation as cv
 
+from .api_client import (
+    SunlitApiClient,
+    SunlitAuthError,
+    SunlitConnectionError,
+)
 from .const import (
     DOMAIN,
-    API_BASE_URL,
-    API_FAMILY_LIST,
     CONF_API_KEY,
     CONF_FAMILIES,
 )
@@ -49,10 +49,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             
             try:
                 # Test connection and fetch families
-                self.available_families = await self._fetch_families(
-                    self.hass,
-                    self.api_key
-                )
+                session = async_get_clientsession(self.hass)
+                client = SunlitApiClient(session, self.api_key)
+                self.available_families = await client.fetch_families()
                 
                 if not self.available_families:
                     errors["base"] = "no_families"
@@ -66,9 +65,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # Move to family selection
                     return await self.async_step_select_families()
                     
-            except CannotConnect:
+            except SunlitConnectionError:
                 errors["base"] = "cannot_connect"
-            except InvalidAuth:
+            except SunlitAuthError:
                 errors["base"] = "invalid_auth"
             except Exception:
                 _LOGGER.exception("Unexpected exception")
@@ -84,7 +83,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", 
             data_schema=schema, 
             errors=errors,
-            description_placeholders={"api_url": API_BASE_URL}
+            description_placeholders={"api_url": "https://api.sunlitsolar.de"}
         )
 
     async def async_step_select_families(
@@ -145,43 +144,4 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors
         )
 
-    async def _fetch_families(
-        self,
-        hass: HomeAssistant,
-        api_key: str,
-    ) -> list[dict[str, Any]]:
-        """Fetch available families from the API."""
-        session = async_get_clientsession(hass)
-        headers = {"Authorization": f"Bearer {api_key}"}
-        
-        try:
-            async with session.get(
-                f"{API_BASE_URL}{API_FAMILY_LIST}",
-                headers=headers,
-                timeout=aiohttp.ClientTimeout(total=10),
-            ) as response:
-                if response.status == 401:
-                    raise InvalidAuth
-                if response.status >= 400:
-                    raise CannotConnect
-                    
-                data = await response.json()
-                
-                # Extract families from response
-                if data.get("code") == 0 and "content" in data:
-                    return data["content"]
-                else:
-                    _LOGGER.error("Unexpected API response: %s", data)
-                    return []
-                    
-        except aiohttp.ClientError as err:
-            _LOGGER.error("Error fetching families: %s", err)
-            raise CannotConnect from err
-
-
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
+""

@@ -17,13 +17,3 @@ CONF_FAMILIES = "families"
 CONF_FAMILY_ID = "family_id"
 CONF_FAMILY_NAME = "family_name"
 
-# Legacy configuration keys (kept for compatibility)
-CONF_API_URL = "api_url"
-CONF_AUTH_TYPE = "auth_type"
-CONF_HEADERS = "headers"
-
-AUTH_TYPE_NONE = "none"
-AUTH_TYPE_BEARER = "bearer"
-AUTH_TYPE_API_KEY = "api_key"
-
-AUTH_TYPES = [AUTH_TYPE_NONE, AUTH_TYPE_BEARER, AUTH_TYPE_API_KEY]
