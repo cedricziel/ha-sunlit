@@ -1,0 +1,11 @@
+{
+  "domain": "sunlit",
+  "name": "Sunlit REST Integration",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/yourusername/ha-sunlit",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "1.0.0"
+}

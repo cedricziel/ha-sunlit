@@ -1,0 +1,23 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure Sunlit REST Integration",
+        "description": "Enter the REST API details to fetch data from.",
+        "data": {
+          "api_url": "API URL",
+          "auth_type": "Authentication Type",
+          "api_key": "API Key / Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the REST API",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This API URL is already configured"
+    }
+  }
+}
