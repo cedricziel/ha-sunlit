@@ -2,22 +2,29 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configure Sunlit REST Integration",
-        "description": "Enter the REST API details to fetch data from.",
+        "title": "Sunlit Authentication",
+        "description": "Enter your Bearer token to connect to Sunlit Solar API ({api_url})",
         "data": {
-          "api_url": "API URL",
-          "auth_type": "Authentication Type",
-          "api_key": "API Key / Token"
+          "api_key": "Bearer Token"
+        }
+      },
+      "select_families": {
+        "title": "Select Families",
+        "description": "Select one or more families to monitor. Each family represents a group of devices at a specific location.",
+        "data": {
+          "families": "Families"
         }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect to the REST API",
-      "invalid_auth": "Invalid authentication",
-      "unknown": "Unexpected error"
+      "cannot_connect": "Failed to connect to the Sunlit API",
+      "invalid_auth": "Invalid authentication - check your Bearer token",
+      "unknown": "Unexpected error",
+      "no_families": "No families found on this account",
+      "no_selection": "Please select at least one family"
     },
     "abort": {
-      "already_configured": "This API URL is already configured"
+      "already_configured": "This account is already configured"
     }
   }
 }

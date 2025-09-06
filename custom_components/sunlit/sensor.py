@@ -25,23 +25,47 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor platform."""
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinators = hass.data[DOMAIN][config_entry.entry_id]
     
     sensors = []
     
-    if coordinator.data:
-        for key, value in coordinator.data.items():
-            sensor_description = SensorEntityDescription(
-                key=key,
-                name=key.replace("_", " ").title(),
-            )
-            sensors.append(
-                SunlitSensor(
-                    coordinator=coordinator,
-                    description=sensor_description,
-                    entry_id=config_entry.entry_id,
+    # Handle both single coordinator (legacy) and multiple coordinators (families)
+    if isinstance(coordinators, dict):
+        # Multiple family coordinators
+        for _, coordinator in coordinators.items():
+            if coordinator.data:
+                for key, _ in coordinator.data.items():
+                    sensor_description = SensorEntityDescription(
+                        key=key,
+                        name=f"{coordinator.family_name} {key.replace('_', ' ').title()}",
+                    )
+                    sensors.append(
+                        SunlitSensor(
+                            coordinator=coordinator,
+                            description=sensor_description,
+                            entry_id=config_entry.entry_id,
+                            family_id=coordinator.family_id,
+                            family_name=coordinator.family_name,
+                        )
+                    )
+    else:
+        # Single coordinator (shouldn't happen with new code, but kept for safety)
+        coordinator = coordinators
+        if coordinator.data:
+            for key, _ in coordinator.data.items():
+                sensor_description = SensorEntityDescription(
+                    key=key,
+                    name=key.replace("_", " ").title(),
                 )
-            )
+                sensors.append(
+                    SunlitSensor(
+                        coordinator=coordinator,
+                        description=sensor_description,
+                        entry_id=config_entry.entry_id,
+                        family_id="legacy",
+                        family_name="Legacy",
+                    )
+                )
     
     async_add_entities(sensors, True)
 
@@ -54,13 +78,21 @@ class SunlitSensor(CoordinatorEntity, SensorEntity):
         coordinator: SunlitDataUpdateCoordinator,
         description: SensorEntityDescription,
         entry_id: str,
+        family_id: str,
+        family_name: str,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.entity_description = description
         self._entry_id = entry_id
-        self._attr_unique_id = f"{entry_id}_{description.key}"
-        self._attr_name = f"Sunlit {description.name}"
+        self._family_id = family_id
+        self._family_name = family_name
+        
+        # Include family_id in unique_id to ensure uniqueness across families
+        self._attr_unique_id = f"{entry_id}_{family_id}_{description.key}"
+        
+        # Human-readable name includes family name
+        self._attr_name = f"Sunlit {family_name} {description.key.replace('_', ' ').title()}"
     
     @property
     def native_value(self) -> Any:
@@ -81,5 +113,7 @@ class SunlitSensor(CoordinatorEntity, SensorEntity):
         """Return the state attributes."""
         return {
             "api_url": self.coordinator.api_url,
+            "family_id": self._family_id,
+            "family_name": self._family_name,
             "last_update": self.coordinator.last_update_success_time,
         }
