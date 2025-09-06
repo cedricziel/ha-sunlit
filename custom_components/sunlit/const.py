@@ -59,7 +59,7 @@ FAMILY_SENSORS = {
     "average_battery_level": "Average Battery Level",
     "total_input_power": "Total Input Power",
     "total_output_power": "Total Output Power",
-    "has_fault": "Has Fault",
+    # has_fault moved to binary_sensor
     # SOC configuration sensors
     "hw_soc_min": "Hardware SOC Minimum",
     "hw_soc_max": "Hardware SOC Maximum",
@@ -69,18 +69,14 @@ FAMILY_SENSORS = {
     "strategy_soc_max": "Strategy SOC Maximum",
     "current_soc_min": "Current SOC Minimum",
     "current_soc_max": "Current SOC Maximum",
-    # Strategy and status sensors
-    "battery_strategy": "Battery Strategy",
-    "battery_full": "Battery Full",
+    # Power configuration sensors
     "rated_power": "Rated Power",
     "max_output_power": "Max Output Power",
-    "battery_status": "Battery Status",
-    "battery_device_status": "Battery Device Status",
-    "inverter_device_status": "Inverter Device Status",
-    "meter_device_status": "Meter Device Status",
     # Strategy history sensors
     "last_strategy_change": "Last Strategy Change",
-    "last_strategy_type": "Last Strategy Type",
-    "last_strategy_status": "Last Strategy Status",
     "strategy_changes_today": "Strategy Changes Today",
+    # Note: The following have been moved to other platforms:
+    # - has_fault, battery_full → binary_sensor
+    # - battery_strategy, battery_status, *_device_status → select
+    # - last_strategy_type, last_strategy_status → select
 }

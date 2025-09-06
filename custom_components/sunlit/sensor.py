@@ -52,8 +52,16 @@ async def async_setup_entry(
         if coordinator.data:
             # Create family aggregate sensors
             if "family" in coordinator.data:
+                # Skip binary sensor and select fields
+                skip_fields = {
+                    "has_fault", "battery_full",  # binary sensors
+                    "battery_strategy", "battery_status",  # select entities
+                    "battery_device_status", "inverter_device_status",
+                    "meter_device_status", "last_strategy_type",
+                    "last_strategy_status"
+                }
                 for key in coordinator.data["family"]:
-                    if key in FAMILY_SENSORS:
+                    if key in FAMILY_SENSORS and key not in skip_fields:
                         sensor_description = SensorEntityDescription(
                             key=key,
                             name=FAMILY_SENSORS[key],
@@ -91,8 +99,10 @@ async def async_setup_entry(
                             sensor_map = BATTERY_SENSORS
 
                         # Create sensors for this device
+                        # Skip binary sensor and select fields
+                        skip_device_fields = {"fault", "off", "status"}
                         for key in device_data:
-                            if key in sensor_map:
+                            if key in sensor_map and key not in skip_device_fields:
                                 sensor_description = SensorEntityDescription(
                                     key=key,
                                     name=sensor_map[key],
@@ -117,24 +127,7 @@ async def async_setup_entry(
                                     sensor._attr_icon = icon
                                 sensors.append(sensor)
 
-                        # Add status sensor for all devices
-                        if "status" in device_data:
-                            sensor_description = SensorEntityDescription(
-                                key="status",
-                                name="Status",
-                            )
-                            sensor = SunlitDeviceSensor(
-                                coordinator=coordinator,
-                                description=sensor_description,
-                                entry_id=config_entry.entry_id,
-                                family_id=coordinator.family_id,
-                                family_name=coordinator.family_name,
-                                device_id=device_id,
-                                device_info_data=device_info,
-                            )
-                            # Set status icon
-                            sensor._attr_icon = "mdi:information-outline"
-                            sensors.append(sensor)
+                        # Status is now handled by select entity
 
     async_add_entities(sensors, True)
 
