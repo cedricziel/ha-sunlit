@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Releasing version: $VERSION"
+          
+      - name: Update manifest version
+        run: |
+          sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' custom_components/sunlit/manifest.json
+          
+      - name: Create release archive
+        run: |
+          mkdir -p dist
+          cd custom_components
+          zip -r ../dist/sunlit-${{ steps.version.outputs.VERSION }}.zip sunlit/
+          cd ..
+          
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "## What's Changed" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "Initial release" >> RELEASE_NOTES.md
+          else
+            git log $LAST_TAG..HEAD --pretty=format:"- %s" >> RELEASE_NOTES.md
+          fi
+          
+          echo "" >> RELEASE_NOTES.md
+          echo "## Installation" >> RELEASE_NOTES.md
+          echo "1. Download \`sunlit-${{ steps.version.outputs.VERSION }}.zip\`" >> RELEASE_NOTES.md
+          echo "2. Extract to \`custom_components/sunlit/\` in your Home Assistant config directory" >> RELEASE_NOTES.md
+          echo "3. Restart Home Assistant" >> RELEASE_NOTES.md
+          echo "4. Add integration through UI: Settings -> Devices & Services -> Add Integration -> Sunlit" >> RELEASE_NOTES.md
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: Release v${{ steps.version.outputs.VERSION }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            dist/sunlit-${{ steps.version.outputs.VERSION }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
