@@ -10,7 +10,6 @@ DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
 # API Configuration
 API_BASE_URL = "https://api.sunlitsolar.de/rest"
 API_FAMILY_LIST = "/family/list"
-API_FAMILY_DATA = "/family/{family_id}/data"
 API_DEVICE_DETAILS = "/device/{device_id}"
 API_DEVICE_STATISTICS = "/v1.1/statistics/static/device"
 API_BATTERY_IO_POWER = "/v1.3/statistics/instantPower/batteryIO"
@@ -21,3 +20,41 @@ CONF_API_KEY = "api_key"
 CONF_FAMILIES = "families"
 CONF_FAMILY_ID = "family_id"
 CONF_FAMILY_NAME = "family_name"
+
+# Device Types
+DEVICE_TYPE_METER = "SHELLY_3EM_METER"
+DEVICE_TYPE_INVERTER = "YUNENG_MICRO_INVERTER"
+DEVICE_TYPE_BATTERY = "ENERGY_STORAGE_BATTERY"
+
+# Sensor Types for different devices
+METER_SENSORS = {
+    "total_ac_power": "Total AC Power",
+    "daily_buy_energy": "Daily Buy Energy",
+    "daily_ret_energy": "Daily Return Energy",
+    "total_buy_energy": "Total Buy Energy",
+    "total_ret_energy": "Total Return Energy",
+}
+
+INVERTER_SENSORS = {
+    "current_power": "Current Power",
+    "total_power_generation": "Total Power Generation",
+    "daily_earnings": "Daily Earnings",
+}
+
+BATTERY_SENSORS = {
+    "battery_level": "Battery Level",
+    "input_power_total": "Input Power Total",
+    "output_power_total": "Output Power Total",
+}
+
+# Family aggregate sensors
+FAMILY_SENSORS = {
+    "device_count": "Device Count",
+    "online_devices": "Online Devices",
+    "offline_devices": "Offline Devices",
+    "total_ac_power": "Total AC Power",
+    "average_battery_level": "Average Battery Level",
+    "total_input_power": "Total Input Power",
+    "total_output_power": "Total Output Power",
+    "has_fault": "Has Fault",
+}

@@ -11,7 +11,6 @@ import async_timeout
 from .const import (
     API_BASE_URL,
     API_FAMILY_LIST,
-    API_FAMILY_DATA,
     API_DEVICE_DETAILS,
     API_DEVICE_STATISTICS,
     API_BATTERY_IO_POWER,
@@ -143,38 +142,6 @@ class SunlitApiClient:
 
         except SunlitApiError as err:
             _LOGGER.error("Failed to fetch families: %s", err)
-            raise
-
-    async def fetch_family_data(self, family_id: str | int) -> dict[str, Any]:
-        """Fetch data for a specific family.
-
-        Args:
-            family_id: The family ID to fetch data for
-
-        Returns:
-            Dictionary containing family data
-
-        Raises:
-            SunlitAuthError: Authentication failed
-            SunlitConnectionError: Connection failed
-            SunlitApiError: API returned an error
-        """
-        endpoint = API_FAMILY_DATA.replace("{family_id}", str(family_id))
-
-        try:
-            response = await self._make_request("GET", endpoint)
-
-            # Extract data from response
-            if "content" in response:
-                data = response["content"]
-                _LOGGER.debug("Fetched data for family %s", family_id)
-                return data
-
-            # If no content wrapper, return raw response
-            return response
-
-        except SunlitApiError as err:
-            _LOGGER.error("Failed to fetch data for family %s: %s", family_id, err)
             raise
 
     async def fetch_device_statistics(self, device_id: str | int) -> dict[str, Any]:

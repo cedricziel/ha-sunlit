@@ -136,37 +136,6 @@ async def test_fetch_families_api_error(api_client, mock_session):
 
 
 @pytest.mark.asyncio
-async def test_fetch_family_data_success(api_client, mock_session):
-    """Test successful fetching of family data."""
-    # Setup response
-    setup_mock_response(
-        mock_session,
-        200,
-        {
-            "code": 0,
-            "content": {
-                "power": 1500,
-                "energy": 12.5,
-                "temperature": 22.3,
-                "status": "online",
-            },
-        },
-    )
-
-    # Test
-    data = await api_client.fetch_family_data(34038)
-
-    # Assertions
-    assert data["power"] == 1500
-    assert data["energy"] == 12.5
-    assert data["temperature"] == 22.3
-
-    # Verify request was made correctly
-    call_args = mock_session.request.call_args
-    assert "/family/34038/data" in call_args[0][1]
-
-
-@pytest.mark.asyncio
 async def test_test_connection_success(api_client, mock_session):
     """Test successful connection test."""
     # Setup successful families response
