@@ -37,6 +37,24 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def normalize_device_type(device_type: str) -> str:
+    """Normalize device type for use in unique_id.
+
+    Maps device types to short, readable names:
+    - ENERGY_STORAGE_BATTERY -> battery
+    - YUNENG_MICRO_INVERTER -> inverter
+    - SHELLY_3EM_METER -> meter
+    """
+    type_map = {
+        DEVICE_TYPE_BATTERY: "battery",
+        DEVICE_TYPE_INVERTER: "inverter",
+        DEVICE_TYPE_METER: "meter",
+    }
+    return type_map.get(
+        device_type, device_type.lower().replace("_", "").replace(" ", "")
+    )
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -191,7 +209,10 @@ def _get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     elif "power" in key.lower():
         return SensorStateClass.MEASUREMENT
     elif key in [
-        "device_count", "online_devices", "offline_devices", "strategy_changes_today"
+        "device_count",
+        "online_devices",
+        "offline_devices",
+        "strategy_changes_today",
     ]:
         return SensorStateClass.MEASUREMENT
     return None
@@ -301,9 +322,9 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
         self._family_name = family_name
 
         # Include family_id in unique_id to ensure uniqueness across families
-        self._attr_unique_id = f"{entry_id}_{family_id}_family_{description.key}"
+        self._attr_unique_id = f"sunlit_{family_id}_{description.key}"
 
-        # Human-readable name includes family name
+        # Human-readable name
         self._attr_name = f"{family_name} {description.name}"
 
     @property
@@ -311,12 +332,13 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
         """Return the state of the sensor."""
         if self.coordinator.data and "family" in self.coordinator.data:
             value = self.coordinator.data["family"].get(self.entity_description.key)
-            
+
             # Convert timestamp from milliseconds to datetime for timestamp sensors
             if self.entity_description.key == "last_strategy_change" and value:
                 from datetime import datetime, timezone
+
                 return datetime.fromtimestamp(value / 1000, tz=timezone.utc)
-            
+
             return value
         return None
 
@@ -345,7 +367,7 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
             "family_id": self._family_id,
             "family_name": self._family_name,
         }
-        
+
         # Add strategy history if available
         if (
             self.entity_description.key == "last_strategy_change"
@@ -359,22 +381,25 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
                 for entry in history[:10]:  # Last 10 entries
                     if entry.get("modifyDate"):
                         from datetime import datetime
+
                         timestamp = datetime.fromtimestamp(
                             entry["modifyDate"] / 1000
                         ).isoformat()
                     else:
                         timestamp = "Unknown"
-                    
-                    formatted_history.append({
-                        "timestamp": timestamp,
-                        "strategy": entry.get("strategy", "Unknown"),
-                        "status": entry.get("status", "Unknown"),
-                        "mode": entry.get("smartStrategyMode"),
-                        "soc_min": entry.get("socMin"),
-                        "soc_max": entry.get("socMax"),
-                    })
+
+                    formatted_history.append(
+                        {
+                            "timestamp": timestamp,
+                            "strategy": entry.get("strategy", "Unknown"),
+                            "status": entry.get("status", "Unknown"),
+                            "mode": entry.get("smartStrategyMode"),
+                            "soc_min": entry.get("socMin"),
+                            "soc_max": entry.get("socMax"),
+                        }
+                    )
                 attrs["history"] = formatted_history
-        
+
         return attrs
 
 
@@ -400,11 +425,14 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
         self._device_id = device_id
         self._device_info_data = device_info_data
 
-        # Include device_id in unique_id to ensure uniqueness
-        self._attr_unique_id = f"{entry_id}_{device_id}_{description.key}"
+        # Include family_id and normalized device type in unique_id
+        device_type = device_info_data.get("deviceType", "Device")
+        normalized_type = normalize_device_type(device_type)
+        self._attr_unique_id = (
+            f"sunlit_{family_id}_{normalized_type}_{device_id}_{description.key}"
+        )
 
         # Human-readable name
-        device_type = device_info_data.get("deviceType", "Device")
         self._attr_name = f"{device_type} {device_id} {description.name}"
 
     @property
@@ -457,15 +485,15 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
             model=device_type,
             via_device=(DOMAIN, f"family_{self._family_id}"),
         )
-        
+
         # Add firmware version if available
         if "firmwareVersion" in self._device_info_data:
             device_info["sw_version"] = self._device_info_data["firmwareVersion"]
-        
-        # Add hardware version if available  
+
+        # Add hardware version if available
         if "hwVersion" in self._device_info_data:
             device_info["hw_version"] = self._device_info_data["hwVersion"]
-            
+
         return device_info
 
     @property
@@ -487,7 +515,7 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
                 attrs["fault"] = device_data["fault"]
             if "off" in device_data:
                 attrs["off"] = device_data["off"]
-        
+
         # Add additional device info if available
         if "systemMultiStatus" in self._device_info_data:
             attrs["system_status"] = self._device_info_data["systemMultiStatus"]

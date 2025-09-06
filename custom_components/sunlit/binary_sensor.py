@@ -17,9 +17,28 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import SunlitDataUpdateCoordinator
-from .const import DOMAIN
+from .const import DOMAIN, DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER, DEVICE_TYPE_METER
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def normalize_device_type(device_type: str) -> str:
+    """Normalize device type for use in unique_id.
+
+    Maps device types to short, readable names:
+    - ENERGY_STORAGE_BATTERY -> battery
+    - YUNENG_MICRO_INVERTER -> inverter
+    - SHELLY_3EM_METER -> meter
+    """
+    type_map = {
+        DEVICE_TYPE_BATTERY: "battery",
+        DEVICE_TYPE_INVERTER: "inverter",
+        DEVICE_TYPE_METER: "meter",
+    }
+    return type_map.get(
+        device_type, device_type.lower().replace("_", "").replace(" ", "")
+    )
+
 
 # Define which fields should be binary sensors
 FAMILY_BINARY_SENSORS = {
@@ -29,7 +48,7 @@ FAMILY_BINARY_SENSORS = {
         "icon": "mdi:alert-circle",
     },
     "battery_full": {
-        "name": "Battery Full", 
+        "name": "Battery Full",
         "device_class": BinarySensorDeviceClass.BATTERY,
         "icon": "mdi:battery-check",
     },
@@ -87,7 +106,7 @@ async def async_setup_entry(
                 for device_id, device_data in coordinator.data["devices"].items():
                     if device_id in coordinator.devices:
                         device_info = coordinator.devices[device_id]
-                        
+
                         for key, config in DEVICE_BINARY_SENSORS.items():
                             if key in device_data:
                                 sensor_description = BinarySensorEntityDescription(
@@ -132,9 +151,9 @@ class SunlitFamilyBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_icon = icon
 
         # Include family_id in unique_id to ensure uniqueness across families
-        self._attr_unique_id = f"{entry_id}_{family_id}_family_{description.key}"
+        self._attr_unique_id = f"sunlit_{family_id}_{description.key}"
 
-        # Human-readable name includes family name
+        # Human-readable name
         self._attr_name = f"{family_name} {description.name}"
 
     @property
@@ -199,11 +218,14 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_icon = icon
         self._inverted = inverted
 
-        # Include device_id in unique_id to ensure uniqueness
-        self._attr_unique_id = f"{entry_id}_{device_id}_{description.key}"
+        # Include family_id and normalized device type in unique_id
+        device_type = device_info_data.get("deviceType", "Device")
+        normalized_type = normalize_device_type(device_type)
+        self._attr_unique_id = (
+            f"sunlit_{family_id}_{normalized_type}_{device_id}_{description.key}"
+        )
 
         # Human-readable name
-        device_type = device_info_data.get("deviceType", "Device")
         self._attr_name = f"{device_type} {device_id} {description.name}"
 
     @property
@@ -259,15 +281,15 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
             model=device_type,
             via_device=(DOMAIN, f"family_{self._family_id}"),
         )
-        
+
         # Add firmware version if available
         if "firmwareVersion" in self._device_info_data:
             device_info["sw_version"] = self._device_info_data["firmwareVersion"]
-        
-        # Add hardware version if available  
+
+        # Add hardware version if available
         if "hwVersion" in self._device_info_data:
             device_info["hw_version"] = self._device_info_data["hwVersion"]
-            
+
         return device_info
 
     @property
@@ -278,5 +300,5 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
             "device_type": self._device_info_data.get("deviceType"),
             "device_sn": self._device_info_data.get("deviceSn"),
         }
-        
+
         return attrs
