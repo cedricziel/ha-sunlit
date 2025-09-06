@@ -4,8 +4,9 @@
   "codeowners": [],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/yourusername/ha-sunlit",
+  "documentation": "https://github.com/cedricziel/ha-sunlit",
   "iot_class": "cloud_polling",
   "requirements": [],
-  "version": "1.0.0"
+  "version": "0.0.1",
+  "issue_tracker": "https://github.com/cedricziel/ha-sunlit/issues"
 }
