@@ -99,7 +99,7 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
             )
 
             # Store device information for device registry
-            self.devices = {device["deviceId"]: device for device in devices}
+            self.devices = {str(device["deviceId"]): device for device in devices}
 
             # Process device list into sensor data
             # Aggregate data from all devices
