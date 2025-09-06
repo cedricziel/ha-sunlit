@@ -134,7 +134,10 @@ async def async_setup_entry(
 
 def _get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     """Get the appropriate device class for a sensor."""
-    if "power" in key.lower():
+    # Check for status fields first (they're text, not numeric)
+    if "status" in key.lower():
+        return None
+    elif "power" in key.lower():
         return SensorDeviceClass.POWER
     elif "energy" in key.lower():
         return SensorDeviceClass.ENERGY
@@ -151,9 +154,18 @@ def _get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
 
 def _get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     """Get the appropriate state class for a sensor."""
-    if "total" in key.lower() and "energy" in key.lower():
-        return SensorStateClass.TOTAL_INCREASING
-    elif "power" in key.lower() or "energy" in key.lower():
+    # Energy sensors need special handling
+    if "energy" in key.lower():
+        if "total" in key.lower():
+            # Total energy counters that never reset
+            return SensorStateClass.TOTAL_INCREASING
+        elif "daily" in key.lower():
+            # Daily energy counters that reset each day
+            return SensorStateClass.TOTAL
+        else:
+            # Other energy sensors
+            return SensorStateClass.TOTAL_INCREASING
+    elif "power" in key.lower():
         return SensorStateClass.MEASUREMENT
     elif key in ["device_count", "online_devices", "offline_devices"]:
         return SensorStateClass.MEASUREMENT
