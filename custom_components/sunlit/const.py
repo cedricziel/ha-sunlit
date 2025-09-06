@@ -4,6 +4,11 @@ from datetime import timedelta
 
 DOMAIN = "sunlit"
 
+# Integration metadata
+INTEGRATION_NAME = "ha-sunlit"
+GITHUB_URL = "https://github.com/cedricziel/ha-sunlit"
+VERSION = "0.0.1"  # This should match manifest.json
+
 DEFAULT_NAME = "Sunlit REST Sensor"
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
 

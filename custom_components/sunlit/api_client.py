@@ -43,6 +43,7 @@ class SunlitApiClient:
         session: aiohttp.ClientSession,
         api_key: str,
         timeout: int = 10,
+        ha_version: str | None = None,
     ) -> None:
         """Initialize the API client.
 
@@ -50,17 +51,27 @@ class SunlitApiClient:
             session: aiohttp client session (injected for testability)
             api_key: Bearer token for authentication
             timeout: Request timeout in seconds
+            ha_version: HomeAssistant version for User-Agent
         """
         self._session = session
         self._api_key = api_key
         self._timeout = timeout
         self._base_url = API_BASE_URL
+        self._ha_version = ha_version or "unknown"
 
     def _build_headers(self) -> dict[str, str]:
         """Build request headers with authentication."""
+        from .const import INTEGRATION_NAME, VERSION, GITHUB_URL
+        
+        # Build User-Agent string
+        user_agent = f"{INTEGRATION_NAME}/{VERSION} (+{GITHUB_URL})"
+        if self._ha_version != "unknown":
+            user_agent += f" HomeAssistant/{self._ha_version}"
+        
         return {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
+            "User-Agent": user_agent,
         }
 
     async def _make_request(

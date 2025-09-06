@@ -33,8 +33,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api_key = entry.data[CONF_API_KEY]
     families = entry.data[CONF_FAMILIES]
 
+    # Get HomeAssistant version for User-Agent
+    try:
+        from homeassistant.const import __version__ as ha_version
+    except ImportError:
+        # Fallback if __version__ is not available
+        ha_version = getattr(hass, "version", "unknown")
+
     session = async_get_clientsession(hass)
-    api_client = SunlitApiClient(session, api_key)
+    api_client = SunlitApiClient(session, api_key, ha_version=str(ha_version))
 
     coordinators = {}
     for family_id, family_info in families.items():
