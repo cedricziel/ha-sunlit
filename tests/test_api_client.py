@@ -570,8 +570,9 @@ async def test_fetch_device_details_battery(api_client, mock_session):
                 "deviceType": "ENERGY_STORAGE_BATTERY",
                 "status": "Online",
                 "familyItem": {"id": 34038, "name": "Garage"},
-                "manufacturer": "SunlitBattery",
-                "firmwareVersion": "1.2.3",
+                "manufacturer": "Highpower",
+                "firmwareVersion": "V1.5.4",
+                "hwVersion": "V1.5",
                 "maxOutputPower": 5000,
                 "ratedPower": 5000,
                 "batteryBoxStatus": "Normal",
@@ -586,7 +587,8 @@ async def test_fetch_device_details_battery(api_client, mock_session):
     assert details["deviceId"] == 41714
     assert details["deviceType"] == "ENERGY_STORAGE_BATTERY"
     assert details["status"] == "Online"
-    assert details["firmwareVersion"] == "1.2.3"
+    assert details["firmwareVersion"] == "V1.5.4"
+    assert details["hwVersion"] == "V1.5"
     assert details["maxOutputPower"] == 5000
     assert details["batteryBoxStatus"] == "Normal"
 

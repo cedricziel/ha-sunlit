@@ -286,22 +286,36 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
         device_type = self._device_info_data.get("deviceType", "Unknown")
         device_sn = self._device_info_data.get("deviceSn", self._device_id)
 
-        # Map device types to manufacturers
-        manufacturer = "Unknown"
-        if device_type == DEVICE_TYPE_METER:
-            manufacturer = "Shelly"
-        elif device_type == DEVICE_TYPE_INVERTER:
-            manufacturer = "Yuneng"
-        elif device_type == DEVICE_TYPE_BATTERY:
-            manufacturer = "Sunlit"
+        # Use manufacturer from device data if available, otherwise map by type
+        manufacturer = self._device_info_data.get("manufacturer")
+        if not manufacturer:
+            # Fallback mapping if manufacturer not provided
+            if device_type == DEVICE_TYPE_METER:
+                manufacturer = "Shelly"
+            elif device_type == DEVICE_TYPE_INVERTER:
+                manufacturer = "Yuneng"
+            elif device_type == DEVICE_TYPE_BATTERY:
+                manufacturer = "Highpower"
+            else:
+                manufacturer = "Unknown"
 
-        return DeviceInfo(
+        device_info = DeviceInfo(
             identifiers={(DOMAIN, device_sn)},
             name=f"{device_type} ({self._device_id})",
             manufacturer=manufacturer,
             model=device_type,
             via_device=(DOMAIN, f"family_{self._family_id}"),
         )
+        
+        # Add firmware version if available
+        if "firmwareVersion" in self._device_info_data:
+            device_info["sw_version"] = self._device_info_data["firmwareVersion"]
+        
+        # Add hardware version if available  
+        if "hwVersion" in self._device_info_data:
+            device_info["hw_version"] = self._device_info_data["hwVersion"]
+            
+        return device_info
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -312,7 +326,7 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
             "device_sn": self._device_info_data.get("deviceSn"),
         }
 
-        # Add device-specific attributes
+        # Add device-specific attributes from coordinator data
         if (
             "devices" in (self.coordinator.data or {})
             and self._device_id in self.coordinator.data["devices"]
@@ -322,5 +336,13 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
                 attrs["fault"] = device_data["fault"]
             if "off" in device_data:
                 attrs["off"] = device_data["off"]
+        
+        # Add additional device info if available
+        if "systemMultiStatus" in self._device_info_data:
+            attrs["system_status"] = self._device_info_data["systemMultiStatus"]
+        if "supportReboot" in self._device_info_data:
+            attrs["support_reboot"] = self._device_info_data["supportReboot"]
+        if "ssid" in self._device_info_data:
+            attrs["wifi_ssid"] = self._device_info_data["ssid"]
 
         return attrs
