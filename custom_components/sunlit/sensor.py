@@ -137,6 +137,9 @@ def _get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     # Check for status fields first (they're text, not numeric)
     if "status" in key.lower():
         return None
+    # battery_full is a boolean, not a battery percentage
+    elif key == "battery_full":
+        return None
     elif "power" in key.lower():
         return SensorDeviceClass.POWER
     elif "energy" in key.lower():
