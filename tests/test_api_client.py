@@ -264,3 +264,107 @@ async def test_client_error(api_client, mock_session):
         await api_client.fetch_families()
 
     assert "Connection error" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_statistics_success(api_client, mock_session):
+    """Test successful fetching of device statistics."""
+    # Setup response with full device statistics
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "responseTime": 1757166469831,
+            "message": {"DE": "Ok"},
+            "content": {
+                "deviceId": 41714,
+                "sn": "xxxxxxxxxxxx",
+                "status": "Online",
+                "subStatus": None,
+                "deviceType": "ENERGY_STORAGE_BATTERY",
+                "batterySoc": 10.0,
+                "battery1Soc": 11.0,
+                "battery2Soc": 11.0,
+                "battery3Soc": None,
+                "fault": False,
+                "batteryLevel": 10.0,
+                "batteryMppt1Data": {
+                    "batteryMpptInVol": 29.0,
+                    "batteryMpptInCur": 12.3,
+                    "batteryMpptInPower": 356.7,
+                    "mpptName": "MPPT1"
+                },
+                "batteryMppt2Data": {
+                    "batteryMpptInVol": 0,
+                    "batteryMpptInCur": 0,
+                    "batteryMpptInPower": 0.0,
+                    "mpptName": "MPPT2"
+                },
+                "mpptCollectTime": 1757166462661,
+            },
+        },
+    )
+
+    # Test
+    data = await api_client.fetch_device_statistics(41714)
+
+    # Assertions
+    assert data["deviceId"] == 41714
+    assert data["sn"] == "xxxxxxxxxxxx"
+    assert data["status"] == "Online"
+    assert data["deviceType"] == "ENERGY_STORAGE_BATTERY"
+    assert data["batterySoc"] == 10.0
+    assert data["fault"] is False
+    assert data["batteryMppt1Data"]["batteryMpptInPower"] == 356.7
+
+    # Verify request was made correctly (POST with JSON payload)
+    mock_session.request.assert_called_once()
+    call_args = mock_session.request.call_args
+    assert call_args[0][0] == "POST"
+    assert "/v1.1/statistics/static/device" in call_args[0][1]
+    assert call_args[1]["json"] == {"deviceId": 41714}
+    assert call_args[1]["headers"]["Authorization"] == "Bearer test_token"
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_statistics_auth_error(api_client, mock_session):
+    """Test authentication error when fetching device statistics."""
+    # Setup 401 response
+    setup_mock_response(mock_session, 401)
+
+    # Test
+    with pytest.raises(SunlitAuthError) as exc_info:
+        await api_client.fetch_device_statistics(41714)
+
+    assert "Invalid authentication token" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_statistics_not_found(api_client, mock_session):
+    """Test device not found error."""
+    # Setup response with error code indicating device not found
+    setup_mock_response(
+        mock_session,
+        200,
+        {"code": 1, "message": "Device not found"},
+    )
+
+    # Test
+    with pytest.raises(SunlitApiError) as exc_info:
+        await api_client.fetch_device_statistics(99999)
+
+    assert "API error: Device not found" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_fetch_device_statistics_connection_error(api_client, mock_session):
+    """Test connection error when fetching device statistics."""
+    # Setup 500 response
+    setup_mock_response(mock_session, 500, text_data="Internal Server Error")
+
+    # Test
+    with pytest.raises(SunlitConnectionError) as exc_info:
+        await api_client.fetch_device_statistics(41714)
+
+    assert "API request failed with status 500" in str(exc_info.value)

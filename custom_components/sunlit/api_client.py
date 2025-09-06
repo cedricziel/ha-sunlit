@@ -11,6 +11,7 @@ from .const import (
     API_BASE_URL,
     API_FAMILY_LIST,
     API_FAMILY_DATA,
+    API_DEVICE_STATISTICS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -168,6 +169,47 @@ class SunlitApiClient:
             
         except SunlitApiError as err:
             _LOGGER.error("Failed to fetch data for family %s: %s", family_id, err)
+            raise
+
+    async def fetch_device_statistics(self, device_id: str | int) -> dict[str, Any]:
+        """Fetch statistics for a specific device.
+        
+        Args:
+            device_id: The device ID to fetch statistics for
+            
+        Returns:
+            Dictionary containing device statistics including:
+            - batterySoc: Battery state of charge
+            - status: Device online/offline status
+            - deviceType: Type of device (e.g., ENERGY_STORAGE_BATTERY)
+            - batteryMpptData: MPPT charge controller data
+            - fault: Fault status
+            
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            # This endpoint uses POST with JSON payload
+            payload = {"deviceId": int(device_id)}
+            response = await self._make_request(
+                "POST", 
+                API_DEVICE_STATISTICS,
+                json=payload
+            )
+            
+            # Extract data from response
+            if "content" in response:
+                data = response["content"]
+                _LOGGER.debug("Fetched statistics for device %s", device_id)
+                return data
+            
+            # If no content wrapper, return raw response
+            return response
+            
+        except SunlitApiError as err:
+            _LOGGER.error("Failed to fetch statistics for device %s: %s", device_id, err)
             raise
 
     async def test_connection(self) -> bool:
