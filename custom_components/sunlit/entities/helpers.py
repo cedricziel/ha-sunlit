@@ -40,14 +40,15 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     # MPPT voltage sensors
     elif "invol" in key.lower() or "voltage" in key.lower():
         return SensorDeviceClass.VOLTAGE
-    # MPPT current sensors
-    elif "incur" in key.lower() or "current" in key.lower():
-        return SensorDeviceClass.CURRENT
     # total_power_generation is actually energy despite the name
     elif key == "total_power_generation":
         return SensorDeviceClass.ENERGY
+    # Check power BEFORE current to catch "current_power" correctly
     elif "power" in key.lower():
         return SensorDeviceClass.POWER
+    # MPPT current sensors - more specific check to avoid catching "current_power"
+    elif "incur" in key.lower() or (key.lower().endswith("_current") or key.lower() == "current"):
+        return SensorDeviceClass.CURRENT
     elif "energy" in key.lower():
         return SensorDeviceClass.ENERGY
     elif "soc" in key.lower():
