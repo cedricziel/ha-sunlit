@@ -47,6 +47,34 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /user/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate with email and password to receive access token
+      operationId: userLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+      security: []  # No auth required for login endpoint
+
   /v1.2/device/list:
     post:
       tags:
@@ -799,6 +827,71 @@ components:
           type: string
           description: Device type
           example: "STAR_CHARGE_EVSE"
+    
+    LoginRequest:
+      type: object
+      required:
+        - account
+        - password
+      properties:
+        account:
+          type: string
+          description: User email address
+          example: "user@example.com"
+        password:
+          type: string
+          description: User password
+          format: password
+          example: "password123"
+    
+    LoginResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            content:
+              type: object
+              properties:
+                access_token:
+                  type: string
+                  description: JWT access token for API authentication
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                token_type:
+                  type: string
+                  description: Token type
+                  example: "bearer"
+                refresh_token:
+                  type: string
+                  description: JWT refresh token for renewing access
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                expires_in:
+                  type: integer
+                  description: Token expiry time in seconds
+                  example: 62143951
+                scope:
+                  type: string
+                  description: Token scope
+                  example: "openid"
+                jti:
+                  type: string
+                  description: JWT ID
+                  example: "0f9915df-ba45-4dc1-9496-d52317f543f1"
+                principal:
+                  type: string
+                  description: User principal ID
+                  example: "aa69632f-4cd6-414d-8711-7c26fe4440c7"
+                email:
+                  type: string
+                  description: User email address
+                  example: "user@example.com"
+                nickName:
+                  type: string
+                  description: User nickname
+                  example: "username"
+                headPicUrl:
+                  type: ['string', 'null']
+                  description: User profile picture URL
+                  example: null
         deviceStatus:
           type: string
           enum: [Online, Offline, NotExist]

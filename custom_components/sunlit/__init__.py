@@ -18,7 +18,7 @@ from .api_client import SunlitApiClient
 from .const import (
     DOMAIN,
     DEFAULT_SCAN_INTERVAL,
-    CONF_API_KEY,
+    CONF_ACCESS_TOKEN,
     CONF_FAMILIES,
 )
 
@@ -30,7 +30,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Sunlit REST from a config entry."""
 
-    api_key = entry.data[CONF_API_KEY]
+    access_token = entry.data[CONF_ACCESS_TOKEN]
     families = entry.data[CONF_FAMILIES]
 
     # Get HomeAssistant version for User-Agent
@@ -41,7 +41,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ha_version = getattr(hass, "version", "unknown")
 
     session = async_get_clientsession(hass)
-    api_client = SunlitApiClient(session, api_key, ha_version=str(ha_version))
+    api_client = SunlitApiClient(session, access_token, ha_version=str(ha_version))
 
     coordinators = {}
     for family_id, family_info in families.items():

@@ -3,9 +3,10 @@
     "step": {
       "user": {
         "title": "Sunlit Authentication",
-        "description": "Enter your Bearer token to connect to Sunlit Solar API ({api_url})",
+        "description": "Enter your credentials to connect to Sunlit Solar API ({api_url})",
         "data": {
-          "api_key": "Bearer Token"
+          "email": "Email",
+          "password": "Password"
         }
       },
       "select_families": {
@@ -18,7 +19,7 @@
     },
     "error": {
       "cannot_connect": "Failed to connect to the Sunlit API",
-      "invalid_auth": "Invalid authentication - check your Bearer token",
+      "invalid_auth": "Invalid email or password",
       "unknown": "Unexpected error",
       "no_families": "No families found on this account",
       "no_selection": "Please select at least one family"

@@ -20,7 +20,9 @@ from .api_client import (
 )
 from .const import (
     DOMAIN,
-    CONF_API_KEY,
+    CONF_EMAIL,
+    CONF_PASSWORD,
+    CONF_ACCESS_TOKEN,
     CONF_FAMILIES,
 )
 
@@ -34,36 +36,47 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self):
         """Initialize the config flow."""
-        self.api_key: str | None = None
+        self.email: str | None = None
+        self.access_token: str | None = None
         self.families: dict[str, Any] = {}
         self.available_families: list[dict[str, Any]] = []
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step - API key entry."""
+        """Handle the initial step - email/password entry."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            self.api_key = user_input[CONF_API_KEY]
+            self.email = user_input[CONF_EMAIL]
+            password = user_input[CONF_PASSWORD]
             
             try:
-                # Test connection and fetch families
+                # Login and fetch families
                 session = async_get_clientsession(self.hass)
-                client = SunlitApiClient(session, self.api_key)
-                self.available_families = await client.fetch_families()
+                client = SunlitApiClient(session)
                 
-                if not self.available_families:
-                    errors["base"] = "no_families"
+                # Login to get access token
+                login_response = await client.login(self.email, password)
+                self.access_token = login_response.get("access_token")
+                
+                if not self.access_token:
+                    errors["base"] = "invalid_auth"
                 else:
-                    # Create unique ID based on API key hash
-                    await self.async_set_unique_id(
-                        hashlib.md5(self.api_key.encode()).hexdigest()[:8]
-                    )
-                    self._abort_if_unique_id_configured()
+                    # Fetch families with the authenticated client
+                    self.available_families = await client.fetch_families()
                     
-                    # Move to family selection
-                    return await self.async_step_select_families()
+                    if not self.available_families:
+                        errors["base"] = "no_families"
+                    else:
+                        # Create unique ID based on email hash
+                        await self.async_set_unique_id(
+                            hashlib.md5(self.email.encode()).hexdigest()[:8]
+                        )
+                        self._abort_if_unique_id_configured()
+                        
+                        # Move to family selection
+                        return await self.async_step_select_families()
                     
             except SunlitConnectionError:
                 errors["base"] = "cannot_connect"
@@ -75,7 +88,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_API_KEY): str,
+                vol.Required(CONF_EMAIL): str,
+                vol.Required(CONF_PASSWORD): str,
             }
         )
 
@@ -124,7 +138,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(
                     title=title,
                     data={
-                        CONF_API_KEY: self.api_key,
+                        CONF_EMAIL: self.email,
+                        CONF_ACCESS_TOKEN: self.access_token,
                         CONF_FAMILIES: self.families,
                     },
                 )

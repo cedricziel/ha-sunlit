@@ -14,6 +14,7 @@ DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
 
 # API Configuration
 API_BASE_URL = "https://api.sunlitsolar.de/rest"
+API_USER_LOGIN = "/user/login"
 API_FAMILY_LIST = "/family/list"
 API_DEVICE_DETAILS = "/device/{device_id}"
 API_DEVICE_STATISTICS = "/v1.1/statistics/static/device"
@@ -25,7 +26,9 @@ API_SPACE_STRATEGY_HISTORY = "/v1.1/space/strategyHistory"
 API_SPACE_INDEX = "/v1.5/space/index"
 
 # Configuration keys
-CONF_API_KEY = "api_key"
+CONF_EMAIL = "email"
+CONF_PASSWORD = "password"
+CONF_ACCESS_TOKEN = "access_token"
 CONF_FAMILIES = "families"
 CONF_FAMILY_ID = "family_id"
 CONF_FAMILY_NAME = "family_name"

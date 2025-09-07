@@ -10,6 +10,7 @@ import async_timeout
 
 from .const import (
     API_BASE_URL,
+    API_USER_LOGIN,
     API_FAMILY_LIST,
     API_DEVICE_DETAILS,
     API_DEVICE_STATISTICS,
@@ -42,7 +43,7 @@ class SunlitApiClient:
     def __init__(
         self,
         session: aiohttp.ClientSession,
-        api_key: str,
+        access_token: str | None = None,
         timeout: int = 10,
         ha_version: str | None = None,
     ) -> None:
@@ -50,12 +51,12 @@ class SunlitApiClient:
 
         Args:
             session: aiohttp client session (injected for testability)
-            api_key: Bearer token for authentication
+            access_token: Bearer token for authentication (optional, can be set after login)
             timeout: Request timeout in seconds
             ha_version: HomeAssistant version for User-Agent
         """
         self._session = session
-        self._api_key = api_key
+        self._access_token = access_token
         self._timeout = timeout
         self._base_url = API_BASE_URL
         self._ha_version = ha_version or "unknown"
@@ -69,11 +70,15 @@ class SunlitApiClient:
         if self._ha_version != "unknown":
             user_agent += f" HomeAssistant/{self._ha_version}"
         
-        return {
-            "Authorization": f"Bearer {self._api_key}",
+        headers = {
             "Content-Type": "application/json",
             "User-Agent": user_agent,
         }
+        
+        if self._access_token:
+            headers["Authorization"] = f"Bearer {self._access_token}"
+        
+        return headers
 
     async def _make_request(
         self,
@@ -131,6 +136,50 @@ class SunlitApiClient:
             raise SunlitConnectionError(
                 f"Request timeout after {self._timeout}s"
             ) from err
+
+    async def login(self, email: str, password: str) -> dict[str, Any]:
+        """Login with email and password to get access token.
+        
+        Args:
+            email: User email address
+            password: User password
+            
+        Returns:
+            Login response containing access_token
+            
+        Raises:
+            SunlitAuthError: If login fails
+        """
+        payload = {
+            "account": email,
+            "password": password,
+        }
+        
+        try:
+            _LOGGER.debug("Attempting login for user: %s", email)
+            response = await self._make_request(
+                "POST",
+                API_USER_LOGIN,
+                json=payload,
+            )
+            
+            # Extract token from response
+            if response and "content" in response:
+                content = response["content"]
+                if "access_token" in content:
+                    # Store the token for future requests
+                    self._access_token = content["access_token"]
+                    _LOGGER.info("Login successful for user: %s", email)
+                    return content
+            
+            _LOGGER.error("Invalid login response structure: %s", response)
+            raise SunlitAuthError("Invalid login response structure")
+            
+        except SunlitApiError:
+            raise
+        except Exception as err:
+            _LOGGER.error("Login failed: %s", err)
+            raise SunlitAuthError(f"Login failed: {err}") from err
 
     async def fetch_families(self) -> list[dict[str, Any]]:
         """Fetch list of available families.
