@@ -7,7 +7,7 @@ DOMAIN = "sunlit"
 # Integration metadata
 INTEGRATION_NAME = "ha-sunlit"
 GITHUB_URL = "https://github.com/cedricziel/ha-sunlit"
-VERSION = "0.0.1"  # This should match manifest.json
+VERSION = "0.0.1"  # x-release-please-version
 
 DEFAULT_NAME = "Sunlit REST Sensor"
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
@@ -64,7 +64,7 @@ BATTERY_SENSORS = {
     "input_power_total": "Total Input Power",
     "output_power_total": "Total Output Power",
     "battery_capacity": "Nominal Capacity",  # Static 2.15 kWh per unit
-    
+
     # Main unit MPPT sensors (head unit's solar inputs)
     "batteryMppt1InVol": "MPPT1 Voltage",
     "batteryMppt1InCur": "MPPT1 Current",
