@@ -22,8 +22,11 @@ from .const import (
     FAMILY_SENSORS,
 )
 from .entities.family_sensor import SunlitFamilySensor
-from .entities.device_sensor import SunlitDeviceSensor
 from .entities.battery_module_sensor import SunlitBatteryModuleSensor
+from .entities.meter_sensor import SunlitMeterSensor
+from .entities.inverter_sensor import SunlitInverterSensor
+from .entities.battery_sensor import SunlitBatterySensor
+from .entities.unknown_device_sensor import SunlitUnknownDeviceSensor
 from .entities.helpers import (
     get_device_class_for_sensor,
     get_state_class_for_sensor,
@@ -32,6 +35,18 @@ from .entities.helpers import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def create_device_sensor(device_type: str, **kwargs):
+    """Factory function to create appropriate device sensor class."""
+    sensor_class_map = {
+        DEVICE_TYPE_METER: SunlitMeterSensor,
+        DEVICE_TYPE_INVERTER: SunlitInverterSensor,
+        DEVICE_TYPE_BATTERY: SunlitBatterySensor,
+    }
+    
+    sensor_class = sensor_class_map.get(device_type, SunlitUnknownDeviceSensor)
+    return sensor_class(**kwargs)
 
 
 
@@ -106,7 +121,8 @@ async def async_setup_entry(
                                         key
                                     ),
                                 )
-                                sensor = SunlitDeviceSensor(
+                                sensor = create_device_sensor(
+                                    device_type=device_type,
                                     coordinator=coordinator,
                                     description=sensor_description,
                                     entry_id=config_entry.entry_id,
@@ -126,7 +142,8 @@ async def async_setup_entry(
                             key="status",
                             name="Status",
                         )
-                        sensor = SunlitDeviceSensor(
+                        sensor = create_device_sensor(
+                            device_type=device_type,
                             coordinator=coordinator,
                             description=sensor_description,
                             entry_id=config_entry.entry_id,
