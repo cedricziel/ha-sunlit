@@ -330,6 +330,13 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                                 )
                             )
                             
+                            # Debug: Log all keys in detailed_stats for battery
+                            _LOGGER.debug(
+                                "Battery %s detailed_stats keys: %s",
+                                device_id,
+                                list(detailed_stats.keys())
+                            )
+                            
                             # System-wide battery data
                             device_data["batterySoc"] = detailed_stats.get(
                                 "batterySoc"
@@ -366,7 +373,13 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                                 mppt_suffixes = ["Mppt1InVol", "Mppt1InCur", "Mppt1InPower"]
                                 for suffix in mppt_suffixes:
                                     field = f"battery{module_num}{suffix}"
-                                    device_data[field] = detailed_stats.get(field)
+                                    value = detailed_stats.get(field)
+                                    device_data[field] = value
+                                    if value is not None:
+                                        _LOGGER.debug(
+                                            "Battery module %d MPPT data: %s = %s",
+                                            module_num, field, value
+                                        )
                             
                             # Calculate MPPT energy accumulation
                             import time

@@ -61,9 +61,21 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
             and "devices" in self.coordinator.data
             and self._device_id in self.coordinator.data["devices"]
         ):
-            return self.coordinator.data["devices"][self._device_id].get(
+            value = self.coordinator.data["devices"][self._device_id].get(
                 self.entity_description.key
             )
+            # Debug logging for missing values
+            if value is None and self.entity_description.key != "capacity":
+                import logging
+                _LOGGER = logging.getLogger(__name__)
+                _LOGGER.debug(
+                    "Battery module %d sensor '%s' looking for key '%s' - not found in device data. Available keys: %s",
+                    self._module_number,
+                    self._attr_name,
+                    self.entity_description.key,
+                    list(self.coordinator.data["devices"][self._device_id].keys())
+                )
+            return value
         return None
 
     @property
