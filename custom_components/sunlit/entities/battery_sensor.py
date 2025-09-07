@@ -30,5 +30,5 @@ class SunlitBatterySensor(SunlitDeviceSensorBase):
         return DeviceInfo(
             **base_info,
             manufacturer=manufacturer,
-            model="BK215 Energy Storage System",
+            model="BK215",
         )

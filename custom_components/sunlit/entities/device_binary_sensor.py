@@ -85,27 +85,41 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
         device_type = self._device_info_data.get("deviceType", "Unknown")
         device_sn = self._device_info_data.get("deviceSn", self._device_id)
 
+        # Map device types to friendly names
+        friendly_names = {
+            DEVICE_TYPE_BATTERY: "BK215",
+            DEVICE_TYPE_INVERTER: "Microinverter",
+            DEVICE_TYPE_METER: "Smart Meter",
+        }
+        
+        friendly_name = friendly_names.get(device_type, device_type)
+        
         # Use manufacturer from device data if available, otherwise map by type
         manufacturer = self._device_info_data.get("manufacturer")
-        model_name = device_type
         
         if not manufacturer:
             # Fallback mapping if manufacturer not provided
             if device_type == DEVICE_TYPE_METER:
                 manufacturer = "Shelly"
-                model_name = "3EM Smart Meter"
             elif device_type == DEVICE_TYPE_INVERTER:
                 manufacturer = "Yuneng"
-                model_name = "Micro Inverter"
             elif device_type == DEVICE_TYPE_BATTERY:
                 manufacturer = "Highpower"
-                model_name = "BK215 Energy Storage System"
             else:
                 manufacturer = "Unknown"
 
+        # Map to model names
+        model_map = {
+            DEVICE_TYPE_BATTERY: "BK215",
+            DEVICE_TYPE_INVERTER: "Microinverter",
+            DEVICE_TYPE_METER: "Smart Meter",
+        }
+        
+        model_name = model_map.get(device_type, device_type)
+
         device_info = DeviceInfo(
             identifiers={(DOMAIN, device_sn)},
-            name=f"{device_type} ({self._device_id})",
+            name=f"{friendly_name} ({self._family_name}, {self._device_id})",
             manufacturer=manufacturer,
             model=model_name,
             serial_number=device_sn if device_sn != self._device_id else None,

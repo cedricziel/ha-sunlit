@@ -21,5 +21,5 @@ class SunlitMeterSensor(SunlitDeviceSensorBase):
         return DeviceInfo(
             **base_info,
             manufacturer=manufacturer,
-            model="3EM Smart Meter",
+            model="Smart Meter",
         )

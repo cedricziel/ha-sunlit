@@ -21,5 +21,5 @@ class SunlitInverterSensor(SunlitDeviceSensorBase):
         return DeviceInfo(
             **base_info,
             manufacturer=manufacturer,
-            model="Micro Inverter",
+            model="Microinverter",
         )

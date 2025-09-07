@@ -91,9 +91,18 @@ class SunlitDeviceSensorBase(CoordinatorEntity, SensorEntity, ABC):
         device_sn = self._device_info_data.get("deviceSn", self._device_id)
         device_type = self._device_info_data.get("deviceType", "Unknown")
         
+        # Map device types to friendly names
+        friendly_names = {
+            "ENERGY_STORAGE_BATTERY": "BK215",
+            "YUNENG_MICRO_INVERTER": "Microinverter",
+            "SHELLY_3EM_METER": "Smart Meter",
+        }
+        
+        friendly_name = friendly_names.get(device_type, device_type)
+        
         base_info = {
             "identifiers": {(DOMAIN, device_sn)},
-            "name": f"{device_type} ({self._device_id})",
+            "name": f"{friendly_name} ({self._family_name}, {self._device_id})",
             "via_device": (DOMAIN, f"family_{self._family_id}"),
         }
         
