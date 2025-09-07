@@ -603,6 +603,32 @@ class SunlitApiClient:
             )
             raise
 
+    async def get_device_list(self) -> list[dict[str, Any]]:
+        """Fetch all devices without filtering by space.
+        
+        Returns:
+            List of all devices in the account
+        
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            response = await self._make_request("POST", API_DEVICE_LIST)
+            
+            # Extract devices from paginated response
+            if "content" in response and "content" in response["content"]:
+                devices = response["content"]["content"]
+                _LOGGER.debug("Fetched %d total devices", len(devices))
+                return devices
+            
+            return []
+            
+        except SunlitApiError as err:
+            _LOGGER.error("Failed to fetch all devices: %s", err)
+            raise
+    
     async def fetch_space_index(self, space_id: str | int) -> dict[str, Any]:
         """Fetch comprehensive dashboard data for a space.
 

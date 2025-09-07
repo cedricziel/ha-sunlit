@@ -44,6 +44,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api_client = SunlitApiClient(session, access_token, ha_version=str(ha_version))
 
     coordinators = {}
+    
+    # Create coordinators for selected families
     for family_id, family_info in families.items():
         coordinator = SunlitDataUpdateCoordinator(
             hass,
@@ -54,6 +56,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         await coordinator.async_config_entry_first_refresh()
         coordinators[family_id] = coordinator
+    
+    # Check for devices without a spaceId (global/unassigned devices)
+    try:
+        all_devices = await api_client.get_device_list()
+        unassigned_devices = [
+            d for d in all_devices 
+            if d.get("spaceId") is None
+        ]
+        
+        if unassigned_devices:
+            _LOGGER.info(
+                "Found %d unassigned devices (no spaceId), creating global coordinator",
+                len(unassigned_devices)
+            )
+            # Create a special coordinator for unassigned devices
+            global_coordinator = SunlitDataUpdateCoordinator(
+                hass,
+                api_client=api_client,
+                family_id="global",  # Special ID for global devices
+                family_name="Unassigned Devices",
+                is_global=True,  # Flag to indicate this is for unassigned devices
+            )
+            
+            await global_coordinator.async_config_entry_first_refresh()
+            coordinators["global"] = global_coordinator
+    except Exception as err:
+        _LOGGER.warning("Failed to check for unassigned devices: %s", err)
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinators
@@ -80,11 +109,13 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
         api_client: SunlitApiClient,
         family_id: str,
         family_name: str,
+        is_global: bool = False,
     ) -> None:
         """Initialize."""
         self.api_client = api_client
         self.family_id = family_id
         self.family_name = family_name
+        self.is_global = is_global  # Flag for unassigned devices
         self.devices = {}  # Store device information
         
         # Track MPPT energy accumulation
@@ -102,51 +133,68 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from REST API."""
         try:
-            # Try to fetch comprehensive space data first (more efficient)
-            space_index = {}
-            try:
-                space_index = await self.api_client.fetch_space_index(self.family_id)
-                _LOGGER.debug(
-                    "Successfully fetched space index data for family %s",
-                    self.family_id
-                )
-            except Exception as err:
-                _LOGGER.debug(
-                    "Could not fetch space index data (will use fallback): %s", err
-                )
-            
-            # Fetch device list for the family (still needed for device discovery)
-            devices = await self.api_client.fetch_device_list(self.family_id)
-            
-            # Only fetch individual endpoints if space_index is not available
-            space_soc = {}
-            current_strategy = {}
-            strategy_history = {}
-            
-            if not space_index:
-                # Fallback to individual endpoints
-                try:
-                    space_soc = await self.api_client.fetch_space_soc(self.family_id)
-                except Exception as err:
-                    _LOGGER.debug("Could not fetch space SOC data: %s", err)
+            # For global/unassigned devices, fetch differently
+            if self.is_global:
+                # Fetch all devices and filter for those without spaceId
+                all_devices = await self.api_client.get_device_list()
+                devices = [d for d in all_devices if d.get("spaceId") is None]
                 
+                _LOGGER.debug(
+                    "Found %d unassigned devices", len(devices)
+                )
+                
+                # No space-specific data for global devices
+                space_index = {}
+                space_soc = {}
+                current_strategy = {}
+                strategy_history = {}
+            else:
+                # Try to fetch comprehensive space data first (more efficient)
+                space_index = {}
                 try:
-                    current_strategy = (
-                        await self.api_client.fetch_space_current_strategy(
-                            self.family_id
-                        )
+                    space_index = await self.api_client.fetch_space_index(self.family_id)
+                    _LOGGER.debug(
+                        "Successfully fetched space index data for family %s",
+                        self.family_id
                     )
                 except Exception as err:
-                    _LOGGER.debug("Could not fetch current strategy data: %s", err)
-                
-                try:
-                    strategy_history = (
-                        await self.api_client.fetch_space_strategy_history(
-                            self.family_id
-                        )
+                    _LOGGER.debug(
+                        "Could not fetch space index data (will use fallback): %s", err
                     )
-                except Exception as err:
-                    _LOGGER.debug("Could not fetch strategy history data: %s", err)
+                
+                # Fetch device list for the family (still needed for device discovery)
+                devices = await self.api_client.fetch_device_list(self.family_id)
+            
+            # Only fetch individual endpoints if space_index is not available and not global
+            if not self.is_global:
+                space_soc = {}
+                current_strategy = {}
+                strategy_history = {}
+                
+                if not space_index:
+                    # Fallback to individual endpoints
+                    try:
+                        space_soc = await self.api_client.fetch_space_soc(self.family_id)
+                    except Exception as err:
+                        _LOGGER.debug("Could not fetch space SOC data: %s", err)
+                    
+                    try:
+                        current_strategy = (
+                            await self.api_client.fetch_space_current_strategy(
+                                self.family_id
+                            )
+                        )
+                    except Exception as err:
+                        _LOGGER.debug("Could not fetch current strategy data: %s", err)
+                    
+                    try:
+                        strategy_history = (
+                            await self.api_client.fetch_space_strategy_history(
+                                self.family_id
+                            )
+                        )
+                    except Exception as err:
+                        _LOGGER.debug("Could not fetch strategy history data: %s", err)
 
             _LOGGER.debug(
                 "Received %d devices for family %s", len(devices), self.family_name
@@ -158,18 +206,27 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
             # Process device list into sensor data
             # Aggregate data from all devices
             sensor_data = {
-                "family": {},  # Family aggregate data
+                "family": {} if not self.is_global else None,  # No family data for global devices
                 "devices": {},  # Individual device data
             }
 
-            # Count devices by type and status
-            device_count = len(devices)
-            online_count = sum(1 for d in devices if d.get("status") == "Online")
-            offline_count = sum(1 for d in devices if d.get("status") == "Offline")
+            # Only create family aggregates for non-global coordinators
+            if not self.is_global:
+                # Count devices by type and status
+                device_count = len(devices)
+                online_count = sum(1 for d in devices if d.get("status") == "Online")
+                offline_count = sum(1 for d in devices if d.get("status") == "Offline")
 
-            sensor_data["family"]["device_count"] = device_count
-            sensor_data["family"]["online_devices"] = online_count
-            sensor_data["family"]["offline_devices"] = offline_count
+                sensor_data["family"]["device_count"] = device_count
+                sensor_data["family"]["online_devices"] = online_count
+                sensor_data["family"]["offline_devices"] = offline_count
+            else:
+                # For global devices, we still need the family dict but minimal data
+                sensor_data["family"] = {
+                    "device_count": len(devices),
+                    "online_devices": sum(1 for d in devices if d.get("status") == "Online"),
+                    "offline_devices": sum(1 for d in devices if d.get("status") == "Offline"),
+                }
 
             # Aggregate power data
             total_ac_power = 0
@@ -391,47 +448,49 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
 
                 sensor_data["devices"][device_id] = device_data
 
-            # Set family aggregate values
-            sensor_data["family"]["total_ac_power"] = (
-                total_ac_power if total_ac_power > 0 else None
-            )
-            sensor_data["family"]["average_battery_level"] = (
-                total_battery_level / battery_count if battery_count > 0 else None
-            )
-            sensor_data["family"]["total_input_power"] = (
-                total_input_power if total_input_power > 0 else None
-            )
-            sensor_data["family"]["total_output_power"] = (
-                total_output_power if total_output_power > 0 else None
-            )
-            sensor_data["family"]["has_fault"] = any(d.get("fault") for d in devices)
+            # Set family aggregate values (only for non-global coordinators)
+            if not self.is_global:
+                sensor_data["family"]["total_ac_power"] = (
+                    total_ac_power if total_ac_power > 0 else None
+                )
+                sensor_data["family"]["average_battery_level"] = (
+                    total_battery_level / battery_count if battery_count > 0 else None
+                )
+                sensor_data["family"]["total_input_power"] = (
+                    total_input_power if total_input_power > 0 else None
+                )
+                sensor_data["family"]["total_output_power"] = (
+                    total_output_power if total_output_power > 0 else None
+                )
+                sensor_data["family"]["has_fault"] = any(d.get("fault") for d in devices)
             
-            # Calculate total solar energy from all MPPT inputs
-            total_solar_energy = 0
-            total_solar_power = 0
-            
-            # Sum energy and power from all devices
-            for device_id, device_data in sensor_data.get("devices", {}).items():
-                # Main unit MPPT energy
-                for mppt_num in [1, 2]:
-                    energy_key = f"batteryMppt{mppt_num}Energy"
-                    power_key = f"batteryMppt{mppt_num}InPower"
-                    if energy_key in device_data:
-                        total_solar_energy += device_data[energy_key]
-                    if power_key in device_data and device_data[power_key] is not None:
-                        total_solar_power += device_data[power_key]
+            # Calculate total solar energy from all MPPT inputs (only for non-global)
+            if not self.is_global:
+                total_solar_energy = 0
+                total_solar_power = 0
                 
-                # Module MPPT energy
-                for module_num in [1, 2, 3]:
-                    energy_key = f"battery{module_num}Mppt1Energy"
-                    power_key = f"battery{module_num}Mppt1InPower"
-                    if energy_key in device_data:
-                        total_solar_energy += device_data[energy_key]
-                    if power_key in device_data and device_data[power_key] is not None:
-                        total_solar_power += device_data[power_key]
-            
-            sensor_data["family"]["total_solar_energy"] = round(total_solar_energy, 3) if total_solar_energy > 0 else 0
-            sensor_data["family"]["total_solar_power"] = total_solar_power if total_solar_power > 0 else None
+                # Sum energy and power from all devices
+                for device_id, device_data in sensor_data.get("devices", {}).items():
+                    # Main unit MPPT energy
+                    for mppt_num in [1, 2]:
+                        energy_key = f"batteryMppt{mppt_num}Energy"
+                        power_key = f"batteryMppt{mppt_num}InPower"
+                        if energy_key in device_data:
+                            total_solar_energy += device_data[energy_key]
+                        if power_key in device_data and device_data[power_key] is not None:
+                            total_solar_power += device_data[power_key]
+                    
+                    # Module MPPT energy
+                    for module_num in [1, 2, 3]:
+                        energy_key = f"battery{module_num}Mppt1Energy"
+                        power_key = f"battery{module_num}Mppt1InPower"
+                        if energy_key in device_data:
+                            total_solar_energy += device_data[energy_key]
+                        if power_key in device_data and device_data[power_key] is not None:
+                            total_solar_power += device_data[power_key]
+                
+                sensor_data["family"]["total_solar_energy"] = round(total_solar_energy, 3) if total_solar_energy > 0 else 0
+                sensor_data["family"]["total_solar_power"] = total_solar_power if total_solar_power > 0 else None
             
             # Add space_index data if available (override aggregates with more accurate data)
             if space_index:
