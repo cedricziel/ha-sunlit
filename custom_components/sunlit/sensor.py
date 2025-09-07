@@ -210,6 +210,9 @@ def _get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     # battery_full is a boolean, not a battery percentage
     elif key == "battery_full":
         return None
+    # Battery capacity
+    elif "capacity" in key.lower():
+        return SensorDeviceClass.ENERGY
     # Time remaining sensors
     elif "remaining" in key.lower():
         return SensorDeviceClass.DURATION
@@ -270,8 +273,11 @@ def _get_state_class_for_sensor(key: str) -> SensorStateClass | None:
 
 def _get_unit_for_sensor(key: str) -> str | None:
     """Get the appropriate unit for a sensor."""
+    # Battery capacity
+    if "capacity" in key.lower():
+        return UnitOfEnergy.KILO_WATT_HOUR
     # Special case: total_power_generation is actually energy in kWh
-    if key == "total_power_generation":
+    elif key == "total_power_generation":
         return UnitOfEnergy.KILO_WATT_HOUR
     # Time remaining sensors
     elif "remaining" in key.lower():
@@ -298,15 +304,31 @@ def _get_unit_for_sensor(key: str) -> str | None:
 
 def _get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     """Get the appropriate icon for a sensor."""
+    # MPPT (Maximum Power Point Tracking) related
+    if "mppt" in key.lower():
+        if "vol" in key.lower():
+            return "mdi:sine-wave"
+        elif "cur" in key.lower():
+            return "mdi:current-dc"
+        elif "power" in key.lower():
+            return "mdi:solar-power-variant"
+        else:
+            return "mdi:solar-panel-large"
+    # Time remaining
+    elif "remaining" in key.lower():
+        if "charge" in key.lower():
+            return "mdi:timer-sand"
+        elif "discharge" in key.lower():
+            return "mdi:timer-sand-empty"
     # Solar/Inverter related
-    if device_type == "YUNENG_MICRO_INVERTER" or "generation" in key:
+    elif device_type == "YUNENG_MICRO_INVERTER" or "generation" in key:
         return "mdi:solar-power"
     # Battery related
     elif "battery_full" in key:
         return "mdi:battery-check"
     elif "battery_level" in key or "average_battery_level" in key:
         return "mdi:battery-50"
-    elif "soc" in key:
+    elif "batterysoc" in key.lower() or "soc" in key.lower():
         return "mdi:battery-outline"
     elif device_type == "ENERGY_STORAGE_BATTERY":
         if "input" in key:
@@ -325,7 +347,12 @@ def _get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
             return "mdi:transmission-tower"
     # Power related
     elif "power" in key:
-        return "mdi:flash"
+        if "rated" in key:
+            return "mdi:gauge"
+        elif "max" in key:
+            return "mdi:gauge-full"
+        else:
+            return "mdi:flash"
     # Energy related
     elif "energy" in key:
         return "mdi:lightning-bolt"
@@ -349,8 +376,12 @@ def _get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     elif "fault" in key:
         return "mdi:alert-circle"
     # Strategy related
+    elif "last_strategy_change" in key:
+        return "mdi:clock-outline"
     elif "last_strategy_type" in key:
         return "mdi:history"
+    elif "strategy_changes" in key:
+        return "mdi:counter"
     elif "strategy" in key:
         return "mdi:cog"
     # Device count
@@ -416,7 +447,8 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
             identifiers={(DOMAIN, f"family_{self._family_id}")},
             name=f"{self._family_name} Solar System",
             manufacturer="Sunlit Solar",
-            model="Family Hub",
+            model="Solar Management Hub",
+            configuration_url="https://sunlitsolar.de",
         )
 
     @property
@@ -497,6 +529,13 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> Any:
         """Return the state of the sensor."""
+        # Special handling for static battery capacity
+        if self.entity_description.key == "battery_capacity":
+            device_type = self._device_info_data.get("deviceType")
+            if device_type == DEVICE_TYPE_BATTERY:
+                return 2.15  # kWh nominal capacity for BK215
+            return None
+            
         if (
             self.coordinator.data
             and "devices" in self.coordinator.data
@@ -526,14 +565,19 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
 
         # Use manufacturer from device data if available, otherwise map by type
         manufacturer = self._device_info_data.get("manufacturer")
+        model_name = device_type
+        
         if not manufacturer:
             # Fallback mapping if manufacturer not provided
             if device_type == DEVICE_TYPE_METER:
                 manufacturer = "Shelly"
+                model_name = "3EM Smart Meter"
             elif device_type == DEVICE_TYPE_INVERTER:
                 manufacturer = "Yuneng"
+                model_name = "Micro Inverter"
             elif device_type == DEVICE_TYPE_BATTERY:
                 manufacturer = "Highpower"
+                model_name = "BK215 Energy Storage System"
             else:
                 manufacturer = "Unknown"
 
@@ -541,7 +585,8 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
             identifiers={(DOMAIN, device_sn)},
             name=f"{device_type} ({self._device_id})",
             manufacturer=manufacturer,
-            model=device_type,
+            model=model_name,
+            serial_number=device_sn if device_sn != self._device_id else None,
             via_device=(DOMAIN, f"family_{self._family_id}"),
         )
 
@@ -623,6 +668,10 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> Any:
         """Return the state of the sensor."""
+        # Special handling for static battery module capacity
+        if self.entity_description.key == "capacity":
+            return 2.15  # kWh nominal capacity for B215 module
+            
         if (
             self.coordinator.data
             and "devices" in self.coordinator.data
@@ -653,7 +702,7 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
             identifiers={(DOMAIN, f"{device_sn}_module{self._module_number}")},
             name=f"Battery Module {self._module_number}",
             manufacturer="Highpower",
-            model="Battery Extension Module",
+            model=f"B215 Extension Module {self._module_number}",
             via_device=(DOMAIN, device_sn),  # Links to main battery unit
         )
         

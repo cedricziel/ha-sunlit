@@ -58,6 +58,7 @@ BATTERY_SENSORS = {
     "dischargeRemaining": "Discharge Time Remaining",
     "input_power_total": "Total Input Power",
     "output_power_total": "Total Output Power",
+    "battery_capacity": "Nominal Capacity",  # Static 2.15 kWh per unit
     
     # Main unit MPPT sensors (head unit's solar inputs)
     "batteryMppt1InVol": "MPPT1 Voltage",
@@ -76,6 +77,7 @@ BATTERY_MODULE_SENSORS = {
     "Mppt1InVol": "MPPT Voltage",
     "Mppt1InCur": "MPPT Current",
     "Mppt1InPower": "MPPT Power",
+    "capacity": "Nominal Capacity",  # Static 2.15 kWh per module
 }
 
 # Family aggregate sensors

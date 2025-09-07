@@ -180,7 +180,8 @@ class SunlitFamilyBinarySensor(CoordinatorEntity, BinarySensorEntity):
             identifiers={(DOMAIN, f"family_{self._family_id}")},
             name=f"{self._family_name} Solar System",
             manufacturer="Sunlit Solar",
-            model="Family Hub",
+            model="Solar Management Hub",
+            configuration_url="https://sunlitsolar.de",
         )
 
     @property
@@ -263,14 +264,19 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
         # Use manufacturer from device data if available, otherwise map by type
         manufacturer = self._device_info_data.get("manufacturer")
+        model_name = device_type
+        
         if not manufacturer:
             # Fallback mapping if manufacturer not provided
             if device_type == "SHELLY_3EM_METER":
                 manufacturer = "Shelly"
+                model_name = "3EM Smart Meter"
             elif device_type == "YUNENG_MICRO_INVERTER":
                 manufacturer = "Yuneng"
+                model_name = "Micro Inverter"
             elif device_type == "ENERGY_STORAGE_BATTERY":
                 manufacturer = "Highpower"
+                model_name = "BK215 Energy Storage System"
             else:
                 manufacturer = "Unknown"
 
@@ -278,7 +284,8 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
             identifiers={(DOMAIN, device_sn)},
             name=f"{device_type} ({self._device_id})",
             manufacturer=manufacturer,
-            model=device_type,
+            model=model_name,
+            serial_number=device_sn if device_sn != self._device_id else None,
             via_device=(DOMAIN, f"family_{self._family_id}"),
         )
 
