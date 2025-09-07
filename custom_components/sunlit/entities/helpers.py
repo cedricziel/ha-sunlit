@@ -16,12 +16,24 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     # Check for status and strategy fields first (they're text, not numeric)
     if "status" in key.lower() or "strategy" in key.lower():
         return None
+    # Currency and text fields
+    elif key in ["currency", "battery_count"]:
+        return None
     # battery_full is a boolean, not a battery percentage
     elif key == "battery_full":
         return None
     # Battery capacity
     elif "capacity" in key.lower():
         return SensorDeviceClass.ENERGY
+    # Daily yield is energy
+    elif key == "daily_yield":
+        return SensorDeviceClass.ENERGY
+    # Daily earnings is monetary
+    elif key == "daily_earnings":
+        return SensorDeviceClass.MONETARY
+    # Home power
+    elif key == "home_power":
+        return SensorDeviceClass.POWER
     # Time remaining sensors
     elif "remaining" in key.lower():
         return SensorDeviceClass.DURATION
@@ -52,11 +64,17 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
 def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     """Get the appropriate state class for a sensor."""
     # Static configuration values don't need state class
-    if key in ["rated_power", "max_output_power"]:
+    if key in ["rated_power", "max_output_power", "currency", "battery_count"]:
         return None
     # Special case: total_power_generation is cumulative energy
     elif key == "total_power_generation":
         return SensorStateClass.TOTAL_INCREASING
+    # Daily yield resets each day
+    elif key == "daily_yield":
+        return SensorStateClass.TOTAL
+    # Daily earnings
+    elif key == "daily_earnings":
+        return SensorStateClass.TOTAL
     # Energy sensors need special handling
     elif "energy" in key.lower():
         if "total" in key.lower():
@@ -75,6 +93,10 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
         "online_devices",
         "offline_devices",
         "strategy_changes_today",
+        "home_power",
+        "battery_charging_remaining",
+        "battery_discharging_remaining",
+        "inverter_current_power",
     ]:
         return SensorStateClass.MEASUREMENT
     return None
@@ -84,6 +106,9 @@ def get_unit_for_sensor(key: str) -> str | None:
     """Get the appropriate unit for a sensor."""
     # Battery capacity
     if "capacity" in key.lower():
+        return UnitOfEnergy.KILO_WATT_HOUR
+    # Daily yield
+    elif key == "daily_yield":
         return UnitOfEnergy.KILO_WATT_HOUR
     # Special case: total_power_generation is actually energy in kWh
     elif key == "total_power_generation":
@@ -98,7 +123,10 @@ def get_unit_for_sensor(key: str) -> str | None:
     elif "incur" in key.lower() or "current" in key.lower():
         return UnitOfElectricCurrent.AMPERE
     # Ensure rated_power and max_output_power get W units
-    elif key in ["rated_power", "max_output_power"] or "power" in key.lower():
+    elif (
+        key in ["rated_power", "max_output_power", "home_power", "inverter_current_power"]
+        or "power" in key.lower()
+    ):
         return UnitOfPower.WATT
     elif "energy" in key.lower():
         return UnitOfEnergy.KILO_WATT_HOUR
@@ -107,7 +135,7 @@ def get_unit_for_sensor(key: str) -> str | None:
     elif "battery_level" in key or "average_battery_level" in key:
         return PERCENTAGE
     elif "earnings" in key:
-        return "EUR"  # Could be made configurable
+        return "EUR"  # Could be made configurable, will use currency field
     return None
 
 
@@ -199,4 +227,16 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     # Earnings
     elif "earnings" in key:
         return "mdi:cash"
+    # Daily yield
+    elif key == "daily_yield":
+        return "mdi:solar-power-variant"
+    # Home power
+    elif key == "home_power":
+        return "mdi:home-lightning-bolt"
+    # Battery count
+    elif key == "battery_count":
+        return "mdi:battery-multiple"
+    # Currency
+    elif key == "currency":
+        return "mdi:currency-eur"
     return None

@@ -12,7 +12,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import SunlitDataUpdateCoordinator
 from .const import DOMAIN
 from .entities.family_binary_sensor import SunlitFamilyBinarySensor
 from .entities.device_binary_sensor import SunlitDeviceBinarySensor
@@ -33,6 +32,37 @@ FAMILY_BINARY_SENSORS = {
         "name": "Battery Full",
         "device_class": BinarySensorDeviceClass.BATTERY,
         "icon": "mdi:battery-check",
+    },
+    # New binary sensors from space/index endpoint
+    "battery_bypass": {
+        "name": "Battery Bypass",
+        "device_class": None,
+        "icon": "mdi:battery-off",
+    },
+    "battery_heater_1": {
+        "name": "Battery Heater 1",
+        "device_class": BinarySensorDeviceClass.HEAT,
+        "icon": "mdi:radiator",
+    },
+    "battery_heater_2": {
+        "name": "Battery Heater 2",
+        "device_class": BinarySensorDeviceClass.HEAT,
+        "icon": "mdi:radiator",
+    },
+    "battery_heater_3": {
+        "name": "Battery Heater 3",
+        "device_class": BinarySensorDeviceClass.HEAT,
+        "icon": "mdi:radiator",
+    },
+    "boost_mode_enabled": {
+        "name": "Boost Mode",
+        "device_class": None,
+        "icon": "mdi:rocket-launch",
+    },
+    "boost_mode_switching": {
+        "name": "Boost Mode Switching",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "icon": "mdi:toggle-switch",
     },
 }
 

@@ -97,31 +97,51 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from REST API."""
         try:
-            # Fetch device list for the family
+            # Try to fetch comprehensive space data first (more efficient)
+            space_index = {}
+            try:
+                space_index = await self.api_client.fetch_space_index(self.family_id)
+                _LOGGER.debug(
+                    "Successfully fetched space index data for family %s",
+                    self.family_id
+                )
+            except Exception as err:
+                _LOGGER.debug(
+                    "Could not fetch space index data (will use fallback): %s", err
+                )
+            
+            # Fetch device list for the family (still needed for device discovery)
             devices = await self.api_client.fetch_device_list(self.family_id)
             
-            # Fetch space/family level data
-            try:
-                space_soc = await self.api_client.fetch_space_soc(self.family_id)
-            except Exception as err:
-                _LOGGER.debug("Could not fetch space SOC data: %s", err)
-                space_soc = {}
+            # Only fetch individual endpoints if space_index is not available
+            space_soc = {}
+            current_strategy = {}
+            strategy_history = {}
             
-            try:
-                current_strategy = await self.api_client.fetch_space_current_strategy(
-                    self.family_id
-                )
-            except Exception as err:
-                _LOGGER.debug("Could not fetch current strategy data: %s", err)
-                current_strategy = {}
-            
-            try:
-                strategy_history = await self.api_client.fetch_space_strategy_history(
-                    self.family_id
-                )
-            except Exception as err:
-                _LOGGER.debug("Could not fetch strategy history data: %s", err)
-                strategy_history = {}
+            if not space_index:
+                # Fallback to individual endpoints
+                try:
+                    space_soc = await self.api_client.fetch_space_soc(self.family_id)
+                except Exception as err:
+                    _LOGGER.debug("Could not fetch space SOC data: %s", err)
+                
+                try:
+                    current_strategy = (
+                        await self.api_client.fetch_space_current_strategy(
+                            self.family_id
+                        )
+                    )
+                except Exception as err:
+                    _LOGGER.debug("Could not fetch current strategy data: %s", err)
+                
+                try:
+                    strategy_history = (
+                        await self.api_client.fetch_space_strategy_history(
+                            self.family_id
+                        )
+                    )
+                except Exception as err:
+                    _LOGGER.debug("Could not fetch strategy history data: %s", err)
 
             _LOGGER.debug(
                 "Received %d devices for family %s", len(devices), self.family_name
@@ -197,49 +217,65 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                     # Try to fetch detailed statistics for online devices
                     if device.get("status") == "Online":
                         try:
-                            detailed_stats = await self.api_client.fetch_device_statistics(device_id)
+                            detailed_stats = (
+                                await self.api_client.fetch_device_statistics(
+                                    device_id
+                                )
+                            )
                             
                             # System-wide battery data
-                            device_data["batterySoc"] = detailed_stats.get("batterySoc")
-                            device_data["chargeRemaining"] = detailed_stats.get("chargeRemaining")
-                            device_data["dischargeRemaining"] = detailed_stats.get("dischargeRemaining")
+                            device_data["batterySoc"] = detailed_stats.get(
+                                "batterySoc"
+                            )
+                            device_data["chargeRemaining"] = detailed_stats.get(
+                                "chargeRemaining"
+                            )
+                            device_data["dischargeRemaining"] = detailed_stats.get(
+                                "dischargeRemaining"
+                            )
                             
                             # Individual battery module SOCs
-                            device_data["battery1Soc"] = detailed_stats.get("battery1Soc")
-                            device_data["battery2Soc"] = detailed_stats.get("battery2Soc")
-                            device_data["battery3Soc"] = detailed_stats.get("battery3Soc")
+                            device_data["battery1Soc"] = detailed_stats.get(
+                                "battery1Soc"
+                            )
+                            device_data["battery2Soc"] = detailed_stats.get(
+                                "battery2Soc"
+                            )
+                            device_data["battery3Soc"] = detailed_stats.get(
+                                "battery3Soc"
+                            )
                             
                             # Main unit MPPT data (simplified fields)
-                            device_data["batteryMppt1InVol"] = detailed_stats.get("batteryMppt1InVol")
-                            device_data["batteryMppt1InCur"] = detailed_stats.get("batteryMppt1InCur")
-                            device_data["batteryMppt1InPower"] = detailed_stats.get("batteryMppt1InPower")
-                            device_data["batteryMppt2InVol"] = detailed_stats.get("batteryMppt2InVol")
-                            device_data["batteryMppt2InCur"] = detailed_stats.get("batteryMppt2InCur")
-                            device_data["batteryMppt2InPower"] = detailed_stats.get("batteryMppt2InPower")
+                            mppt_fields = [
+                                "batteryMppt1InVol", "batteryMppt1InCur",
+                                "batteryMppt1InPower", "batteryMppt2InVol",
+                                "batteryMppt2InCur", "batteryMppt2InPower"
+                            ]
+                            for field in mppt_fields:
+                                device_data[field] = detailed_stats.get(field)
                             
-                            # Battery module 1 MPPT data
-                            device_data["battery1Mppt1InVol"] = detailed_stats.get("battery1Mppt1InVol")
-                            device_data["battery1Mppt1InCur"] = detailed_stats.get("battery1Mppt1InCur")
-                            device_data["battery1Mppt1InPower"] = detailed_stats.get("battery1Mppt1InPower")
-                            
-                            # Battery module 2 MPPT data
-                            device_data["battery2Mppt1InVol"] = detailed_stats.get("battery2Mppt1InVol")
-                            device_data["battery2Mppt1InCur"] = detailed_stats.get("battery2Mppt1InCur")
-                            device_data["battery2Mppt1InPower"] = detailed_stats.get("battery2Mppt1InPower")
-                            
-                            # Battery module 3 MPPT data
-                            device_data["battery3Mppt1InVol"] = detailed_stats.get("battery3Mppt1InVol")
-                            device_data["battery3Mppt1InCur"] = detailed_stats.get("battery3Mppt1InCur")
-                            device_data["battery3Mppt1InPower"] = detailed_stats.get("battery3Mppt1InPower")
+                            # Battery module MPPT data
+                            for module_num in [1, 2, 3]:
+                                mppt_suffixes = ["Mppt1InVol", "Mppt1InCur", "Mppt1InPower"]
+                                for suffix in mppt_suffixes:
+                                    field = f"battery{module_num}{suffix}"
+                                    device_data[field] = detailed_stats.get(field)
                             
                             # Update power totals if available from detailed stats
                             if detailed_stats.get("inputPowerTotal") is not None:
-                                device_data["input_power_total"] = detailed_stats["inputPowerTotal"]
+                                device_data["input_power_total"] = detailed_stats[
+                                    "inputPowerTotal"
+                                ]
                             if detailed_stats.get("outputPowerTotal") is not None:
-                                device_data["output_power_total"] = detailed_stats["outputPowerTotal"]
+                                device_data["output_power_total"] = detailed_stats[
+                                    "outputPowerTotal"
+                                ]
                                 
                         except Exception as err:
-                            _LOGGER.debug("Could not fetch detailed statistics for device %s: %s", device_id, err)
+                            _LOGGER.debug(
+                                "Could not fetch detailed statistics for device %s: %s",
+                                device_id, err
+                            )
                             # Continue with basic data only
 
                     if device.get("batteryLevel") is not None:
@@ -266,6 +302,90 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                 total_output_power if total_output_power > 0 else None
             )
             sensor_data["family"]["has_fault"] = any(d.get("fault") for d in devices)
+            
+            # Add space_index data if available (override aggregates with more accurate data)
+            if space_index:
+                # Today's metrics
+                if "today" in space_index:
+                    today_data = space_index["today"]
+                    sensor_data["family"]["daily_yield"] = today_data.get("yield")
+                    sensor_data["family"]["daily_earnings"] = today_data.get("earning")
+                    sensor_data["family"]["home_power"] = today_data.get(
+                        "homePower"
+                    )
+                    sensor_data["family"]["currency"] = today_data.get(
+                        "currency", "EUR"
+                    )
+                
+                # Battery data from space_index (more accurate than aggregates)
+                if "battery" in space_index:
+                    battery_data = space_index["battery"]
+                    if battery_data.get("deviceStatus") != "NotExist":
+                        sensor_data["family"]["average_battery_level"] = (
+                            battery_data.get("batteryLevel")
+                        )
+                        sensor_data["family"]["battery_count"] = battery_data.get(
+                            "batteryCount"
+                        )
+                        sensor_data["family"]["battery_bypass"] = battery_data.get(
+                            "bypass", False
+                        )
+                        sensor_data["family"]["battery_charging_remaining"] = (
+                            battery_data.get("chargingRemaining")
+                        )
+                        sensor_data["family"]["battery_discharging_remaining"] = (
+                            battery_data.get("dischargingRemaining")
+                        )
+                        
+                        # Update power data with more accurate values
+                        if battery_data.get("inputPower") is not None:
+                            sensor_data["family"]["total_input_power"] = (
+                                battery_data["inputPower"]
+                            )
+                        if battery_data.get("outputPower") is not None:
+                            sensor_data["family"]["total_output_power"] = (
+                                battery_data["outputPower"]
+                            )
+                        
+                        # Heater status (list of booleans for each battery module)
+                        heater_status = battery_data.get(
+                            "heaterStatusList", []
+                        )
+                        for idx, status in enumerate(heater_status, 1):
+                            sensor_data["family"][f"battery_heater_{idx}"] = status
+                
+                # Meter data from space_index
+                if "eleMeter" in space_index:
+                    meter_data = space_index["eleMeter"]
+                    if meter_data.get("deviceStatus") != "NotExist":
+                        sensor_data["family"]["meter_device_status"] = meter_data.get(
+                            "deviceStatus"
+                        )
+                        if meter_data.get("totalAcPower") is not None:
+                            sensor_data["family"]["total_ac_power"] = meter_data[
+                                "totalAcPower"
+                            ]
+                
+                # Inverter data from space_index
+                if "inverter" in space_index:
+                    inverter_data = space_index["inverter"]
+                    if inverter_data.get("deviceStatus") != "NotExist":
+                        sensor_data["family"]["inverter_device_status"] = (
+                            inverter_data.get("deviceStatus")
+                        )
+                        sensor_data["family"]["inverter_current_power"] = (
+                            inverter_data.get("currentPower")
+                        )
+                
+                # Boost settings
+                if "boostSetting" in space_index:
+                    boost_data = space_index["boostSetting"]
+                    sensor_data["family"]["boost_mode_enabled"] = boost_data.get(
+                        "isOn", False
+                    )
+                    sensor_data["family"]["boost_mode_switching"] = boost_data.get(
+                        "switching", False
+                    )
             
             # Add space SOC data to family sensors
             if space_soc:

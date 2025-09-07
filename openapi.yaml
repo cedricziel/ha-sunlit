@@ -217,6 +217,36 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /v1.5/space/index:
+    post:
+      tags:
+        - Space
+      summary: Get comprehensive space dashboard data
+      description: Retrieve all space data in a single call including devices, power, and status
+      operationId: getSpaceIndex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  description: The space/family ID
+                  example: 12345
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceIndexResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /v1.1/space/strategyHistory:
     post:
       tags:
@@ -427,6 +457,293 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StrategyHistoryEntry'
+
+    SpaceIndexResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            content:
+              $ref: '#/components/schemas/SpaceIndexContent'
+
+    SpaceIndexContent:
+      type: object
+      description: Comprehensive space dashboard data
+      properties:
+        spaceId:
+          type: integer
+          description: Space identifier
+          example: 34038
+        today:
+          $ref: '#/components/schemas/TodayMetrics'
+        eleMeter:
+          $ref: '#/components/schemas/MeterStatus'
+        inverter:
+          $ref: '#/components/schemas/InverterStatus'
+        battery:
+          $ref: '#/components/schemas/BatteryStatus'
+        chargingBox:
+          $ref: '#/components/schemas/ChargingBoxStatus'
+        boostSetting:
+          $ref: '#/components/schemas/BoostSetting'
+        spaceChargePileDTO:
+          $ref: '#/components/schemas/EVChargerStatus'
+
+    TodayMetrics:
+      type: object
+      description: Today's energy and financial metrics
+      properties:
+        modifyDate:
+          type: integer
+          description: Last update timestamp
+          example: 1757165899419
+        yield:
+          type: number
+          description: Today's energy yield in kWh
+          example: 0.21
+        earning:
+          type: number
+          description: Today's earnings
+          example: 0.06
+        needPrice:
+          type: boolean
+          description: Whether price data is needed
+          example: false
+        currency:
+          type: string
+          description: Currency code
+          example: "EUR"
+        needHomePower:
+          type: boolean
+          description: Whether home power data is needed
+          example: true
+        homePower:
+          type: number
+          nullable: true
+          description: Current home power consumption in watts
+          example: null
+
+    MeterStatus:
+      type: object
+      description: Smart meter status and readings
+      properties:
+        deviceStatus:
+          type: string
+          enum: [Online, Offline, NotExist]
+          description: Device status
+          example: "Offline"
+        deviceType:
+          type: string
+          description: Device type identifier
+          example: "SHELLY_3EM_METER"
+        totalAcPower:
+          type: number
+          description: Total AC power in watts
+          example: 3050.78
+        modifyDate:
+          type: integer
+          description: Last update timestamp
+          example: 1750513319687
+
+    InverterStatus:
+      type: object
+      description: Inverter status and power output
+      properties:
+        deviceStatus:
+          type: string
+          enum: [Online, Offline, NotExist]
+          description: Device status
+          example: "Offline"
+        currentPower:
+          type: number
+          nullable: true
+          description: Current power output in watts
+          example: null
+        modifyDate:
+          type: integer
+          nullable: true
+          description: Last update timestamp
+          example: null
+        deviceType:
+          type: string
+          description: Device type identifier
+          example: "YUNENG_MICRO_INVERTER"
+        deviceTypes:
+          type: array
+          items:
+            type: string
+          description: List of device types
+          example: ["YUNENG_MICRO_INVERTER"]
+
+    BatteryStatus:
+      type: object
+      description: Battery system status and metrics
+      properties:
+        deviceSn:
+          type: string
+          description: Device serial number
+          example: "dcbdccbffe3d"
+        deviceId:
+          type: integer
+          description: Device identifier
+          example: 41714
+        deviceStatus:
+          type: string
+          enum: [Online, Offline, NotExist]
+          description: Device status
+          example: "Online"
+        batteryCount:
+          type: integer
+          description: Number of battery modules
+          example: 3
+        fault:
+          type: boolean
+          description: Fault status
+          example: false
+        off:
+          type: boolean
+          description: Off status
+          example: false
+        bypass:
+          type: boolean
+          description: Bypass mode active
+          example: true
+        batteryLevel:
+          type: number
+          description: Battery SOC percentage
+          example: 10.0
+        chargingRemaining:
+          type: number
+          nullable: true
+          description: Charging time remaining in minutes
+          example: null
+        dischargingRemaining:
+          type: number
+          nullable: true
+          description: Discharging time remaining in minutes
+          example: null
+        inputPower:
+          type: number
+          description: Input power in watts
+          example: 215.0
+        outputPower:
+          type: number
+          description: Output power in watts
+          example: 197.0
+        firmwareVersion:
+          type: string
+          description: Firmware version
+          example: "V1.5.4"
+        supportDayGenVersion:
+          type: boolean
+          description: Supports day generation version
+          example: true
+        heaterStatusList:
+          type: array
+          items:
+            type: boolean
+          description: Heater status for each battery module
+          example: [false, false, false]
+        modifyDate:
+          type: integer
+          description: Last update timestamp
+          example: 1757165899155
+
+    ChargingBoxStatus:
+      type: object
+      description: Charging box status
+      properties:
+        deviceStatus:
+          type: string
+          enum: [Online, Offline, NotExist]
+          description: Device status
+          example: "NotExist"
+        fault:
+          type: boolean
+          description: Fault status
+          example: false
+        acInputPower:
+          type: number
+          nullable: true
+          description: AC input power
+          example: null
+        invertOutPower:
+          type: number
+          nullable: true
+          description: Inverter output power
+          example: null
+        acInputPhase:
+          type: string
+          nullable: true
+          description: AC input phase
+          example: null
+        homeModeParam:
+          type: object
+          nullable: true
+          description: Home mode parameters
+          example: null
+        carChgModeParam:
+          type: object
+          nullable: true
+          description: Car charging mode parameters
+          example: null
+        chgModeParam:
+          type: object
+          nullable: true
+          description: Charging mode parameters
+          example: null
+        modifyDate:
+          type: integer
+          nullable: true
+          description: Last update timestamp
+          example: null
+
+    BoostSetting:
+      type: object
+      description: Battery boost mode settings
+      properties:
+        switching:
+          type: boolean
+          description: Currently switching state
+          example: false
+        isOn:
+          type: boolean
+          description: Boost mode enabled
+          example: false
+        batteryResult:
+          type: object
+          nullable: true
+          description: Battery result data
+          example: null
+
+    EVChargerStatus:
+      type: object
+      description: EV charger status
+      properties:
+        deviceSns:
+          type: array
+          items:
+            type: string
+          description: Device serial numbers
+          example: []
+        deviceType:
+          type: string
+          description: Device type
+          example: "STAR_CHARGE_EVSE"
+        deviceStatus:
+          type: string
+          enum: [Online, Offline, NotExist]
+          description: Device status
+          example: "NotExist"
+        fault:
+          type: boolean
+          description: Fault status
+          example: false
+        evseStatus:
+          type: string
+          nullable: true
+          description: EVSE status
+          example: null
 
     DeviceDetailsResponse:
       type: object

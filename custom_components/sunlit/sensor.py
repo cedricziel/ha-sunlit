@@ -9,7 +9,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import SunlitDataUpdateCoordinator
 from .const import (
     DOMAIN,
     DEVICE_TYPE_METER,
@@ -161,7 +160,6 @@ async def async_setup_entry(
                             # Check for battery modules (1, 2, 3) and create virtual devices
                             for module_num in [1, 2, 3]:
                                 # Check if this module exists (by checking if any of its data is present)
-                                module_soc_key = f"battery{module_num}Soc"
                                 
                                 # Always create module devices for batteries to ensure stable entities
                                 # Create sensors for this battery module

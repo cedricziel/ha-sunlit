@@ -22,6 +22,7 @@ API_DEVICE_LIST = "/v1.2/device/list"
 API_SPACE_SOC = "/v1.1/space/soc"
 API_SPACE_CURRENT_STRATEGY = "/v1.1/space/currentStrategy"
 API_SPACE_STRATEGY_HISTORY = "/v1.1/space/strategyHistory"
+API_SPACE_INDEX = "/v1.5/space/index"
 
 # Configuration keys
 CONF_API_KEY = "api_key"
@@ -113,5 +114,15 @@ FAMILY_SENSORS = {
     "last_strategy_type": "Last Strategy Type",
     "last_strategy_status": "Last Strategy Status",
     "strategy_changes_today": "Strategy Changes Today",
-    # Note: has_fault and battery_full have been moved to binary_sensor platform
+    # New sensors from space/index endpoint
+    "daily_yield": "Daily Yield",
+    "daily_earnings": "Daily Earnings",
+    "home_power": "Home Power",
+    "currency": "Currency",
+    "battery_count": "Battery Module Count",
+    "battery_charging_remaining": "Charging Time Remaining",
+    "battery_discharging_remaining": "Discharging Time Remaining",
+    "inverter_current_power": "Inverter Current Power",
+    # Note: has_fault, battery_full, battery_bypass, battery_heater_*,
+    # and boost_mode_* moved to binary_sensor
 }

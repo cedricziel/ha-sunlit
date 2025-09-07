@@ -18,6 +18,7 @@ from .const import (
     API_SPACE_SOC,
     API_SPACE_CURRENT_STRATEGY,
     API_SPACE_STRATEGY_HISTORY,
+    API_SPACE_INDEX,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -156,47 +157,6 @@ class SunlitApiClient:
 
         except SunlitApiError as err:
             _LOGGER.error("Failed to fetch families: %s", err)
-            raise
-
-    async def fetch_device_statistics(self, device_id: str | int) -> dict[str, Any]:
-        """Fetch statistics for a specific device.
-
-        Args:
-            device_id: The device ID to fetch statistics for
-
-        Returns:
-            Dictionary containing device statistics including:
-            - batterySoc: Battery state of charge
-            - status: Device online/offline status
-            - deviceType: Type of device (e.g., ENERGY_STORAGE_BATTERY)
-            - batteryMpptData: MPPT charge controller data
-            - fault: Fault status
-
-        Raises:
-            SunlitAuthError: Authentication failed
-            SunlitConnectionError: Connection failed
-            SunlitApiError: API returned an error
-        """
-        try:
-            # This endpoint uses POST with JSON payload
-            payload = {"deviceId": int(device_id)}
-            response = await self._make_request(
-                "POST", API_DEVICE_STATISTICS, json=payload
-            )
-
-            # Extract data from response
-            if "content" in response:
-                data = response["content"]
-                _LOGGER.debug("Fetched statistics for device %s", device_id)
-                return data
-
-            # If no content wrapper, return raw response
-            return response
-
-        except SunlitApiError as err:
-            _LOGGER.error(
-                "Failed to fetch statistics for device %s: %s", device_id, err
-            )
             raise
 
     async def fetch_device_statistics(self, device_id: str | int) -> dict[str, Any]:
@@ -586,6 +546,52 @@ class SunlitApiClient:
         except SunlitApiError as err:
             _LOGGER.error(
                 "Failed to fetch strategy history for family %s: %s", family_id, err
+            )
+            raise
+
+    async def fetch_space_index(self, space_id: str | int) -> dict[str, Any]:
+        """Fetch comprehensive dashboard data for a space.
+
+        Args:
+            space_id: The space/family ID to fetch dashboard data for
+
+        Returns:
+            Dictionary containing comprehensive space data:
+            - spaceId: Space identifier
+            - today: Today's metrics (yield, earning, homePower)
+            - eleMeter: Smart meter status and power
+            - inverter: Inverter status and power
+            - battery: Battery status, SOC, power, heater status
+            - chargingBox: Charging box status
+            - boostSetting: Boost mode configuration
+            - spaceChargePileDTO: EV charger status
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload = {"spaceId": int(space_id)}
+            response = await self._make_request("POST", API_SPACE_INDEX, json=payload)
+
+            # Extract data from response
+            if "content" in response:
+                data = response["content"]
+                _LOGGER.debug(
+                    "Fetched space index for space %s: battery=%s%%, power_in=%sW, power_out=%sW",
+                    space_id,
+                    data.get("battery", {}).get("batteryLevel"),
+                    data.get("battery", {}).get("inputPower"),
+                    data.get("battery", {}).get("outputPower"),
+                )
+                return data
+
+            return {}
+
+        except SunlitApiError as err:
+            _LOGGER.error(
+                "Failed to fetch space index for space %s: %s", space_id, err
             )
             raise
 
