@@ -119,15 +119,16 @@ def get_unit_for_sensor(key: str) -> str | None:
     # MPPT voltage sensors
     elif "invol" in key.lower() or "voltage" in key.lower():
         return UnitOfElectricPotential.VOLT
-    # MPPT current sensors  
-    elif "incur" in key.lower() or "current" in key.lower():
-        return UnitOfElectricCurrent.AMPERE
     # Ensure rated_power and max_output_power get W units
+    # Check power BEFORE current to catch "current_power" correctly
     elif (
-        key in ["rated_power", "max_output_power", "home_power", "inverter_current_power"]
+        key in ["rated_power", "max_output_power", "home_power", "inverter_current_power", "current_power"]
         or "power" in key.lower()
     ):
         return UnitOfPower.WATT
+    # MPPT current sensors - more specific check to avoid catching "current_power"
+    elif "incur" in key.lower() or (key.lower().endswith("_current") or key.lower() == "current"):
+        return UnitOfElectricCurrent.AMPERE
     elif "energy" in key.lower():
         return UnitOfEnergy.KILO_WATT_HOUR
     elif "soc" in key.lower():
