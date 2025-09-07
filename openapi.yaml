@@ -357,17 +357,102 @@ components:
                 $ref: '#/components/schemas/Family'
 
     DeviceListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            content:
+              $ref: '#/components/schemas/PaginatedDeviceList'
+    
+    PaginatedDeviceList:
       type: object
-      description: Device list response (different format - no ApiResponse wrapper)
+      description: Paginated device list with metadata
       properties:
-        result:
-          type: integer
-          description: Result code (1 = success)
-          example: 1
-        devices:
+        content:
           type: array
           items:
             $ref: '#/components/schemas/Device'
+          description: List of devices
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+        totalPages:
+          type: integer
+          description: Total number of pages
+          example: 1
+        totalElements:
+          type: integer
+          description: Total number of devices
+          example: 3
+        last:
+          type: boolean
+          description: Whether this is the last page
+          example: true
+        number:
+          type: integer
+          description: Current page number
+          example: 0
+        sort:
+          $ref: '#/components/schemas/Sort'
+        numberOfElements:
+          type: integer
+          description: Number of elements in current page
+          example: 3
+        first:
+          type: boolean
+          description: Whether this is the first page
+          example: true
+        size:
+          type: integer
+          description: Page size
+          example: 20
+        empty:
+          type: boolean
+          description: Whether the result is empty
+          example: false
+    
+    Pageable:
+      type: object
+      description: Pagination information
+      properties:
+        sort:
+          $ref: '#/components/schemas/Sort'
+        pageSize:
+          type: integer
+          description: Size of the page
+          example: 20
+        pageNumber:
+          type: integer
+          description: Current page number
+          example: 0
+        offset:
+          type: integer
+          description: Offset from start
+          example: 0
+        unpaged:
+          type: boolean
+          description: Whether pagination is disabled
+          example: false
+        paged:
+          type: boolean
+          description: Whether pagination is enabled
+          example: true
+    
+    Sort:
+      type: object
+      description: Sort information
+      properties:
+        unsorted:
+          type: boolean
+          description: Whether results are unsorted
+          example: false
+        sorted:
+          type: boolean
+          description: Whether results are sorted
+          example: true
+        empty:
+          type: boolean
+          description: Whether sort is empty
+          example: false
 
     DeviceStatisticsResponse:
       type: object
@@ -809,22 +894,24 @@ components:
     Device:
       type: object
       properties:
+        spaceId:
+          type: integer
+          nullable: true
+          description: Space/family identifier
+          example: 34038
+        stationName:
+          type: string
+          nullable: true
+          description: Station name
+          example: null
+        deviceCount:
+          type: integer
+          description: Number of sub-devices (for battery modules)
+          example: 3
         deviceId:
           type: integer
           description: Unique device identifier
           example: 67890
-        deviceSn:
-          type: string
-          description: Device serial number
-          example: "SN123456789"
-        deviceType:
-          type: string
-          description: Type of device
-          enum:
-            - SHELLY_3EM_METER
-            - YUNENG_MICRO_INVERTER
-            - ENERGY_STORAGE_BATTERY
-          example: "ENERGY_STORAGE_BATTERY"
         status:
           type: string
           description: Device status
@@ -832,6 +919,47 @@ components:
             - Online
             - Offline
           example: "Online"
+        subStatus:
+          type: string
+          nullable: true
+          description: Sub-status information
+          example: null
+        modifyDate:
+          type: integer
+          description: Last modification timestamp in milliseconds
+          example: 1757166321349
+        today:
+          type: object
+          nullable: true
+          description: Today's statistics (for inverters)
+          properties:
+            currentPower:
+              type: number
+              description: Current power output
+              example: 645
+            totalPowerGeneration:
+              type: number
+              description: Total power generation in kWh
+              example: 1.33186
+            totalEarnings:
+              type: object
+              description: Total earnings
+              properties:
+                earnings:
+                  type: number
+                  example: 0.41
+                currency:
+                  type: string
+                  example: "EUR"
+        collectorSn:
+          type: string
+          nullable: true
+          description: Collector serial number
+          example: null
+        deviceSn:
+          type: string
+          description: Device serial number
+          example: "SN123456789"
         fault:
           type: boolean
           description: Whether device has a fault
@@ -840,44 +968,116 @@ components:
           type: boolean
           description: Whether device is off
           example: false
+        deviceType:
+          type: string
+          description: Type of device
+          enum:
+            - SHELLY_3EM_METER
+            - YUNENG_MICRO_INVERTER
+            - ENERGY_STORAGE_BATTERY
+          example: "ENERGY_STORAGE_BATTERY"
+        batteryLevel:
+          type: number
+          nullable: true
+          description: Battery level percentage (for battery devices)
+          example: 10.0
+        chargeRemaining:
+          type: number
+          nullable: true
+          description: Charge time remaining in minutes
+          example: null
+        dischargeRemaining:
+          type: number
+          nullable: true
+          description: Discharge time remaining in minutes
+          example: null
+        isChargingStatus:
+          type: boolean
+          nullable: true
+          description: Whether battery is charging
+          example: null
+        heaterStatusList:
+          type: array
+          nullable: true
+          items:
+            type: boolean
+          description: Heater status for each battery module
+          example: [false, false, false]
+        inputPowerTotal:
+          type: number
+          nullable: true
+          description: Total input power in watts
+          example: 96.0
+        outputPowerTotal:
+          type: number
+          nullable: true
+          description: Total output power in watts
+          example: 92.0
+        totalAcPower:
+          type: number
+          nullable: true
+          description: Total AC power in watts (for meters)
+          example: 3050.78
+        dailyBuyEnergy:
+          type: number
+          nullable: true
+          description: Daily energy bought from grid in kWh
+          example: 7.21
+        dailyRetEnergy:
+          type: number
+          nullable: true
+          description: Daily energy returned to grid in kWh
+          example: 0.12
+        totalBuyEnergy:
+          type: number
+          nullable: true
+          description: Total energy bought from grid in kWh
+          example: 3744.46
+        totalRetEnergy:
+          type: number
+          nullable: true
+          description: Total energy returned to grid in kWh
+          example: 53.38
+        starChargeEvseDto:
+          type: object
+          nullable: true
+          description: EV charger data
+          example: null
+        batteryChargingBoxDto:
+          type: object
+          nullable: true
+          description: Battery charging box data
+          example: null
+        # Additional fields from device details endpoint
         firmwareVersion:
           type: string
+          nullable: true
           description: Device firmware version
           example: "1.2.3"
         hwVersion:
           type: string
+          nullable: true
           description: Device hardware version
           example: "A1"
         systemMultiStatus:
           type: string
+          nullable: true
           description: System status
         supportReboot:
           type: boolean
+          nullable: true
           description: Whether device supports remote reboot
         ssid:
           type: string
+          nullable: true
           description: WiFi SSID if applicable
         manufacturer:
           type: string
+          nullable: true
           description: Device manufacturer
-        batteryLevel:
-          type: number
-          description: Battery level percentage (for battery devices)
-          example: 85
-        inputPowerTotal:
-          type: number
-          description: Total input power in watts
-          example: 1500
-        outputPowerTotal:
-          type: number
-          description: Total output power in watts
-          example: 500
-        totalAcPower:
-          type: number
-          description: Total AC power in watts (for meters)
-          example: 2000
         currentPower:
           type: number
+          nullable: true
           description: Current power in watts (for inverters)
           example: 3000
 

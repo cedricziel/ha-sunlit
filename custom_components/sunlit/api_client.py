@@ -334,14 +334,14 @@ class SunlitApiClient:
             raise
 
     async def fetch_device_list(
-        self, family_id: str | int, device_type: str = "ALL"
+        self, family_id: str | int, device_type: str = ""
     ) -> list[dict[str, Any]]:
         """Fetch list of devices for a specific family.
 
         Args:
             family_id: The family ID to fetch devices for
-            device_type: Type of devices to fetch (default: "ALL")
-                        Examples: "ALL", "ENERGY_STORAGE_BATTERY", "SHELLY_3EM_METER"
+            device_type: Type of devices to fetch (default: "" for all)
+                        Examples: "", "ENERGY_STORAGE_BATTERY", "SHELLY_3EM_METER"
 
         Returns:
             List of device dictionaries containing:
@@ -366,16 +366,21 @@ class SunlitApiClient:
 
             response = await self._make_request("POST", API_DEVICE_LIST, json=payload)
 
-            # Extract device list from nested response structure
+            # Extract device list from paginated response structure
+            # Format: { content: { content: [...devices...], pageable: {...} } }
             if "content" in response and isinstance(response["content"], dict):
-                content = response["content"]
-                if "content" in content and isinstance(content["content"], list):
-                    devices = content["content"]
+                paginated_data = response["content"]
+                if "content" in paginated_data and isinstance(
+                    paginated_data["content"], list
+                ):
+                    devices = paginated_data["content"]
                     _LOGGER.debug(
-                        "Fetched %d devices for family %s (type: %s)",
+                        "Fetched %d devices for family %s (type: %s, page: %d/%d)",
                         len(devices),
                         family_id,
                         device_type,
+                        paginated_data.get("number", 0) + 1,
+                        paginated_data.get("totalPages", 1),
                     )
                     return devices
 
