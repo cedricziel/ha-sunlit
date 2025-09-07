@@ -16,6 +16,8 @@ from .base import normalize_device_type
 
 class SunlitDeviceSensorBase(CoordinatorEntity, SensorEntity, ABC):
     """Base representation of a Sunlit device sensor."""
+    
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -36,24 +38,15 @@ class SunlitDeviceSensorBase(CoordinatorEntity, SensorEntity, ABC):
         self._device_id = device_id
         self._device_info_data = device_info_data
 
-        # Include family_id and normalized device type in unique_id
+        # Include family_name, family_id and normalized device type in unique_id
         device_type = device_info_data.get("deviceType", "Device")
         normalized_type = normalize_device_type(device_type)
         self._attr_unique_id = (
-            f"sunlit_{family_id}_{normalized_type}_{device_id}_{description.key}"
+            f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{normalized_type}_{device_id}_{description.key}"
         )
 
-        # Map device types to friendly names for sensor names
-        friendly_names = {
-            "ENERGY_STORAGE_BATTERY": "BK215",
-            "YUNENG_MICRO_INVERTER": "Microinverter",
-            "SHELLY_3EM_METER": "Smart Meter",
-        }
-        
-        friendly_name = friendly_names.get(device_type, device_type)
-
-        # Human-readable name
-        self._attr_name = f"{friendly_name} {device_id} {description.name}"
+        # Short friendly name for UI (used with has_entity_name)
+        self._attr_name = description.name
 
     @property
     def native_value(self) -> Any:

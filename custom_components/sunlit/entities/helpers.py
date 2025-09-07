@@ -25,6 +25,12 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     # Battery capacity
     elif "capacity" in key.lower():
         return SensorDeviceClass.ENERGY
+    # MPPT energy sensors
+    elif "mpptenergy" in key.lower().replace("_", "").replace(" ", ""):
+        return SensorDeviceClass.ENERGY
+    # Total solar energy
+    elif key == "total_solar_energy":
+        return SensorDeviceClass.ENERGY
     # Daily yield is energy
     elif key == "daily_yield":
         return SensorDeviceClass.ENERGY
@@ -70,6 +76,12 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     # Special case: total_power_generation is cumulative energy
     elif key == "total_power_generation":
         return SensorStateClass.TOTAL_INCREASING
+    # MPPT energy sensors are cumulative
+    elif "mpptenergy" in key.lower().replace("_", "").replace(" ", ""):
+        return SensorStateClass.TOTAL_INCREASING
+    # Total solar energy is cumulative
+    elif key == "total_solar_energy":
+        return SensorStateClass.TOTAL_INCREASING
     # Daily yield resets each day
     elif key == "daily_yield":
         return SensorStateClass.TOTAL
@@ -98,6 +110,7 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
         "battery_charging_remaining",
         "battery_discharging_remaining",
         "inverter_current_power",
+        "total_solar_power",
     ]:
         return SensorStateClass.MEASUREMENT
     return None
@@ -107,6 +120,12 @@ def get_unit_for_sensor(key: str) -> str | None:
     """Get the appropriate unit for a sensor."""
     # Battery capacity
     if "capacity" in key.lower():
+        return UnitOfEnergy.KILO_WATT_HOUR
+    # MPPT energy sensors
+    elif "mpptenergy" in key.lower().replace("_", "").replace(" ", ""):
+        return UnitOfEnergy.KILO_WATT_HOUR
+    # Total solar energy
+    elif key == "total_solar_energy":
         return UnitOfEnergy.KILO_WATT_HOUR
     # Daily yield
     elif key == "daily_yield":
@@ -162,6 +181,11 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     # Solar/Inverter related
     elif device_type == "YUNENG_MICRO_INVERTER" or "generation" in key:
         return "mdi:solar-power"
+    # Total solar tracking
+    elif key == "total_solar_energy":
+        return "mdi:solar-power-variant-outline"
+    elif key == "total_solar_power":
+        return "mdi:solar-power-variant"
     # Battery related
     elif "battery_full" in key:
         return "mdi:battery-check"

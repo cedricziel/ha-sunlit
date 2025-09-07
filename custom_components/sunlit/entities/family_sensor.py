@@ -15,6 +15,8 @@ from ..const import DOMAIN
 
 class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sunlit family aggregate sensor."""
+    
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -32,10 +34,10 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
         self._family_name = family_name
 
         # Include family_id in unique_id to ensure uniqueness across families
-        self._attr_unique_id = f"sunlit_{family_id}_{description.key}"
+        self._attr_unique_id = f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{description.key}"
 
-        # Human-readable name
-        self._attr_name = f"{family_name} {description.name}"
+        # Short friendly name for UI (used with has_entity_name)
+        self._attr_name = description.name
 
     @property
     def native_value(self) -> Any:

@@ -86,6 +86,11 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
         self.family_id = family_id
         self.family_name = family_name
         self.devices = {}  # Store device information
+        
+        # Track MPPT energy accumulation
+        self.mppt_energy = {}  # Store cumulative energy in kWh
+        self.last_mppt_update = {}  # Store last update time for each MPPT
+        self.last_mppt_power = {}  # Store last power reading for each MPPT
 
         super().__init__(
             hass,
@@ -306,6 +311,59 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                                     field = f"battery{module_num}{suffix}"
                                     device_data[field] = detailed_stats.get(field)
                             
+                            # Calculate MPPT energy accumulation
+                            import time
+                            current_time = time.time()
+                            
+                            # Main unit MPPT energy calculation
+                            for mppt_num in [1, 2]:
+                                power_key = f"batteryMppt{mppt_num}InPower"
+                                energy_key = f"batteryMppt{mppt_num}Energy"
+                                
+                                if device_data.get(power_key) is not None:
+                                    power = device_data[power_key]
+                                    
+                                    if energy_key in self.mppt_energy:
+                                        # Calculate time delta in hours
+                                        if energy_key in self.last_mppt_update:
+                                            time_delta_hours = (current_time - self.last_mppt_update[energy_key]) / 3600
+                                            
+                                            # Use trapezoidal integration for better accuracy
+                                            # Average of current and previous power readings
+                                            avg_power = (power + self.last_mppt_power.get(energy_key, power)) / 2
+                                            
+                                            # Energy in kWh = Power in W * time in hours / 1000
+                                            energy_increment = (avg_power * time_delta_hours) / 1000
+                                            self.mppt_energy[energy_key] += energy_increment
+                                    else:
+                                        # Initialize energy accumulator
+                                        self.mppt_energy[energy_key] = 0
+                                    
+                                    self.last_mppt_update[energy_key] = current_time
+                                    self.last_mppt_power[energy_key] = power
+                                    device_data[energy_key] = round(self.mppt_energy[energy_key], 3)
+                            
+                            # Battery module MPPT energy calculation
+                            for module_num in [1, 2, 3]:
+                                power_key = f"battery{module_num}Mppt1InPower"
+                                energy_key = f"battery{module_num}Mppt1Energy"
+                                
+                                if device_data.get(power_key) is not None:
+                                    power = device_data[power_key]
+                                    
+                                    if energy_key in self.mppt_energy:
+                                        if energy_key in self.last_mppt_update:
+                                            time_delta_hours = (current_time - self.last_mppt_update[energy_key]) / 3600
+                                            avg_power = (power + self.last_mppt_power.get(energy_key, power)) / 2
+                                            energy_increment = (avg_power * time_delta_hours) / 1000
+                                            self.mppt_energy[energy_key] += energy_increment
+                                    else:
+                                        self.mppt_energy[energy_key] = 0
+                                    
+                                    self.last_mppt_update[energy_key] = current_time
+                                    self.last_mppt_power[energy_key] = power
+                                    device_data[energy_key] = round(self.mppt_energy[energy_key], 3)
+                            
                             # Update power totals if available from detailed stats
                             if detailed_stats.get("inputPowerTotal") is not None:
                                 device_data["input_power_total"] = detailed_stats[
@@ -347,6 +405,33 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                 total_output_power if total_output_power > 0 else None
             )
             sensor_data["family"]["has_fault"] = any(d.get("fault") for d in devices)
+            
+            # Calculate total solar energy from all MPPT inputs
+            total_solar_energy = 0
+            total_solar_power = 0
+            
+            # Sum energy and power from all devices
+            for device_id, device_data in sensor_data.get("devices", {}).items():
+                # Main unit MPPT energy
+                for mppt_num in [1, 2]:
+                    energy_key = f"batteryMppt{mppt_num}Energy"
+                    power_key = f"batteryMppt{mppt_num}InPower"
+                    if energy_key in device_data:
+                        total_solar_energy += device_data[energy_key]
+                    if power_key in device_data and device_data[power_key] is not None:
+                        total_solar_power += device_data[power_key]
+                
+                # Module MPPT energy
+                for module_num in [1, 2, 3]:
+                    energy_key = f"battery{module_num}Mppt1Energy"
+                    power_key = f"battery{module_num}Mppt1InPower"
+                    if energy_key in device_data:
+                        total_solar_energy += device_data[energy_key]
+                    if power_key in device_data and device_data[power_key] is not None:
+                        total_solar_power += device_data[power_key]
+            
+            sensor_data["family"]["total_solar_energy"] = round(total_solar_energy, 3) if total_solar_energy > 0 else 0
+            sensor_data["family"]["total_solar_power"] = total_solar_power if total_solar_power > 0 else None
             
             # Add space_index data if available (override aggregates with more accurate data)
             if space_index:

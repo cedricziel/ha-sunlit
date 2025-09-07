@@ -18,6 +18,8 @@ from .base import normalize_device_type
 
 class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Representation of a Sunlit device binary sensor."""
+    
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -42,24 +44,15 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_icon = icon
         self._inverted = inverted
 
-        # Include family_id and normalized device type in unique_id
+        # Include family_name, family_id and normalized device type in unique_id
         device_type = device_info_data.get("deviceType", "Device")
         normalized_type = normalize_device_type(device_type)
         self._attr_unique_id = (
-            f"sunlit_{family_id}_{normalized_type}_{device_id}_{description.key}"
+            f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{normalized_type}_{device_id}_{description.key}"
         )
 
-        # Map device types to friendly names for sensor names
-        friendly_names = {
-            DEVICE_TYPE_BATTERY: "BK215",
-            DEVICE_TYPE_INVERTER: "Microinverter",
-            DEVICE_TYPE_METER: "Smart Meter",
-        }
-        
-        friendly_name = friendly_names.get(device_type, device_type)
-
-        # Human-readable name
-        self._attr_name = f"{friendly_name} {device_id} {description.name}"
+        # Short friendly name for UI (used with has_entity_name)
+        self._attr_name = description.name
 
     @property
     def is_on(self) -> bool | None:

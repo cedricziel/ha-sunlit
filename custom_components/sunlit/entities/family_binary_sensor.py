@@ -17,6 +17,8 @@ from ..const import DOMAIN
 
 class SunlitFamilyBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Representation of a Sunlit family binary sensor."""
+    
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -36,10 +38,10 @@ class SunlitFamilyBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._attr_icon = icon
 
         # Include family_id in unique_id to ensure uniqueness across families
-        self._attr_unique_id = f"sunlit_{family_id}_{description.key}"
+        self._attr_unique_id = f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{description.key}"
 
-        # Human-readable name
-        self._attr_name = f"{family_name} {description.name}"
+        # Short friendly name for UI (used with has_entity_name)
+        self._attr_name = description.name
 
     @property
     def is_on(self) -> bool | None:

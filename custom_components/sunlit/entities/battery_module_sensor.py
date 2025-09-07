@@ -15,6 +15,8 @@ from .base import normalize_device_type
 
 class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sunlit battery module sensor (virtual device)."""
+    
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -41,11 +43,11 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
         device_type = device_info_data.get("deviceType", "Device")
         normalized_type = normalize_device_type(device_type)
         self._attr_unique_id = (
-            f"sunlit_{family_id}_{normalized_type}_{device_id}_module{module_number}_{description.key}"
+            f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{normalized_type}_{device_id}_module{module_number}_{description.key}"
         )
 
-        # Human-readable name for module sensor
-        self._attr_name = f"Module {module_number} {description.name}"
+        # Short friendly name for UI (used with has_entity_name)
+        self._attr_name = description.name
 
     @property
     def native_value(self) -> Any:
@@ -84,7 +86,7 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
             identifiers={(DOMAIN, f"{device_sn}_module{self._module_number}")},
             name=f"Battery Module {self._module_number} ({self._family_name})",
             manufacturer="Highpower",
-            model=f"B215 Extension Module",
+            model="B215 Extension Module",
             via_device=(DOMAIN, device_sn),  # Links to main battery unit
         )
         

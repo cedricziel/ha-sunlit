@@ -69,9 +69,11 @@ BATTERY_SENSORS = {
     "batteryMppt1InVol": "MPPT1 Voltage",
     "batteryMppt1InCur": "MPPT1 Current",
     "batteryMppt1InPower": "MPPT1 Power",
+    "batteryMppt1Energy": "MPPT1 Total Energy",
     "batteryMppt2InVol": "MPPT2 Voltage",
     "batteryMppt2InCur": "MPPT2 Current",
     "batteryMppt2InPower": "MPPT2 Power",
+    "batteryMppt2Energy": "MPPT2 Total Energy",
 }
 
 # Battery module specific sensors (will be created for each module 1, 2, 3)
@@ -82,6 +84,7 @@ BATTERY_MODULE_SENSORS = {
     "Mppt1InVol": "MPPT Voltage",
     "Mppt1InCur": "MPPT Current",
     "Mppt1InPower": "MPPT Power",
+    "Mppt1Energy": "MPPT Total Energy",
     "capacity": "Nominal Capacity",  # Static 2.15 kWh per module
 }
 
@@ -123,6 +126,9 @@ FAMILY_SENSORS = {
     "daily_earnings": "Daily Earnings",
     "home_power": "Home Power",
     "currency": "Currency",
+    # Total solar production tracking
+    "total_solar_energy": "Total Solar Energy",
+    "total_solar_power": "Total Solar Power",
     "battery_count": "Battery Module Count",
     "battery_charging_remaining": "Charging Time Remaining",
     "battery_discharging_remaining": "Discharging Time Remaining",
