@@ -189,17 +189,66 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                             ].get("earnings")
 
                 elif device_type == "ENERGY_STORAGE_BATTERY":
+                    # Basic battery data (always available)
                     device_data["battery_level"] = device.get("batteryLevel")
                     device_data["input_power_total"] = device.get("inputPowerTotal")
                     device_data["output_power_total"] = device.get("outputPowerTotal")
+                    
+                    # Try to fetch detailed statistics for online devices
+                    if device.get("status") == "Online":
+                        try:
+                            detailed_stats = await self.api_client.fetch_device_statistics(device_id)
+                            
+                            # System-wide battery data
+                            device_data["batterySoc"] = detailed_stats.get("batterySoc")
+                            device_data["chargeRemaining"] = detailed_stats.get("chargeRemaining")
+                            device_data["dischargeRemaining"] = detailed_stats.get("dischargeRemaining")
+                            
+                            # Individual battery module SOCs
+                            device_data["battery1Soc"] = detailed_stats.get("battery1Soc")
+                            device_data["battery2Soc"] = detailed_stats.get("battery2Soc")
+                            device_data["battery3Soc"] = detailed_stats.get("battery3Soc")
+                            
+                            # Main unit MPPT data (simplified fields)
+                            device_data["batteryMppt1InVol"] = detailed_stats.get("batteryMppt1InVol")
+                            device_data["batteryMppt1InCur"] = detailed_stats.get("batteryMppt1InCur")
+                            device_data["batteryMppt1InPower"] = detailed_stats.get("batteryMppt1InPower")
+                            device_data["batteryMppt2InVol"] = detailed_stats.get("batteryMppt2InVol")
+                            device_data["batteryMppt2InCur"] = detailed_stats.get("batteryMppt2InCur")
+                            device_data["batteryMppt2InPower"] = detailed_stats.get("batteryMppt2InPower")
+                            
+                            # Battery module 1 MPPT data
+                            device_data["battery1Mppt1InVol"] = detailed_stats.get("battery1Mppt1InVol")
+                            device_data["battery1Mppt1InCur"] = detailed_stats.get("battery1Mppt1InCur")
+                            device_data["battery1Mppt1InPower"] = detailed_stats.get("battery1Mppt1InPower")
+                            
+                            # Battery module 2 MPPT data
+                            device_data["battery2Mppt1InVol"] = detailed_stats.get("battery2Mppt1InVol")
+                            device_data["battery2Mppt1InCur"] = detailed_stats.get("battery2Mppt1InCur")
+                            device_data["battery2Mppt1InPower"] = detailed_stats.get("battery2Mppt1InPower")
+                            
+                            # Battery module 3 MPPT data
+                            device_data["battery3Mppt1InVol"] = detailed_stats.get("battery3Mppt1InVol")
+                            device_data["battery3Mppt1InCur"] = detailed_stats.get("battery3Mppt1InCur")
+                            device_data["battery3Mppt1InPower"] = detailed_stats.get("battery3Mppt1InPower")
+                            
+                            # Update power totals if available from detailed stats
+                            if detailed_stats.get("inputPowerTotal") is not None:
+                                device_data["input_power_total"] = detailed_stats["inputPowerTotal"]
+                            if detailed_stats.get("outputPowerTotal") is not None:
+                                device_data["output_power_total"] = detailed_stats["outputPowerTotal"]
+                                
+                        except Exception as err:
+                            _LOGGER.debug("Could not fetch detailed statistics for device %s: %s", device_id, err)
+                            # Continue with basic data only
 
                     if device.get("batteryLevel") is not None:
                         total_battery_level += device["batteryLevel"]
                         battery_count += 1
-                    if device.get("inputPowerTotal"):
-                        total_input_power += device["inputPowerTotal"]
-                    if device.get("outputPowerTotal"):
-                        total_output_power += device["outputPowerTotal"]
+                    if device_data.get("input_power_total"):
+                        total_input_power += device_data["input_power_total"]
+                    if device_data.get("output_power_total"):
+                        total_output_power += device_data["output_power_total"]
 
                 sensor_data["devices"][device_id] = device_data
 

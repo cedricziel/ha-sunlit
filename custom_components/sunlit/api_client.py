@@ -199,6 +199,50 @@ class SunlitApiClient:
             )
             raise
 
+    async def fetch_device_statistics(self, device_id: str | int) -> dict[str, Any]:
+        """Fetch detailed statistics for a specific device.
+        
+        Args:
+            device_id: The device ID to fetch statistics for
+            
+        Returns:
+            Dictionary containing detailed device statistics including:
+            - Basic info: deviceId, sn, status, deviceType
+            - Battery data: batterySoc, battery1Soc, battery2Soc, battery3Soc
+            - Power data: inputPowerTotal, outputPowerTotal
+            - MPPT data: batteryMppt1Data, batteryMppt2Data, battery1MpptData, etc.
+            - Timing data: chargeRemaining, dischargeRemaining
+            
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload = {"deviceId": int(device_id)}
+            
+            response = await self._make_request(
+                "POST", API_DEVICE_STATISTICS, json=payload
+            )
+            
+            # Extract content from response
+            if "content" in response:
+                data = response["content"]
+                _LOGGER.debug(
+                    "Fetched statistics for device %s (type: %s, status: %s, SOC: %s%%)",
+                    device_id,
+                    data.get("deviceType", "Unknown"),
+                    data.get("status", "Unknown"),
+                    data.get("batterySoc", "N/A"),
+                )
+                return data
+                
+            return response
+            
+        except SunlitApiError as err:
+            _LOGGER.error("Failed to fetch statistics for device %s: %s", device_id, err)
+            raise
+
     async def fetch_battery_io_power(
         self,
         device_id: str | int,

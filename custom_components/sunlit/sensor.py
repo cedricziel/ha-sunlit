@@ -19,6 +19,9 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.const import (
     UnitOfEnergy,
     UnitOfPower,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+    UnitOfTime,
     PERCENTAGE,
 )
 
@@ -31,6 +34,7 @@ from .const import (
     METER_SENSORS,
     INVERTER_SENSORS,
     BATTERY_SENSORS,
+    BATTERY_MODULE_SENSORS,
     FAMILY_SENSORS,
 )
 
@@ -96,7 +100,7 @@ async def async_setup_entry(
 
             # Create individual device sensors
             if "devices" in coordinator.data:
-                for device_id, device_data in coordinator.data["devices"].items():
+                for device_id in coordinator.data["devices"]:
                     if device_id in coordinator.devices:
                         device_info = coordinator.devices[device_id]
                         device_type = device_info.get("deviceType")
@@ -110,14 +114,15 @@ async def async_setup_entry(
                         elif device_type == DEVICE_TYPE_BATTERY:
                             sensor_map = BATTERY_SENSORS
 
-                        # Create sensors for this device
+                        # Create ALL sensors defined for this device type
+                        # This ensures sensors are created even if data is not yet available
                         # Skip binary sensor fields (handled by binary_sensor platform)
                         skip_device_fields = {"fault", "off"}
-                        for key in device_data:
-                            if key in sensor_map and key not in skip_device_fields:
+                        for key, name in sensor_map.items():
+                            if key not in skip_device_fields:
                                 sensor_description = SensorEntityDescription(
                                     key=key,
-                                    name=sensor_map[key],
+                                    name=name,
                                     device_class=_get_device_class_for_sensor(key),
                                     state_class=_get_state_class_for_sensor(key),
                                     native_unit_of_measurement=_get_unit_for_sensor(
@@ -139,24 +144,60 @@ async def async_setup_entry(
                                     sensor._attr_icon = icon
                                 sensors.append(sensor)
 
-                        # Add status sensor for all devices (text state)
-                        if "status" in device_data:
-                            sensor_description = SensorEntityDescription(
-                                key="status",
-                                name="Status",
-                            )
-                            sensor = SunlitDeviceSensor(
-                                coordinator=coordinator,
-                                description=sensor_description,
-                                entry_id=config_entry.entry_id,
-                                family_id=coordinator.family_id,
-                                family_name=coordinator.family_name,
-                                device_id=device_id,
-                                device_info_data=device_info,
-                            )
-                            # Set status icon
-                            sensor._attr_icon = "mdi:information-outline"
-                            sensors.append(sensor)
+                        # Always add status sensor for all devices (text state)
+                        sensor_description = SensorEntityDescription(
+                            key="status",
+                            name="Status",
+                        )
+                        sensor = SunlitDeviceSensor(
+                            coordinator=coordinator,
+                            description=sensor_description,
+                            entry_id=config_entry.entry_id,
+                            family_id=coordinator.family_id,
+                            family_name=coordinator.family_name,
+                            device_id=device_id,
+                            device_info_data=device_info,
+                        )
+                        # Set status icon
+                        sensor._attr_icon = "mdi:information-outline"
+                        sensors.append(sensor)
+                        
+                        # For battery devices, create virtual devices for battery modules
+                        if device_type == DEVICE_TYPE_BATTERY:
+                            # Check for battery modules (1, 2, 3) and create virtual devices
+                            for module_num in [1, 2, 3]:
+                                # Check if this module exists (by checking if any of its data is present)
+                                module_soc_key = f"battery{module_num}Soc"
+                                
+                                # Always create module devices for batteries to ensure stable entities
+                                # Create sensors for this battery module
+                                for suffix, friendly_name in BATTERY_MODULE_SENSORS.items():
+                                    sensor_key = f"battery{module_num}{suffix}"
+                                    
+                                    sensor_description = SensorEntityDescription(
+                                        key=sensor_key,
+                                        name=friendly_name,
+                                        device_class=_get_device_class_for_sensor(sensor_key),
+                                        state_class=_get_state_class_for_sensor(sensor_key),
+                                        native_unit_of_measurement=_get_unit_for_sensor(sensor_key),
+                                    )
+                                    
+                                    sensor = SunlitBatteryModuleSensor(
+                                        coordinator=coordinator,
+                                        description=sensor_description,
+                                        entry_id=config_entry.entry_id,
+                                        family_id=coordinator.family_id,
+                                        family_name=coordinator.family_name,
+                                        device_id=device_id,
+                                        device_info_data=device_info,
+                                        module_number=module_num,
+                                    )
+                                    
+                                    # Set icon if available
+                                    icon = _get_icon_for_sensor(sensor_key, device_type)
+                                    if icon:
+                                        sensor._attr_icon = icon
+                                    sensors.append(sensor)
 
     async_add_entities(sensors, True)
 
@@ -169,6 +210,15 @@ def _get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     # battery_full is a boolean, not a battery percentage
     elif key == "battery_full":
         return None
+    # Time remaining sensors
+    elif "remaining" in key.lower():
+        return SensorDeviceClass.DURATION
+    # MPPT voltage sensors
+    elif "invol" in key.lower() or "voltage" in key.lower():
+        return SensorDeviceClass.VOLTAGE
+    # MPPT current sensors
+    elif "incur" in key.lower() or "current" in key.lower():
+        return SensorDeviceClass.CURRENT
     # total_power_generation is actually energy despite the name
     elif key == "total_power_generation":
         return SensorDeviceClass.ENERGY
@@ -223,6 +273,15 @@ def _get_unit_for_sensor(key: str) -> str | None:
     # Special case: total_power_generation is actually energy in kWh
     if key == "total_power_generation":
         return UnitOfEnergy.KILO_WATT_HOUR
+    # Time remaining sensors
+    elif "remaining" in key.lower():
+        return UnitOfTime.MINUTES
+    # MPPT voltage sensors
+    elif "invol" in key.lower() or "voltage" in key.lower():
+        return UnitOfElectricPotential.VOLT
+    # MPPT current sensors  
+    elif "incur" in key.lower() or "current" in key.lower():
+        return UnitOfElectricCurrent.AMPERE
     # Ensure rated_power and max_output_power get W units
     elif key in ["rated_power", "max_output_power"] or "power" in key.lower():
         return UnitOfPower.WATT
@@ -451,12 +510,12 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
+        # Entity is available as long as the device exists in the data
+        # Even if the specific sensor value is not present (None/null)
         return (
             self.coordinator.last_update_success
             and "devices" in (self.coordinator.data or {})
             and self._device_id in self.coordinator.data.get("devices", {})
-            and self.entity_description.key
-            in self.coordinator.data["devices"][self._device_id]
         )
 
     @property
@@ -524,4 +583,89 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
         if "ssid" in self._device_info_data:
             attrs["wifi_ssid"] = self._device_info_data["ssid"]
 
+        return attrs
+
+
+class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
+    """Representation of a Sunlit battery module sensor (virtual device)."""
+
+    def __init__(
+        self,
+        coordinator: SunlitDataUpdateCoordinator,
+        description: SensorEntityDescription,
+        entry_id: str,
+        family_id: str,
+        family_name: str,
+        device_id: str,
+        device_info_data: dict[str, Any],
+        module_number: int,
+    ) -> None:
+        """Initialize the battery module sensor."""
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._entry_id = entry_id
+        self._family_id = family_id
+        self._family_name = family_name
+        self._device_id = device_id
+        self._device_info_data = device_info_data
+        self._module_number = module_number
+
+        # Include module number in unique_id
+        device_type = device_info_data.get("deviceType", "Device")
+        normalized_type = normalize_device_type(device_type)
+        self._attr_unique_id = (
+            f"sunlit_{family_id}_{normalized_type}_{device_id}_module{module_number}_{description.key}"
+        )
+
+        # Human-readable name for module sensor
+        self._attr_name = f"Module {module_number} {description.name}"
+
+    @property
+    def native_value(self) -> Any:
+        """Return the state of the sensor."""
+        if (
+            self.coordinator.data
+            and "devices" in self.coordinator.data
+            and self._device_id in self.coordinator.data["devices"]
+        ):
+            return self.coordinator.data["devices"][self._device_id].get(
+                self.entity_description.key
+            )
+        return None
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        # Entity is available as long as the device exists in the data
+        return (
+            self.coordinator.last_update_success
+            and "devices" in (self.coordinator.data or {})
+            and self._device_id in self.coordinator.data.get("devices", {})
+        )
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this virtual battery module."""
+        device_sn = self._device_info_data.get("deviceSn", self._device_id)
+        
+        # Create a virtual device for this battery module
+        device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{device_sn}_module{self._module_number}")},
+            name=f"Battery Module {self._module_number}",
+            manufacturer="Highpower",
+            model="Battery Extension Module",
+            via_device=(DOMAIN, device_sn),  # Links to main battery unit
+        )
+        
+        return device_info
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        attrs = {
+            "main_device_id": self._device_id,
+            "module_number": self._module_number,
+            "parent_device_sn": self._device_info_data.get("deviceSn"),
+        }
+        
         return attrs

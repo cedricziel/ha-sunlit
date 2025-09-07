@@ -49,10 +49,33 @@ INVERTER_SENSORS = {
     "daily_earnings": "Daily Earnings",
 }
 
+# Main battery unit sensors (system-wide and main unit specific)
 BATTERY_SENSORS = {
-    "battery_level": "Battery Level",
-    "input_power_total": "Input Power Total",
-    "output_power_total": "Output Power Total",
+    # System-wide sensors
+    "battery_level": "Battery Level",  # Average/overall level
+    "batterySoc": "System Battery SOC",
+    "chargeRemaining": "Charge Time Remaining",
+    "dischargeRemaining": "Discharge Time Remaining",
+    "input_power_total": "Total Input Power",
+    "output_power_total": "Total Output Power",
+    
+    # Main unit MPPT sensors (head unit's solar inputs)
+    "batteryMppt1InVol": "MPPT1 Voltage",
+    "batteryMppt1InCur": "MPPT1 Current",
+    "batteryMppt1InPower": "MPPT1 Power",
+    "batteryMppt2InVol": "MPPT2 Voltage",
+    "batteryMppt2InCur": "MPPT2 Current",
+    "batteryMppt2InPower": "MPPT2 Power",
+}
+
+# Battery module specific sensors (will be created for each module 1, 2, 3)
+BATTERY_MODULE_SENSORS = {
+    # Module-specific data keys mapped to friendly names
+    # The actual keys will be battery1Soc, battery2Soc, etc.
+    "Soc": "Battery SOC",
+    "Mppt1InVol": "MPPT Voltage",
+    "Mppt1InCur": "MPPT Current",
+    "Mppt1InPower": "MPPT Power",
 }
 
 # Family aggregate sensors
