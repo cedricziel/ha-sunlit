@@ -334,14 +334,14 @@ class SunlitApiClient:
             raise
 
     async def fetch_device_list(
-        self, family_id: str | int, device_type: str = ""
+        self, family_id: str | int, device_type: str = "ALL"
     ) -> list[dict[str, Any]]:
         """Fetch list of devices for a specific family.
 
         Args:
             family_id: The family ID to fetch devices for
-            device_type: Type of devices to fetch (default: "" for all)
-                        Examples: "", "ENERGY_STORAGE_BATTERY", "SHELLY_3EM_METER"
+            device_type: Type of devices to fetch (default: "ALL")
+                        Examples: "ALL", "ENERGY_STORAGE_BATTERY", "SHELLY_3EM_METER"
 
         Returns:
             List of device dictionaries containing:
