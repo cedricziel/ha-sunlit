@@ -30,6 +30,8 @@ setup: ## Install development dependencies
 	@echo "Installing dependencies..."
 	@python3 -m pip install --requirement requirements.txt
 	@echo "✓ Dependencies installed"
+	@python3 -m pip install --requirement requirements-dev.txt
+	@echo "✓ Development dependencies installed"
 
 clean: ## Clean up cache and temporary files
 	@echo "Cleaning up..."

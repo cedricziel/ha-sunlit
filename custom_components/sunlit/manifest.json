@@ -6,7 +6,7 @@
   "dependencies": [],
   "documentation": "https://github.com/cedricziel/ha-sunlit",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/cedricziel/ha-sunlit/issues",
   "requirements": [],
-  "version": "0.0.1",
-  "issue_tracker": "https://github.com/cedricziel/ha-sunlit/issues"
+  "version": "0.0.1"
 }
