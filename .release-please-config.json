@@ -8,12 +8,7 @@
                     "path": "custom_components/sunlit/manifest.json",
                     "jsonpath": "$.version"
                 },
-                {
-                    "type": "text",
-                    "path": "custom_components/sunlit/const.py",
-                    "search": "VERSION = \".+\"",
-                    "replace": "VERSION = \"{{version}}\""
-                }
+                "custom_components/sunlit/const.py"
             ]
         }
     }
