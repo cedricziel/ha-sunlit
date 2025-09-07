@@ -455,15 +455,12 @@ components:
           example: false
 
     DeviceStatisticsResponse:
-      type: object
-      description: Device statistics response (different format - no ApiResponse wrapper)
-      properties:
-        result:
-          type: integer
-          description: Result code (1 = success)
-          example: 1
-        data:
-          $ref: '#/components/schemas/BatteryStatistics'
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            content:
+              $ref: '#/components/schemas/BatteryStatistics'
 
     BatteryIOPowerResponse:
       type: object
@@ -603,8 +600,7 @@ components:
           description: Whether home power data is needed
           example: true
         homePower:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Current home power consumption in watts
           example: null
 
@@ -640,13 +636,11 @@ components:
           description: Device status
           example: "Offline"
         currentPower:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Current power output in watts
           example: null
         modifyDate:
-          type: integer
-          nullable: true
+          type: ['integer', 'null']
           description: Last update timestamp
           example: null
         deviceType:
@@ -698,13 +692,11 @@ components:
           description: Battery SOC percentage
           example: 10.0
         chargingRemaining:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Charging time remaining in minutes
           example: null
         dischargingRemaining:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Discharging time remaining in minutes
           example: null
         inputPower:
@@ -748,38 +740,31 @@ components:
           description: Fault status
           example: false
         acInputPower:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: AC input power
           example: null
         invertOutPower:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Inverter output power
           example: null
         acInputPhase:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: AC input phase
           example: null
         homeModeParam:
-          type: object
-          nullable: true
+          type: ['object', 'null']
           description: Home mode parameters
           example: null
         carChgModeParam:
-          type: object
-          nullable: true
+          type: ['object', 'null']
           description: Car charging mode parameters
           example: null
         chgModeParam:
-          type: object
-          nullable: true
+          type: ['object', 'null']
           description: Charging mode parameters
           example: null
         modifyDate:
-          type: integer
-          nullable: true
+          type: ['integer', 'null']
           description: Last update timestamp
           example: null
 
@@ -796,8 +781,7 @@ components:
           description: Boost mode enabled
           example: false
         batteryResult:
-          type: object
-          nullable: true
+          type: ['object', 'null']
           description: Battery result data
           example: null
 
@@ -825,8 +809,7 @@ components:
           description: Fault status
           example: false
         evseStatus:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: EVSE status
           example: null
 
@@ -881,13 +864,11 @@ components:
               description: Currency code
               example: "EUR"
         rabotOnboarding:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: Rabot energy trading platform onboarding status
           example: null
         rabotCustomerId:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: Rabot customer identifier
           example: null
 
@@ -895,13 +876,11 @@ components:
       type: object
       properties:
         spaceId:
-          type: integer
-          nullable: true
+          type: ['integer', 'null']
           description: Space/family identifier
           example: 34038
         stationName:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: Station name
           example: null
         deviceCount:
@@ -920,8 +899,7 @@ components:
             - Offline
           example: "Online"
         subStatus:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: Sub-status information
           example: null
         modifyDate:
@@ -929,8 +907,7 @@ components:
           description: Last modification timestamp in milliseconds
           example: 1757166321349
         today:
-          type: object
-          nullable: true
+          type: ['object', 'null']
           description: Today's statistics (for inverters)
           properties:
             currentPower:
@@ -952,8 +929,7 @@ components:
                   type: string
                   example: "EUR"
         collectorSn:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: Collector serial number
           example: null
         deviceSn:
@@ -977,107 +953,86 @@ components:
             - ENERGY_STORAGE_BATTERY
           example: "ENERGY_STORAGE_BATTERY"
         batteryLevel:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Battery level percentage (for battery devices)
           example: 10.0
         chargeRemaining:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Charge time remaining in minutes
           example: null
         dischargeRemaining:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Discharge time remaining in minutes
           example: null
         isChargingStatus:
-          type: boolean
-          nullable: true
+          type: ['boolean', 'null']
           description: Whether battery is charging
           example: null
         heaterStatusList:
-          type: array
-          nullable: true
+          type: ['array', 'null']
           items:
             type: boolean
           description: Heater status for each battery module
           example: [false, false, false]
         inputPowerTotal:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Total input power in watts
           example: 96.0
         outputPowerTotal:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Total output power in watts
           example: 92.0
         totalAcPower:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Total AC power in watts (for meters)
           example: 3050.78
         dailyBuyEnergy:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Daily energy bought from grid in kWh
           example: 7.21
         dailyRetEnergy:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Daily energy returned to grid in kWh
           example: 0.12
         totalBuyEnergy:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Total energy bought from grid in kWh
           example: 3744.46
         totalRetEnergy:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Total energy returned to grid in kWh
           example: 53.38
         starChargeEvseDto:
-          type: object
-          nullable: true
+          type: ['object', 'null']
           description: EV charger data
           example: null
         batteryChargingBoxDto:
-          type: object
-          nullable: true
+          type: ['object', 'null']
           description: Battery charging box data
           example: null
         # Additional fields from device details endpoint
         firmwareVersion:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: Device firmware version
           example: "1.2.3"
         hwVersion:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: Device hardware version
           example: "A1"
         systemMultiStatus:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: System status
         supportReboot:
-          type: boolean
-          nullable: true
+          type: ['boolean', 'null']
           description: Whether device supports remote reboot
         ssid:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: WiFi SSID if applicable
         manufacturer:
-          type: string
-          nullable: true
+          type: ['string', 'null']
           description: Device manufacturer
         currentPower:
-          type: number
-          nullable: true
+          type: ['number', 'null']
           description: Current power in watts (for inverters)
           example: 3000
 
@@ -1109,47 +1064,219 @@ components:
           description: Maximum SOC setting
           example: 90
 
+    MpptData:
+      type: object
+      description: MPPT (Maximum Power Point Tracking) data
+      properties:
+        batteryMpptInVol:
+          type: number
+          description: MPPT input voltage
+          example: 34.0
+        batteryMpptInCur:
+          type: number
+          description: MPPT input current
+          example: 1.9
+        batteryMpptInPower:
+          type: number
+          description: MPPT input power
+          example: 64.6
+        mpptName:
+          type: string
+          description: MPPT identifier
+          example: "MPPT1"
+
     BatteryStatistics:
       type: object
       description: Detailed battery statistics (from device statistics endpoint)
       properties:
+        deviceId:
+          type: integer
+          description: Device identifier
+          example: 41714
+        sn:
+          type: string
+          description: Device serial number
+          example: "dcbdccbffe3d"
+        status:
+          type: string
+          description: Device status
+          example: "Online"
+        subStatus:
+          type: ['string', 'null']
+          description: Sub-status information
+          example: null
+        deviceType:
+          type: string
+          description: Device type
+          example: "ENERGY_STORAGE_BATTERY"
         batterySoc:
-          type: number
+          type: ['number', 'null']
           description: System battery SOC
+          example: 16.0
         battery1Soc:
-          type: number
+          type: ['number', 'null']
           description: Battery module 1 SOC
+          example: 15.0
         battery2Soc:
-          type: number
+          type: ['number', 'null']
           description: Battery module 2 SOC
+          example: 14.0
         battery3Soc:
-          type: number
+          type: ['number', 'null']
           description: Battery module 3 SOC
+          example: null
+        chargeRemaining:
+          type: ['number', 'null']
+          description: Charge time remaining in hours
+          example: 24.73
+        dischargeRemaining:
+          type: ['number', 'null']
+          description: Discharge time remaining in hours
+          example: null
+        fault:
+          type: boolean
+          description: Fault status
+          example: false
+        inputPowerTotal:
+          type: ['number', 'null']
+          description: Total input power
+          example: null
+        outputPowerTotal:
+          type: ['number', 'null']
+          description: Total output power
+          example: null
+        off:
+          type: boolean
+          description: Device off status
+          example: false
+        currentPower:
+          type: ['number', 'null']
+          description: Current power
+          example: null
+        totalYield:
+          type: ['number', 'null']
+          description: Total yield
+          example: null
+        heaterStatusList:
+          type: ['array', 'null']
+          items:
+            type: boolean
+          description: Heater status for each module
+          example: [false, false, false]
+        totalAcPower:
+          type: ['number', 'null']
+          description: Total AC power
+          example: null
+        dailyBuyEnergy:
+          type: ['number', 'null']
+          description: Daily energy bought
+          example: null
+        dailyRetEnergy:
+          type: ['number', 'null']
+          description: Daily energy returned
+          example: null
+        totalBuyEnergy:
+          type: ['number', 'null']
+          description: Total energy bought
+          example: null
+        totalRetEnergy:
+          type: ['number', 'null']
+          description: Total energy returned
+          example: null
+        batteryMppt1Data:
+          oneOf:
+            - $ref: '#/components/schemas/MpptData'
+            - type: 'null'
+          description: Main unit MPPT1 data
+        batteryMppt2Data:
+          oneOf:
+            - $ref: '#/components/schemas/MpptData'
+            - type: 'null'
+          description: Main unit MPPT2 data
+        battery1MpptData:
+          oneOf:
+            - $ref: '#/components/schemas/MpptData'
+            - type: 'null'
+          description: Battery module 1 MPPT data
+        battery2MpptData:
+          oneOf:
+            - $ref: '#/components/schemas/MpptData'
+            - type: 'null'
+          description: Battery module 2 MPPT data
+        battery3MpptData:
+          oneOf:
+            - $ref: '#/components/schemas/MpptData'
+            - type: 'null'
+          description: Battery module 3 MPPT data
+        mpptCollectTime:
+          type: ['integer', 'null']
+          description: MPPT data collection timestamp
+          example: 1757236235455
         batteryMppt1InVol:
-          type: number
+          type: ['number', 'null']
           description: Main unit MPPT1 voltage
+          example: 34
         batteryMppt1InCur:
-          type: number
+          type: ['number', 'null']
           description: Main unit MPPT1 current
+          example: 1.9
         batteryMppt1InPower:
-          type: number
+          type: ['number', 'null']
           description: Main unit MPPT1 power
+          example: 64.6
         batteryMppt2InVol:
-          type: number
+          type: ['number', 'null']
           description: Main unit MPPT2 voltage
+          example: null
         batteryMppt2InCur:
-          type: number
+          type: ['number', 'null']
           description: Main unit MPPT2 current
+          example: null
         batteryMppt2InPower:
-          type: number
+          type: ['number', 'null']
           description: Main unit MPPT2 power
+          example: null
         battery1Mppt1InVol:
-          type: number
+          type: ['number', 'null']
           description: Battery 1 MPPT voltage
+          example: 32
         battery1Mppt1InCur:
-          type: number
+          type: ['number', 'null']
           description: Battery 1 MPPT current
+          example: 1.2
         battery1Mppt1InPower:
-          type: number
+          type: ['number', 'null']
           description: Battery 1 MPPT power
-        # Similar fields for battery2 and battery3
+          example: 38.4
+        battery2Mppt1InVol:
+          type: ['number', 'null']
+          description: Battery 2 MPPT voltage
+          example: 32
+        battery2Mppt1InCur:
+          type: ['number', 'null']
+          description: Battery 2 MPPT current
+          example: 4.0
+        battery2Mppt1InPower:
+          type: ['number', 'null']
+          description: Battery 2 MPPT power
+          example: 128.0
+        battery3Mppt1InVol:
+          type: ['number', 'null']
+          description: Battery 3 MPPT voltage
+          example: null
+        battery3Mppt1InCur:
+          type: ['number', 'null']
+          description: Battery 3 MPPT current
+          example: null
+        battery3Mppt1InPower:
+          type: ['number', 'null']
+          description: Battery 3 MPPT power
+          example: null
+        mpptCollectionTime:
+          type: ['integer', 'null']
+          description: MPPT collection timestamp (duplicate of mpptCollectTime)
+          example: 1757236235455
+        batteryLevel:
+          type: ['number', 'null']
+          description: Battery level percentage
+          example: 15.0
