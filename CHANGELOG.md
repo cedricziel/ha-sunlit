@@ -1,0 +1,47 @@
+# Changelog
+
+## [0.1.0](https://github.com/cedricziel/ha-sunlit/compare/v0.0.1...v0.1.0) (2025-09-07)
+
+
+### Features
+
+* add battery IO power statistics endpoint ([924db0a](https://github.com/cedricziel/ha-sunlit/commit/924db0ab94a31710b8703a4d8b4402b7c12eb63b))
+* add device details endpoint to API client ([f1761fe](https://github.com/cedricziel/ha-sunlit/commit/f1761fe4564e955a866f89731c18c0dfb98d810b))
+* add device list endpoint to API client ([120d2e3](https://github.com/cedricziel/ha-sunlit/commit/120d2e38b354389add8f97a3e22275619a756d62))
+* add device statistics endpoint to API client ([7303883](https://github.com/cedricziel/ha-sunlit/commit/73038831a341d4657741ed9f0c7c595858df91ec))
+* add grid export energy tracking sensors ([115c7e1](https://github.com/cedricziel/ha-sunlit/commit/115c7e10e77e421f150af540aa42b9e79ea301c7))
+* add multi-family support with hardcoded Sunlit API ([2cae349](https://github.com/cedricziel/ha-sunlit/commit/2cae349b538ef32a19b309ef3c2c482d1b1ab237))
+* add space SOC and strategy endpoints for battery management ([ca267ed](https://github.com/cedricziel/ha-sunlit/commit/ca267ed09d5930a72d5db76736cff9e24afef457))
+* add strategy history endpoint with limited backfill support ([da56a3a](https://github.com/cedricziel/ha-sunlit/commit/da56a3a623bd75b9a4990112d4521bbdb3fd0b6f))
+* add Sunlit REST integration for HomeAssistant ([34b7104](https://github.com/cedricziel/ha-sunlit/commit/34b7104922e6be9b395df5f7b5878c0067be48c2))
+* add support for unassigned devices without spaceId ([6961456](https://github.com/cedricziel/ha-sunlit/commit/69614560fb473bb4aceed45a433280e7c0bc74e3))
+* add virtual devices for battery modules ([aba78bf](https://github.com/cedricziel/ha-sunlit/commit/aba78bf9ad536409055772e69f119ed0c481457a))
+* enable Energy Dashboard integration for solar and grid monitoring ([bc4e2f9](https://github.com/cedricziel/ha-sunlit/commit/bc4e2f9a62f036d0e62cbe53d635ba75cd4eb7ff))
+* enhance device info with actual API response data ([ddb3aa5](https://github.com/cedricziel/ha-sunlit/commit/ddb3aa5531a62bef7b8b70e8d5658c89423c5a60))
+* fetch statistics for all online devices and add inverter total yield ([779de90](https://github.com/cedricziel/ha-sunlit/commit/779de90be18c7c9a328b649cd3c909ee6181ea4b))
+* implement consistent sensor naming with sunlit prefix and friendly names ([c03cc3c](https://github.com/cedricziel/ha-sunlit/commit/c03cc3cf2eef83e0172180abec0a4b5fd6252596))
+* implement email/password authentication ([8f12542](https://github.com/cedricziel/ha-sunlit/commit/8f12542d4fabd9ac8e3129adb5d1ff15984bbb4a))
+* improve device attributes and add battery capacity sensors ([75049cf](https://github.com/cedricziel/ha-sunlit/commit/75049cfc4b3aa62d87d18e98578cd1f649fa17ad))
+* integrate v1.5 space/index endpoint for efficient data fetching ([0b80b4e](https://github.com/cedricziel/ha-sunlit/commit/0b80b4e85e195ae14975db57a9289a68147c8a16))
+* restructure entities to use appropriate platform types ([0c95259](https://github.com/cedricziel/ha-sunlit/commit/0c952597102a2cd017e135d6914ec7828d54c76b))
+
+
+### Bug Fixes
+
+* battery_full sensor should not have battery device class ([35df805](https://github.com/cedricziel/ha-sunlit/commit/35df8052f1f19015b9d0ff020983d53ca3a79442))
+* correct device and state classes for sensors ([bbc2cc3](https://github.com/cedricziel/ha-sunlit/commit/bbc2cc31244252f328be079bc78064f152ffbbc3))
+* correct device class assignment for current_power sensor ([3ab4f4d](https://github.com/cedricziel/ha-sunlit/commit/3ab4f4d49d8bf4c3ca438bf133982c350c599aff))
+* correct device list API response structure ([4b3585c](https://github.com/cedricziel/ha-sunlit/commit/4b3585ce38e5ce9933d8a81622efa7de9f494cf0))
+* correct OpenAPI schema structure based on actual API responses ([9f59300](https://github.com/cedricziel/ha-sunlit/commit/9f5930072d27c3884af009a85141a0cab8c87d4f))
+* correct unit assignment for current_power sensor ([b5a9abc](https://github.com/cedricziel/ha-sunlit/commit/b5a9abc508fc117edba7ea72b67c606eae7194b3))
+* hassfest ([5ac615b](https://github.com/cedricziel/ha-sunlit/commit/5ac615b55a51d3905c60aeea7e01400d7e37f30f))
+* improve battery module sensor handling for incomplete data ([8c9032a](https://github.com/cedricziel/ha-sunlit/commit/8c9032a235f32394b8702177f965712e9e3aac3d))
+* improve sensor configuration and add icons ([89c4b75](https://github.com/cedricziel/ha-sunlit/commit/89c4b75256d2e9ded9177a895d1c65ab50d39a52))
+* resolve device ID type mismatch preventing device creation ([35dc521](https://github.com/cedricziel/ha-sunlit/commit/35dc521dc69d5379f5b26535ec4ec40fa0223abf))
+* revert device_type parameter to "ALL" to fix API error ([9c49326](https://github.com/cedricziel/ha-sunlit/commit/9c493263823572d1a3290846c4842f435a26a518))
+* revert select entities back to text sensors ([66974e4](https://github.com/cedricziel/ha-sunlit/commit/66974e40917df38dd750674576700d618ce6b525))
+* update coordinator and implement device mapping ([561f392](https://github.com/cedricziel/ha-sunlit/commit/561f3926a2d1ff46fd1123f485fc1da21d49f5db))
+* update device statistics response and migrate to OpenAPI 3.1.0 nullable syntax ([a2529ca](https://github.com/cedricziel/ha-sunlit/commit/a2529ca91b6d99f3d3e9ec32f0a13c80a1d3f619))
+* use friendly names for sensor entity names ([2f0d4c8](https://github.com/cedricziel/ha-sunlit/commit/2f0d4c8c7cbd4f1c6da30beb41b48f99a7d37aa1))
+* use line-marker ([8f559e5](https://github.com/cedricziel/ha-sunlit/commit/8f559e50c76d52f93c55d15cccd1e0244cfd0562))
+* use line-marker ([b75eb0d](https://github.com/cedricziel/ha-sunlit/commit/b75eb0d86fdfaa027c4f3c5a4038955a6216745c))
