@@ -49,8 +49,17 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
             f"sunlit_{family_id}_{normalized_type}_{device_id}_{description.key}"
         )
 
+        # Map device types to friendly names for sensor names
+        friendly_names = {
+            DEVICE_TYPE_BATTERY: "BK215",
+            DEVICE_TYPE_INVERTER: "Microinverter",
+            DEVICE_TYPE_METER: "Smart Meter",
+        }
+        
+        friendly_name = friendly_names.get(device_type, device_type)
+
         # Human-readable name
-        self._attr_name = f"{device_type} {device_id} {description.name}"
+        self._attr_name = f"{friendly_name} {device_id} {description.name}"
 
     @property
     def is_on(self) -> bool | None:
