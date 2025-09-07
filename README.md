@@ -3,7 +3,7 @@
 > ⚠️ **EXPERIMENTAL INTEGRATION - USE AT YOUR OWN RISK**
 >
 > This is an **unofficial** custom integration for HomeAssistant to monitor Sunlit Solar systems.
-> This integration is not affiliated with, endorsed by, or supported by Sunlit Solar GmbH.
+> This integration is not affiliated with, endorsed by, or supported by Sunlit.
 >
 > **No warranty or support is provided. Use of this integration is entirely at your own risk.**
 
@@ -110,11 +110,33 @@ The integration will create devices and sensors automatically based on your Sunl
 
 #### Battery (ENERGY_STORAGE_BATTERY)
 
-| Sensor               | Description               | Unit |
-| -------------------- | ------------------------- | ---- |
-| `battery_level`      | Current state of charge   | %    |
-| `input_power_total`  | Current charging power    | W    |
-| `output_power_total` | Current discharging power | W    |
+##### Main Unit Sensors
+
+| Sensor               | Description                    | Unit    |
+| -------------------- | ------------------------------ | ------- |
+| `battery_level`      | Current state of charge        | %       |
+| `batterySoc`         | System battery SOC             | %       |
+| `input_power_total`  | Current charging power         | W       |
+| `output_power_total` | Current discharging power      | W       |
+| `chargeRemaining`    | Time until fully charged       | minutes |
+| `dischargeRemaining` | Time until fully discharged    | minutes |
+| `batteryMppt1InVol`  | Main unit MPPT1 voltage        | V       |
+| `batteryMppt1InCur`  | Main unit MPPT1 current        | A       |
+| `batteryMppt1InPower`| Main unit MPPT1 power          | W       |
+| `batteryMppt2InVol`  | Main unit MPPT2 voltage        | V       |
+| `batteryMppt2InCur`  | Main unit MPPT2 current        | A       |
+| `batteryMppt2InPower`| Main unit MPPT2 power          | W       |
+
+##### Battery Module Sensors (Virtual Devices)
+
+For modular battery systems, each additional battery module (1-3) appears as a separate virtual device with:
+
+| Sensor        | Description           | Unit |
+| ------------- | --------------------- | ---- |
+| `Soc`         | Module state of charge| %    |
+| `Mppt1InVol`  | Module MPPT voltage   | V    |
+| `Mppt1InCur`  | Module MPPT current   | A    |
+| `Mppt1InPower`| Module MPPT power     | W    |
 
 ### Binary Sensors
 
@@ -158,6 +180,50 @@ Since the integration provides power sensors but not energy sensors for batterie
    - Time unit: Hours
 3. Repeat for output power
 4. Add these helpers to Energy Dashboard under **Battery Storage**
+
+## Entity Design
+
+### Entity ID Naming Convention
+
+All entities follow a consistent naming pattern to ensure uniqueness across multiple families and devices:
+
+#### Family/Space Level Entities
+Pattern: `sensor.sunlit_{family_id}_{sensor_key}`
+Example: `sensor.sunlit_12345_battery_level`
+
+#### Device Level Entities
+Pattern: `sensor.sunlit_{family_id}_{device_type}_{device_id}_{sensor_key}`
+Example: `sensor.sunlit_12345_battery_456_input_power_total`
+
+#### Virtual Device Entities (Battery Modules)
+Pattern: `sensor.sunlit_{family_id}_battery_{device_id}_module{N}_{sensor_key}`
+Example: `sensor.sunlit_12345_battery_456_module1_soc`
+
+### Device Hierarchy
+
+The integration creates a hierarchical device structure:
+
+1. **Family Hub** - Virtual device representing the entire solar system
+   - Contains aggregate sensors and system-wide metrics
+   - All physical devices are linked to this hub
+
+2. **Physical Devices** - Actual hardware components
+   - Smart meters (SHELLY_3EM_METER)
+   - Inverters (YUNENG_MICRO_INVERTER)
+   - Battery units (ENERGY_STORAGE_BATTERY)
+
+3. **Virtual Devices** - Logical representations for better organization
+   - Battery modules (1-3) for modular battery systems
+   - Each module appears as a separate device linked to the main battery unit
+   - Prevents sensor overload on single devices (30+ sensors)
+
+### Modular Battery Architecture
+
+For battery systems with expansion modules:
+- **Main Unit (BK215)**: Contains system-wide sensors and dual MPPT inputs
+- **Module 1-3**: Additional battery packs with individual MPPT solar inputs
+- Each module tracks its own SOC and solar production independently
+- Virtual devices ensure clean organization in HomeAssistant UI
 
 ## Known Limitations
 
