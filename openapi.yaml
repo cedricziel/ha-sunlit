@@ -1,0 +1,638 @@
+openapi: 3.1.0
+info:
+  title: Sunlit Solar API
+  description: |
+    Unofficial OpenAPI specification for the Sunlit Solar API.
+    
+    This API is used to retrieve data from Sunlit Solar installations including
+    solar panels, inverters, batteries, and smart meters.
+    
+    **Note:** This is a reverse-engineered specification based on observed API behavior.
+    The actual API is proprietary to Sunlit Solar GmbH.
+  version: 1.0.0
+  contact:
+    name: Home Assistant Integration
+    url: https://github.com/cedricziel/ha-sunlit
+
+servers:
+  - url: https://api.sunlitsolar.de/rest
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Family
+    description: Family/Space management operations
+  - name: Device
+    description: Device information and statistics
+  - name: Space
+    description: Space-level operations (SOC, strategies)
+
+paths:
+  /family/list:
+    get:
+      tags:
+        - Family
+      summary: List all families/spaces
+      description: Retrieve a list of all families/spaces associated with the account
+      operationId: getFamilyList
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1.2/device/list:
+    post:
+      tags:
+        - Device
+      summary: List devices in a family
+      description: Retrieve all devices belonging to a specific family
+      operationId: getDeviceList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - familyId
+                - deviceType
+              properties:
+                familyId:
+                  type: integer
+                  description: The family ID
+                  example: 12345
+                deviceType:
+                  type: string
+                  description: Device type filter (use "" for all types)
+                  example: ""
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1.1/statistics/static/device:
+    post:
+      tags:
+        - Device
+      summary: Get device statistics
+      description: Retrieve detailed statistics for a specific device
+      operationId: getDeviceStatistics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - deviceId
+              properties:
+                deviceId:
+                  type: integer
+                  description: The device ID
+                  example: 67890
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceStatisticsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1.3/statistics/instantPower/batteryIO:
+    post:
+      tags:
+        - Device
+      summary: Get battery I/O power statistics
+      description: Retrieve input/output power statistics for a battery device
+      operationId: getBatteryIOPower
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - deviceId
+                - year
+                - month
+                - day
+              properties:
+                deviceId:
+                  type: integer
+                  description: The battery device ID
+                  example: 67890
+                year:
+                  type: string
+                  description: Year (YYYY format)
+                  example: "2024"
+                month:
+                  type: string
+                  description: Month (MM format)
+                  example: "01"
+                day:
+                  type: string
+                  description: Day (DD format)
+                  example: "15"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatteryIOPowerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1.1/space/soc:
+    post:
+      tags:
+        - Space
+      summary: Get space State of Charge
+      description: Retrieve State of Charge information for a space
+      operationId: getSpaceSOC
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  description: The space/family ID
+                  example: 12345
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceSOCResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1.1/space/currentStrategy:
+    post:
+      tags:
+        - Space
+      summary: Get current charging strategy
+      description: Retrieve the current battery charging strategy for a space
+      operationId: getCurrentStrategy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - familyId
+              properties:
+                familyId:
+                  type: integer
+                  description: The family ID
+                  example: 12345
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentStrategyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1.1/space/strategyHistory:
+    post:
+      tags:
+        - Space
+      summary: Get strategy change history
+      description: Retrieve the history of battery charging strategy changes
+      operationId: getStrategyHistory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - familyId
+              properties:
+                familyId:
+                  type: integer
+                  description: The family ID
+                  example: 12345
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StrategyHistoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /device/{deviceId}:
+    get:
+      tags:
+        - Device
+      summary: Get device details
+      description: Retrieve detailed information about a specific device (currently unused in integration)
+      operationId: getDeviceDetails
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          description: The device ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceDetailsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Device not found
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              result:
+                type: integer
+                example: 0
+              error:
+                type: string
+                example: "Unauthorized"
+
+  schemas:
+    ApiResponse:
+      type: object
+      description: Common API response wrapper
+      properties:
+        code:
+          type: integer
+          description: Response code (0 = success)
+          example: 0
+        responseTime:
+          type: integer
+          description: Server response timestamp in milliseconds
+          example: 1757165913195
+        message:
+          type: object
+          description: Localized messages
+          additionalProperties:
+            type: string
+          example:
+            DE: "Ok"
+
+    FamilyListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/Family'
+
+    DeviceListResponse:
+      type: object
+      description: Device list response (different format - no ApiResponse wrapper)
+      properties:
+        result:
+          type: integer
+          description: Result code (1 = success)
+          example: 1
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+
+    DeviceStatisticsResponse:
+      type: object
+      description: Device statistics response (different format - no ApiResponse wrapper)
+      properties:
+        result:
+          type: integer
+          description: Result code (1 = success)
+          example: 1
+        data:
+          $ref: '#/components/schemas/BatteryStatistics'
+
+    BatteryIOPowerResponse:
+      type: object
+      description: Battery I/O power response (different format - no ApiResponse wrapper)
+      properties:
+        result:
+          type: integer
+          description: Result code (1 = success)
+          example: 1
+        inputPower:
+          type: array
+          items:
+            type: number
+          description: Array of input power values (288 values for 5-minute intervals over 24 hours)
+        outputPower:
+          type: array
+          items:
+            type: number
+          description: Array of output power values (288 values for 5-minute intervals over 24 hours)
+
+    SpaceSOCResponse:
+      type: object
+      description: Space SOC response (different format - no ApiResponse wrapper)
+      properties:
+        result:
+          type: integer
+          description: Result code (1 = success)
+          example: 1
+        batterySoc:
+          type: number
+          description: Current battery SOC percentage
+          example: 85.5
+        hwSocMin:
+          type: number
+          description: Hardware minimum SOC limit
+          example: 10
+        hwSocMax:
+          type: number
+          description: Hardware maximum SOC limit
+          example: 95
+
+    CurrentStrategyResponse:
+      type: object
+      description: Current strategy response (different format - no ApiResponse wrapper)
+      properties:
+        result:
+          type: integer
+          description: Result code (1 = success)
+          example: 1
+        strategy:
+          type: string
+          description: Current strategy name
+          example: "Time of Use"
+        smartStrategyMode:
+          type: string
+          description: Smart strategy mode
+          example: "AUTO"
+        socMin:
+          type: number
+          description: Strategy minimum SOC
+          example: 20
+        socMax:
+          type: number
+          description: Strategy maximum SOC
+          example: 90
+
+    StrategyHistoryResponse:
+      type: object
+      description: Strategy history response (different format - no ApiResponse wrapper)
+      properties:
+        result:
+          type: integer
+          description: Result code (1 = success)
+          example: 1
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/StrategyHistoryEntry'
+
+    DeviceDetailsResponse:
+      type: object
+      description: Device details response (different format - no ApiResponse wrapper)
+      properties:
+        result:
+          type: integer
+          description: Result code (1 = success)
+          example: 1
+        device:
+          $ref: '#/components/schemas/Device'
+
+    Family:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique family identifier
+          example: 34038
+        name:
+          type: string
+          description: Name of the family/space
+          example: "Garage"
+        address:
+          type: string
+          description: Location address
+          example: "Halver"
+        deviceCount:
+          type: integer
+          description: Number of devices in this family
+          example: 4
+        countryCode:
+          type: string
+          description: ISO country code
+          example: "DE"
+        price:
+          type: object
+          description: Electricity pricing information
+          properties:
+            electricPrice:
+              type: number
+              description: Price per kWh
+              example: 0.3
+            startTimestamp:
+              type: integer
+              description: Price validity start timestamp in milliseconds
+              example: 1743292800000
+            currency:
+              type: string
+              description: Currency code
+              example: "EUR"
+        rabotOnboarding:
+          type: string
+          nullable: true
+          description: Rabot energy trading platform onboarding status
+          example: null
+        rabotCustomerId:
+          type: string
+          nullable: true
+          description: Rabot customer identifier
+          example: null
+
+    Device:
+      type: object
+      properties:
+        deviceId:
+          type: integer
+          description: Unique device identifier
+          example: 67890
+        deviceSn:
+          type: string
+          description: Device serial number
+          example: "SN123456789"
+        deviceType:
+          type: string
+          description: Type of device
+          enum:
+            - SHELLY_3EM_METER
+            - YUNENG_MICRO_INVERTER
+            - ENERGY_STORAGE_BATTERY
+          example: "ENERGY_STORAGE_BATTERY"
+        status:
+          type: string
+          description: Device status
+          enum:
+            - Online
+            - Offline
+          example: "Online"
+        fault:
+          type: boolean
+          description: Whether device has a fault
+          example: false
+        off:
+          type: boolean
+          description: Whether device is off
+          example: false
+        firmwareVersion:
+          type: string
+          description: Device firmware version
+          example: "1.2.3"
+        hwVersion:
+          type: string
+          description: Device hardware version
+          example: "A1"
+        systemMultiStatus:
+          type: string
+          description: System status
+        supportReboot:
+          type: boolean
+          description: Whether device supports remote reboot
+        ssid:
+          type: string
+          description: WiFi SSID if applicable
+        manufacturer:
+          type: string
+          description: Device manufacturer
+        batteryLevel:
+          type: number
+          description: Battery level percentage (for battery devices)
+          example: 85
+        inputPowerTotal:
+          type: number
+          description: Total input power in watts
+          example: 1500
+        outputPowerTotal:
+          type: number
+          description: Total output power in watts
+          example: 500
+        totalAcPower:
+          type: number
+          description: Total AC power in watts (for meters)
+          example: 2000
+        currentPower:
+          type: number
+          description: Current power in watts (for inverters)
+          example: 3000
+
+    StrategyHistoryEntry:
+      type: object
+      properties:
+        modifyDate:
+          type: integer
+          description: Modification timestamp (milliseconds)
+          example: 1609459200000
+        strategy:
+          type: string
+          description: Strategy name
+          example: "Time of Use"
+        status:
+          type: string
+          description: Strategy status
+          example: "SUCCESS"
+        smartStrategyMode:
+          type: string
+          description: Smart strategy mode
+          example: "AUTO"
+        socMin:
+          type: number
+          description: Minimum SOC setting
+          example: 20
+        socMax:
+          type: number
+          description: Maximum SOC setting
+          example: 90
+
+    BatteryStatistics:
+      type: object
+      description: Detailed battery statistics (from device statistics endpoint)
+      properties:
+        batterySoc:
+          type: number
+          description: System battery SOC
+        battery1Soc:
+          type: number
+          description: Battery module 1 SOC
+        battery2Soc:
+          type: number
+          description: Battery module 2 SOC
+        battery3Soc:
+          type: number
+          description: Battery module 3 SOC
+        batteryMppt1InVol:
+          type: number
+          description: Main unit MPPT1 voltage
+        batteryMppt1InCur:
+          type: number
+          description: Main unit MPPT1 current
+        batteryMppt1InPower:
+          type: number
+          description: Main unit MPPT1 power
+        batteryMppt2InVol:
+          type: number
+          description: Main unit MPPT2 voltage
+        batteryMppt2InCur:
+          type: number
+          description: Main unit MPPT2 current
+        batteryMppt2InPower:
+          type: number
+          description: Main unit MPPT2 power
+        battery1Mppt1InVol:
+          type: number
+          description: Battery 1 MPPT voltage
+        battery1Mppt1InCur:
+          type: number
+          description: Battery 1 MPPT current
+        battery1Mppt1InPower:
+          type: number
+          description: Battery 1 MPPT power
+        # Similar fields for battery2 and battery3
