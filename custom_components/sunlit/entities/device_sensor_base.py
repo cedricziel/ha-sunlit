@@ -5,7 +5,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.components.sensor import (SensorEntity,
+                                             SensorEntityDescription)
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -16,7 +17,7 @@ from .base import normalize_device_type
 
 class SunlitDeviceSensorBase(CoordinatorEntity, SensorEntity, ABC):
     """Base representation of a Sunlit device sensor."""
-    
+
     _attr_has_entity_name = True
 
     def __init__(
@@ -41,9 +42,7 @@ class SunlitDeviceSensorBase(CoordinatorEntity, SensorEntity, ABC):
         # Include family_name, family_id and normalized device type in unique_id
         device_type = device_info_data.get("deviceType", "Device")
         normalized_type = normalize_device_type(device_type)
-        self._attr_unique_id = (
-            f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{normalized_type}_{device_id}_{description.key}"
-        )
+        self._attr_unique_id = f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{normalized_type}_{device_id}_{description.key}"
 
         # Short friendly name for UI (used with has_entity_name)
         self._attr_name = description.name
@@ -55,7 +54,7 @@ class SunlitDeviceSensorBase(CoordinatorEntity, SensorEntity, ABC):
         value = self._get_native_value()
         if value is not None:
             return value
-            
+
         # Default behavior: get from coordinator data
         if (
             self.coordinator.data
@@ -92,32 +91,32 @@ class SunlitDeviceSensorBase(CoordinatorEntity, SensorEntity, ABC):
         """Get common device info fields."""
         device_sn = self._device_info_data.get("deviceSn", self._device_id)
         device_type = self._device_info_data.get("deviceType", "Unknown")
-        
+
         # Map device types to friendly names
         friendly_names = {
             "ENERGY_STORAGE_BATTERY": "BK215",
             "YUNENG_MICRO_INVERTER": "Microinverter",
             "SHELLY_3EM_METER": "Smart Meter",
         }
-        
+
         friendly_name = friendly_names.get(device_type, device_type)
-        
+
         base_info = {
             "identifiers": {(DOMAIN, device_sn)},
             "name": f"{friendly_name} ({self._family_name}, {self._device_id})",
             "via_device": (DOMAIN, f"family_{self._family_id}"),
         }
-        
+
         # Add optional fields if available
         if device_sn != self._device_id:
             base_info["serial_number"] = device_sn
-            
+
         if "firmwareVersion" in self._device_info_data:
             base_info["sw_version"] = self._device_info_data["firmwareVersion"]
-            
+
         if "hwVersion" in self._device_info_data:
             base_info["hw_version"] = self._device_info_data["hwVersion"]
-            
+
         return base_info
 
     @property

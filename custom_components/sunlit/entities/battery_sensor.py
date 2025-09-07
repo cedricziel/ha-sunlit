@@ -23,10 +23,10 @@ class SunlitBatterySensor(SunlitDeviceSensorBase):
     def device_info(self) -> DeviceInfo:
         """Return device info for this battery device."""
         base_info = self._get_base_device_info()
-        
+
         # Use manufacturer from device data if available
         manufacturer = self._device_info_data.get("manufacturer", "Highpower")
-        
+
         return DeviceInfo(
             **base_info,
             manufacturer=manufacturer,

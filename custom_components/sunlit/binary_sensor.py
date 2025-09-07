@@ -5,20 +5,16 @@ from __future__ import annotations
 import logging
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorEntityDescription,
-    BinarySensorDeviceClass,
-)
+    BinarySensorDeviceClass, BinarySensorEntityDescription)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .entities.family_binary_sensor import SunlitFamilyBinarySensor
 from .entities.device_binary_sensor import SunlitDeviceBinarySensor
+from .entities.family_binary_sensor import SunlitFamilyBinarySensor
 
 _LOGGER = logging.getLogger(__name__)
-
-
 
 
 # Define which fields should be binary sensors
@@ -140,4 +136,3 @@ async def async_setup_entry(
                                 sensors.append(sensor)
 
     async_add_entities(sensors, True)
-

@@ -1,14 +1,9 @@
 """Helper functions for Sunlit sensors."""
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from homeassistant.const import (
-    UnitOfEnergy,
-    UnitOfPower,
-    UnitOfElectricCurrent,
-    UnitOfElectricPotential,
-    UnitOfTime,
-    PERCENTAGE,
-)
+from homeassistant.const import (PERCENTAGE, UnitOfElectricCurrent,
+                                 UnitOfElectricPotential, UnitOfEnergy,
+                                 UnitOfPower, UnitOfTime)
 
 
 def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
@@ -56,7 +51,9 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     elif "power" in key.lower():
         return SensorDeviceClass.POWER
     # MPPT current sensors - more specific check to avoid catching "current_power"
-    elif "incur" in key.lower() or (key.lower().endswith("_current") or key.lower() == "current"):
+    elif "incur" in key.lower() or (
+        key.lower().endswith("_current") or key.lower() == "current"
+    ):
         return SensorDeviceClass.CURRENT
     elif "energy" in key.lower():
         return SensorDeviceClass.ENERGY
@@ -153,12 +150,21 @@ def get_unit_for_sensor(key: str) -> str | None:
     # Ensure rated_power and max_output_power get W units
     # Check power BEFORE current to catch "current_power" correctly
     elif (
-        key in ["rated_power", "max_output_power", "home_power", "inverter_current_power", "current_power"]
+        key
+        in [
+            "rated_power",
+            "max_output_power",
+            "home_power",
+            "inverter_current_power",
+            "current_power",
+        ]
         or "power" in key.lower()
     ):
         return UnitOfPower.WATT
     # MPPT current sensors - more specific check to avoid catching "current_power"
-    elif "incur" in key.lower() or (key.lower().endswith("_current") or key.lower() == "current"):
+    elif "incur" in key.lower() or (
+        key.lower().endswith("_current") or key.lower() == "current"
+    ):
         return UnitOfElectricCurrent.AMPERE
     elif "energy" in key.lower():
         return UnitOfEnergy.KILO_WATT_HOUR

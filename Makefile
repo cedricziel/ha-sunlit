@@ -1,0 +1,42 @@
+.PHONY: help format lint check setup clean
+
+help: ## Show this help message
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
+
+format: ## Format code with black, isort, and ruff
+	@echo "Formatting with black..."
+	@black custom_components/sunlit/
+	@echo "Sorting imports with isort..."
+	@isort custom_components/sunlit/
+	@echo "Fixing with ruff..."
+	@ruff check --fix custom_components/sunlit/
+	@echo "✓ Code formatted successfully"
+
+lint: ## Run all linters without making changes
+	@echo "Running ruff check..."
+	@ruff check custom_components/sunlit/
+	@echo "Running black check..."
+	@black --check custom_components/sunlit/
+	@echo "Running isort check..."
+	@isort --check-only custom_components/sunlit/
+	@echo "✓ All checks passed"
+
+check: lint ## Alias for lint
+
+setup: ## Install development dependencies
+	@echo "Installing dependencies..."
+	@python3 -m pip install --requirement requirements.txt
+	@echo "✓ Dependencies installed"
+
+clean: ## Clean up cache and temporary files
+	@echo "Cleaning up..."
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" -delete
+	@find . -type f -name "*.pyo" -delete
+	@find . -type f -name ".coverage" -delete
+	@rm -rf .ruff_cache
+	@rm -rf .pytest_cache
+	@echo "✓ Cleaned up cache files"

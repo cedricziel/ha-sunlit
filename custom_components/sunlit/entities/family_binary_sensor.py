@@ -5,9 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
-    BinarySensorEntityDescription,
-)
+    BinarySensorEntity, BinarySensorEntityDescription)
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -17,7 +15,7 @@ from ..const import DOMAIN
 
 class SunlitFamilyBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Representation of a Sunlit family binary sensor."""
-    
+
     _attr_has_entity_name = True
 
     def __init__(

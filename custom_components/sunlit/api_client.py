@@ -8,19 +8,10 @@ from typing import Any
 import aiohttp
 import async_timeout
 
-from .const import (
-    API_BASE_URL,
-    API_USER_LOGIN,
-    API_FAMILY_LIST,
-    API_DEVICE_DETAILS,
-    API_DEVICE_STATISTICS,
-    API_BATTERY_IO_POWER,
-    API_DEVICE_LIST,
-    API_SPACE_SOC,
-    API_SPACE_CURRENT_STRATEGY,
-    API_SPACE_STRATEGY_HISTORY,
-    API_SPACE_INDEX,
-)
+from .const import (API_BASE_URL, API_BATTERY_IO_POWER, API_DEVICE_DETAILS,
+                    API_DEVICE_LIST, API_DEVICE_STATISTICS, API_FAMILY_LIST,
+                    API_SPACE_CURRENT_STRATEGY, API_SPACE_INDEX, API_SPACE_SOC,
+                    API_SPACE_STRATEGY_HISTORY, API_USER_LOGIN)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,21 +54,21 @@ class SunlitApiClient:
 
     def _build_headers(self) -> dict[str, str]:
         """Build request headers with authentication."""
-        from .const import INTEGRATION_NAME, VERSION, GITHUB_URL
-        
+        from .const import GITHUB_URL, INTEGRATION_NAME, VERSION
+
         # Build User-Agent string
         user_agent = f"{INTEGRATION_NAME}/{VERSION} (+{GITHUB_URL})"
         if self._ha_version != "unknown":
             user_agent += f" HomeAssistant/{self._ha_version}"
-        
+
         headers = {
             "Content-Type": "application/json",
             "User-Agent": user_agent,
         }
-        
+
         if self._access_token:
             headers["Authorization"] = f"Bearer {self._access_token}"
-        
+
         return headers
 
     async def _make_request(
@@ -139,14 +130,14 @@ class SunlitApiClient:
 
     async def login(self, email: str, password: str) -> dict[str, Any]:
         """Login with email and password to get access token.
-        
+
         Args:
             email: User email address
             password: User password
-            
+
         Returns:
             Login response containing access_token
-            
+
         Raises:
             SunlitAuthError: If login fails
         """
@@ -154,7 +145,7 @@ class SunlitApiClient:
             "account": email,
             "password": password,
         }
-        
+
         try:
             _LOGGER.debug("Attempting login for user: %s", email)
             response = await self._make_request(
@@ -162,7 +153,7 @@ class SunlitApiClient:
                 API_USER_LOGIN,
                 json=payload,
             )
-            
+
             # Extract token from response
             if response and "content" in response:
                 content = response["content"]
@@ -171,10 +162,10 @@ class SunlitApiClient:
                     self._access_token = content["access_token"]
                     _LOGGER.info("Login successful for user: %s", email)
                     return content
-            
+
             _LOGGER.error("Invalid login response structure: %s", response)
             raise SunlitAuthError("Invalid login response structure")
-            
+
         except SunlitApiError:
             raise
         except Exception as err:
@@ -210,10 +201,10 @@ class SunlitApiClient:
 
     async def fetch_device_statistics(self, device_id: str | int) -> dict[str, Any]:
         """Fetch detailed statistics for a specific device.
-        
+
         Args:
             device_id: The device ID to fetch statistics for
-            
+
         Returns:
             Dictionary containing detailed device statistics including:
             - Basic info: deviceId, sn, status, deviceType
@@ -221,7 +212,7 @@ class SunlitApiClient:
             - Power data: inputPowerTotal, outputPowerTotal
             - MPPT data: batteryMppt1Data, batteryMppt2Data, battery1MpptData, etc.
             - Timing data: chargeRemaining, dischargeRemaining
-            
+
         Raises:
             SunlitAuthError: Authentication failed
             SunlitConnectionError: Connection failed
@@ -229,11 +220,11 @@ class SunlitApiClient:
         """
         try:
             payload = {"deviceId": int(device_id)}
-            
+
             response = await self._make_request(
                 "POST", API_DEVICE_STATISTICS, json=payload
             )
-            
+
             # Extract content from response
             if "content" in response:
                 data = response["content"]
@@ -245,11 +236,13 @@ class SunlitApiClient:
                     data.get("batterySoc", "N/A"),
                 )
                 return data
-                
+
             return response
-            
+
         except SunlitApiError as err:
-            _LOGGER.error("Failed to fetch statistics for device %s: %s", device_id, err)
+            _LOGGER.error(
+                "Failed to fetch statistics for device %s: %s", device_id, err
+            )
             raise
 
     async def fetch_battery_io_power(
@@ -544,9 +537,7 @@ class SunlitApiClient:
             return {}
 
         except SunlitApiError as err:
-            _LOGGER.error(
-                "Failed to fetch strategy for family %s: %s", family_id, err
-            )
+            _LOGGER.error("Failed to fetch strategy for family %s: %s", family_id, err)
             raise
 
     async def fetch_space_strategy_history(
@@ -605,10 +596,10 @@ class SunlitApiClient:
 
     async def get_device_list(self) -> list[dict[str, Any]]:
         """Fetch all devices without filtering by space.
-        
+
         Returns:
             List of all devices in the account
-        
+
         Raises:
             SunlitAuthError: Authentication failed
             SunlitConnectionError: Connection failed
@@ -616,19 +607,19 @@ class SunlitApiClient:
         """
         try:
             response = await self._make_request("POST", API_DEVICE_LIST)
-            
+
             # Extract devices from paginated response
             if "content" in response and "content" in response["content"]:
                 devices = response["content"]["content"]
                 _LOGGER.debug("Fetched %d total devices", len(devices))
                 return devices
-            
+
             return []
-            
+
         except SunlitApiError as err:
             _LOGGER.error("Failed to fetch all devices: %s", err)
             raise
-    
+
     async def fetch_space_index(self, space_id: str | int) -> dict[str, Any]:
         """Fetch comprehensive dashboard data for a space.
 
@@ -670,9 +661,7 @@ class SunlitApiClient:
             return {}
 
         except SunlitApiError as err:
-            _LOGGER.error(
-                "Failed to fetch space index for space %s: %s", space_id, err
-            )
+            _LOGGER.error("Failed to fetch space index for space %s: %s", space_id, err)
             raise
 
     async def test_connection(self) -> bool:

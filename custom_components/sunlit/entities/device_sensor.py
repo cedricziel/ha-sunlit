@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.components.sensor import (SensorEntity,
+                                             SensorEntityDescription)
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .. import SunlitDataUpdateCoordinator
-from ..const import DOMAIN, DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER, DEVICE_TYPE_METER
+from ..const import (DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER,
+                     DEVICE_TYPE_METER, DOMAIN)
 from .base import normalize_device_type
 
 
@@ -54,7 +56,7 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
             if device_type == DEVICE_TYPE_BATTERY:
                 return 2.15  # kWh nominal capacity for BK215
             return None
-            
+
         if (
             self.coordinator.data
             and "devices" in self.coordinator.data
@@ -85,7 +87,7 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
         # Use manufacturer from device data if available, otherwise map by type
         manufacturer = self._device_info_data.get("manufacturer")
         model_name = device_type
-        
+
         if not manufacturer:
             # Fallback mapping if manufacturer not provided
             if device_type == DEVICE_TYPE_METER:

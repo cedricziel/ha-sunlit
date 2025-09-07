@@ -5,20 +5,19 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
-    BinarySensorEntityDescription,
-)
+    BinarySensorEntity, BinarySensorEntityDescription)
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .. import SunlitDataUpdateCoordinator
-from ..const import DOMAIN, DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER, DEVICE_TYPE_METER
+from ..const import (DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER,
+                     DEVICE_TYPE_METER, DOMAIN)
 from .base import normalize_device_type
 
 
 class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Representation of a Sunlit device binary sensor."""
-    
+
     _attr_has_entity_name = True
 
     def __init__(
@@ -47,9 +46,7 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
         # Include family_name, family_id and normalized device type in unique_id
         device_type = device_info_data.get("deviceType", "Device")
         normalized_type = normalize_device_type(device_type)
-        self._attr_unique_id = (
-            f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{normalized_type}_{device_id}_{description.key}"
-        )
+        self._attr_unique_id = f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{normalized_type}_{device_id}_{description.key}"
 
         # Short friendly name for UI (used with has_entity_name)
         self._attr_name = description.name
@@ -93,12 +90,12 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
             DEVICE_TYPE_INVERTER: "Microinverter",
             DEVICE_TYPE_METER: "Smart Meter",
         }
-        
+
         friendly_name = friendly_names.get(device_type, device_type)
-        
+
         # Use manufacturer from device data if available, otherwise map by type
         manufacturer = self._device_info_data.get("manufacturer")
-        
+
         if not manufacturer:
             # Fallback mapping if manufacturer not provided
             if device_type == DEVICE_TYPE_METER:
@@ -116,7 +113,7 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
             DEVICE_TYPE_INVERTER: "Microinverter",
             DEVICE_TYPE_METER: "Smart Meter",
         }
-        
+
         model_name = model_map.get(device_type, device_type)
 
         device_info = DeviceInfo(

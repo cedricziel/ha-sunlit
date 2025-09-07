@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
 from datetime import datetime, timezone
+from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.components.sensor import (SensorEntity,
+                                             SensorEntityDescription)
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -15,7 +16,7 @@ from ..const import DOMAIN
 
 class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sunlit family aggregate sensor."""
-    
+
     _attr_has_entity_name = True
 
     def __init__(

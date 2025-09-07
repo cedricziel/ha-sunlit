@@ -64,7 +64,6 @@ BATTERY_SENSORS = {
     "input_power_total": "Total Input Power",
     "output_power_total": "Total Output Power",
     "battery_capacity": "Nominal Capacity",  # Static 2.15 kWh per unit
-
     # Main unit MPPT sensors (head unit's solar inputs)
     "batteryMppt1InVol": "MPPT1 Voltage",
     "batteryMppt1InCur": "MPPT1 Current",

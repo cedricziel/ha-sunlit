@@ -7,24 +7,14 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api_client import (
-    SunlitApiClient,
-    SunlitAuthError,
-    SunlitConnectionError,
-)
-from .const import (
-    DOMAIN,
-    CONF_EMAIL,
-    CONF_PASSWORD,
-    CONF_ACCESS_TOKEN,
-    CONF_FAMILIES,
-)
+from .api_client import SunlitApiClient, SunlitAuthError, SunlitConnectionError
+from .const import (CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_FAMILIES,
+                    CONF_PASSWORD, DOMAIN)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,22 +40,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self.email = user_input[CONF_EMAIL]
             password = user_input[CONF_PASSWORD]
-            
+
             try:
                 # Login and fetch families
                 session = async_get_clientsession(self.hass)
                 client = SunlitApiClient(session)
-                
+
                 # Login to get access token
                 login_response = await client.login(self.email, password)
                 self.access_token = login_response.get("access_token")
-                
+
                 if not self.access_token:
                     errors["base"] = "invalid_auth"
                 else:
                     # Fetch families with the authenticated client
                     self.available_families = await client.fetch_families()
-                    
+
                     if not self.available_families:
                         errors["base"] = "no_families"
                     else:
@@ -74,10 +64,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             hashlib.md5(self.email.encode()).hexdigest()[:8]
                         )
                         self._abort_if_unique_id_configured()
-                        
+
                         # Move to family selection
                         return await self.async_step_select_families()
-                    
+
             except SunlitConnectionError:
                 errors["base"] = "cannot_connect"
             except SunlitAuthError:
@@ -94,10 +84,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         return self.async_show_form(
-            step_id="user", 
-            data_schema=schema, 
+            step_id="user",
+            data_schema=schema,
             errors=errors,
-            description_placeholders={"api_url": "https://api.sunlitsolar.de"}
+            description_placeholders={"api_url": "https://api.sunlitsolar.de"},
         )
 
     async def async_step_select_families(
@@ -108,7 +98,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             selected_family_ids = user_input["families"]
-            
+
             if not selected_family_ids:
                 errors["base"] = "no_selection"
             else:
@@ -118,10 +108,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # Find family details from available families
                     family_data = next(
                         (
-                            f for f in self.available_families
+                            f
+                            for f in self.available_families
                             if str(f["id"]) == family_id
                         ),
-                        None
+                        None,
                     )
                     if family_data:
                         self.families[family_id] = {
@@ -130,11 +121,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             "address": family_data.get("address", ""),
                             "device_count": family_data.get("deviceCount", 0),
                         }
-                
+
                 # Create config entry with selected families
                 family_names = [f["name"] for f in self.families.values()]
                 title = f"Sunlit ({', '.join(family_names)})"
-                
+
                 return self.async_create_entry(
                     title=title,
                     data={
@@ -160,9 +151,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         return self.async_show_form(
-            step_id="select_families",
-            data_schema=schema,
-            errors=errors
+            step_id="select_families", data_schema=schema, errors=errors
         )
+
 
 ""

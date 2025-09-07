@@ -1,6 +1,7 @@
 """Base utilities for Sunlit entities."""
 
-from ..const import DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER, DEVICE_TYPE_METER
+from ..const import (DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER,
+                     DEVICE_TYPE_METER)
 
 
 def normalize_device_type(device_type: str) -> str:

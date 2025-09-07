@@ -9,29 +9,19 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import (
-    DOMAIN,
-    DEVICE_TYPE_METER,
-    DEVICE_TYPE_INVERTER,
-    DEVICE_TYPE_BATTERY,
-    METER_SENSORS,
-    INVERTER_SENSORS,
-    BATTERY_SENSORS,
-    BATTERY_MODULE_SENSORS,
-    FAMILY_SENSORS,
-)
-from .entities.family_sensor import SunlitFamilySensor
+from .const import (BATTERY_MODULE_SENSORS, BATTERY_SENSORS,
+                    DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER,
+                    DEVICE_TYPE_METER, DOMAIN, FAMILY_SENSORS,
+                    INVERTER_SENSORS, METER_SENSORS)
 from .entities.battery_module_sensor import SunlitBatteryModuleSensor
-from .entities.meter_sensor import SunlitMeterSensor
-from .entities.inverter_sensor import SunlitInverterSensor
 from .entities.battery_sensor import SunlitBatterySensor
+from .entities.family_sensor import SunlitFamilySensor
+from .entities.helpers import (get_device_class_for_sensor,
+                               get_icon_for_sensor, get_state_class_for_sensor,
+                               get_unit_for_sensor)
+from .entities.inverter_sensor import SunlitInverterSensor
+from .entities.meter_sensor import SunlitMeterSensor
 from .entities.unknown_device_sensor import SunlitUnknownDeviceSensor
-from .entities.helpers import (
-    get_device_class_for_sensor,
-    get_state_class_for_sensor,
-    get_unit_for_sensor,
-    get_icon_for_sensor,
-)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,11 +33,9 @@ def create_device_sensor(device_type: str, **kwargs):
         DEVICE_TYPE_INVERTER: SunlitInverterSensor,
         DEVICE_TYPE_BATTERY: SunlitBatterySensor,
     }
-    
+
     sensor_class = sensor_class_map.get(device_type, SunlitUnknownDeviceSensor)
     return sensor_class(**kwargs)
-
-
 
 
 async def async_setup_entry(
@@ -116,9 +104,7 @@ async def async_setup_entry(
                                     name=name,
                                     device_class=get_device_class_for_sensor(key),
                                     state_class=get_state_class_for_sensor(key),
-                                    native_unit_of_measurement=get_unit_for_sensor(
-                                        key
-                                    ),
+                                    native_unit_of_measurement=get_unit_for_sensor(key),
                                 )
                                 sensor = create_device_sensor(
                                     device_type=device_type,
@@ -154,26 +140,35 @@ async def async_setup_entry(
                         # Set status icon
                         sensor._attr_icon = "mdi:information-outline"
                         sensors.append(sensor)
-                        
+
                         # For battery devices, create virtual devices for battery modules
                         if device_type == DEVICE_TYPE_BATTERY:
                             # Check for battery modules (1, 2, 3) and create virtual devices
                             for module_num in [1, 2, 3]:
                                 # Check if this module exists (by checking if any of its data is present)
-                                
+
                                 # Always create module devices for batteries to ensure stable entities
                                 # Create sensors for this battery module
-                                for suffix, friendly_name in BATTERY_MODULE_SENSORS.items():
+                                for (
+                                    suffix,
+                                    friendly_name,
+                                ) in BATTERY_MODULE_SENSORS.items():
                                     sensor_key = f"battery{module_num}{suffix}"
-                                    
+
                                     sensor_description = SensorEntityDescription(
                                         key=sensor_key,
                                         name=friendly_name,
-                                        device_class=get_device_class_for_sensor(sensor_key),
-                                        state_class=get_state_class_for_sensor(sensor_key),
-                                        native_unit_of_measurement=get_unit_for_sensor(sensor_key),
+                                        device_class=get_device_class_for_sensor(
+                                            sensor_key
+                                        ),
+                                        state_class=get_state_class_for_sensor(
+                                            sensor_key
+                                        ),
+                                        native_unit_of_measurement=get_unit_for_sensor(
+                                            sensor_key
+                                        ),
                                     )
-                                    
+
                                     sensor = SunlitBatteryModuleSensor(
                                         coordinator=coordinator,
                                         description=sensor_description,
@@ -184,7 +179,7 @@ async def async_setup_entry(
                                         device_info_data=device_info,
                                         module_number=module_num,
                                     )
-                                    
+
                                     # Set icon if available
                                     icon = get_icon_for_sensor(sensor_key, device_type)
                                     if icon:

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.components.sensor import (SensorEntity,
+                                             SensorEntityDescription)
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -15,7 +16,7 @@ from .base import normalize_device_type
 
 class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Sunlit battery module sensor (virtual device)."""
-    
+
     _attr_has_entity_name = True
 
     def __init__(
@@ -42,9 +43,7 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
         # Include module number in unique_id
         device_type = device_info_data.get("deviceType", "Device")
         normalized_type = normalize_device_type(device_type)
-        self._attr_unique_id = (
-            f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{normalized_type}_{device_id}_module{module_number}_{description.key}"
-        )
+        self._attr_unique_id = f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{normalized_type}_{device_id}_module{module_number}_{description.key}"
 
         # Short friendly name for UI (used with has_entity_name)
         self._attr_name = description.name
@@ -55,7 +54,7 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
         # Special handling for static battery module capacity
         if self.entity_description.key == "capacity":
             return 2.15  # kWh nominal capacity for B215 module
-            
+
         if (
             self.coordinator.data
             and "devices" in self.coordinator.data
@@ -64,25 +63,29 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
             value = self.coordinator.data["devices"][self._device_id].get(
                 self.entity_description.key
             )
-            
+
             # For MPPT sensors, return None (unavailable) instead of 0 if no data
             # This prevents showing misleading 0 values when module is disconnected
             if value == 0 and "Mppt" in self.entity_description.key:
                 # Check if the module has SOC data (indicating it exists)
                 soc_key = f"battery{self._module_number}Soc"
-                has_soc = self.coordinator.data["devices"][self._device_id].get(soc_key) is not None
-                
+                has_soc = (
+                    self.coordinator.data["devices"][self._device_id].get(soc_key)
+                    is not None
+                )
+
                 # If module has SOC but MPPT is 0, it's likely disconnected
                 if has_soc:
                     import logging
+
                     _LOGGER = logging.getLogger(__name__)
                     _LOGGER.debug(
                         "Battery module %d has SOC but MPPT sensor '%s' is 0 - returning None for unavailable",
                         self._module_number,
-                        self.entity_description.key
+                        self.entity_description.key,
                     )
                     return None  # Show as unavailable instead of 0
-            
+
             return value
         return None
 
@@ -100,7 +103,7 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device info for this virtual battery module."""
         device_sn = self._device_info_data.get("deviceSn", self._device_id)
-        
+
         # Create a virtual device for this battery module
         device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{device_sn}_module{self._module_number}")},
@@ -109,7 +112,7 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
             model="B215 Extension Module",
             via_device=(DOMAIN, device_sn),  # Links to main battery unit
         )
-        
+
         return device_info
 
     @property
@@ -120,5 +123,5 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
             "module_number": self._module_number,
             "parent_device_sn": self._device_info_data.get("deviceSn"),
         }
-        
+
         return attrs
