@@ -1,0 +1,20 @@
+{
+    "packages": {
+        ".": {
+            "release-type": "simple",
+            "extra-files": [
+                {
+                    "type": "json",
+                    "path": "custom_components/sunlit/manifest.json",
+                    "jsonpath": "$.version"
+                },
+                {
+                    "type": "text",
+                    "path": "custom_components/sunlit/const.py",
+                    "search": "VERSION = \".+\"",
+                    "replace": "VERSION = \"{{version}}\""
+                }
+            ]
+        }
+    }
+}
