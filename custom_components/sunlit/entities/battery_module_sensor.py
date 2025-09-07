@@ -104,7 +104,7 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
         # Create a virtual device for this battery module
         device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{device_sn}_module{self._module_number}")},
-            name=f"Battery Module {self._module_number} ({self._family_name})",
+            name=f"B215 {self._module_number} ({self._family_name})",
             manufacturer="Highpower",
             model="B215 Extension Module",
             via_device=(DOMAIN, device_sn),  # Links to main battery unit
