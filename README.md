@@ -29,6 +29,19 @@ This custom integration connects HomeAssistant to the Sunlit Solar API, enabling
 
 ## Installation
 
+### HACS Installation (Recommended)
+
+1. Open HACS in your Home Assistant instance
+2. Click on **Integrations**
+3. Click the three dots menu in the top right corner and select **Custom repositories**
+4. Add this repository URL: `https://github.com/cedricziel/ha-sunlit`
+5. Select **Integration** as the category
+6. Click **Add**
+7. Search for "Sunlit Solar" in HACS
+8. Click **Download** and select the latest version
+9. Restart Home Assistant
+10. Add the integration through the UI: **Settings** → **Devices & Services** → **Add Integration** → Search for "Sunlit"
+
 ### Manual Installation
 
 1. Download or clone this repository
@@ -68,25 +81,29 @@ The integration will create devices and sensors automatically based on your Sunl
 
 ### Family/Space Level Sensors
 
-| Sensor                   | Description                       | Unit     | Update |
-| ------------------------ | --------------------------------- | -------- | ------ |
-| `device_count`           | Total number of devices           | count    | 30s    |
-| `online_devices`         | Number of online devices          | count    | 30s    |
-| `offline_devices`        | Number of offline devices         | count    | 30s    |
-| `total_ac_power`         | Combined AC power from all meters | W        | 30s    |
-| `average_battery_level`  | Average SOC across all batteries  | %        | 30s    |
-| `total_input_power`      | Total battery charging power      | W        | 30s    |
-| `total_output_power`     | Total battery discharging power   | W        | 30s    |
-| `battery_strategy`       | Current battery charging strategy | text     | 30s    |
-| `battery_status`         | Overall battery system status     | text     | 30s    |
-| `rated_power`            | System rated power capacity       | W        | 30s    |
-| `max_output_power`       | Maximum output power limit        | W        | 30s    |
-| `hw_soc_min`             | Hardware minimum SOC limit        | %        | 30s    |
-| `hw_soc_max`             | Hardware maximum SOC limit        | %        | 30s    |
-| `strategy_soc_min`       | Strategy minimum SOC              | %        | 30s    |
-| `strategy_soc_max`       | Strategy maximum SOC              | %        | 30s    |
-| `last_strategy_change`   | Timestamp of last strategy change | datetime | 30s    |
-| `strategy_changes_today` | Number of strategy changes in 24h | count    | 30s    |
+| Sensor                     | Description                       | Unit     | Update |
+| -------------------------- | --------------------------------- | -------- | ------ |
+| `device_count`             | Total number of devices           | count    | 30s    |
+| `online_devices`           | Number of online devices          | count    | 30s    |
+| `offline_devices`          | Number of offline devices         | count    | 30s    |
+| `total_ac_power`           | Combined AC power from all meters | W        | 30s    |
+| `average_battery_level`    | Average SOC across all batteries  | %        | 30s    |
+| `total_input_power`        | Total battery charging power      | W        | 30s    |
+| `total_output_power`       | Total battery discharging power   | W        | 30s    |
+| `battery_strategy`         | Current battery charging strategy | text     | 30s    |
+| `battery_status`           | Overall battery system status     | text     | 30s    |
+| `rated_power`              | System rated power capacity       | W        | 30s    |
+| `max_output_power`         | Maximum output power limit        | W        | 30s    |
+| `hw_soc_min`               | Hardware minimum SOC limit        | %        | 30s    |
+| `hw_soc_max`               | Hardware maximum SOC limit        | %        | 30s    |
+| `strategy_soc_min`         | Strategy minimum SOC              | %        | 30s    |
+| `strategy_soc_max`         | Strategy maximum SOC              | %        | 30s    |
+| `last_strategy_change`     | Timestamp of last strategy change | datetime | 30s    |
+| `strategy_changes_today`   | Number of strategy changes in 24h | count    | 30s    |
+| `total_solar_energy`       | Total solar energy production     | kWh      | 30s    |
+| `total_solar_power`        | Total solar power production      | W        | 30s    |
+| `daily_grid_export_energy` | Daily energy exported to grid     | kWh      | 30s    |
+| `total_grid_export_energy` | Total energy exported to grid     | kWh      | 30s    |
 
 ### Device-Specific Sensors
 
@@ -112,31 +129,31 @@ The integration will create devices and sensors automatically based on your Sunl
 
 ##### Main Unit Sensors
 
-| Sensor               | Description                    | Unit    |
-| -------------------- | ------------------------------ | ------- |
-| `battery_level`      | Current state of charge        | %       |
-| `batterySoc`         | System battery SOC             | %       |
-| `input_power_total`  | Current charging power         | W       |
-| `output_power_total` | Current discharging power      | W       |
-| `chargeRemaining`    | Time until fully charged       | minutes |
-| `dischargeRemaining` | Time until fully discharged    | minutes |
-| `batteryMppt1InVol`  | Main unit MPPT1 voltage        | V       |
-| `batteryMppt1InCur`  | Main unit MPPT1 current        | A       |
-| `batteryMppt1InPower`| Main unit MPPT1 power          | W       |
-| `batteryMppt2InVol`  | Main unit MPPT2 voltage        | V       |
-| `batteryMppt2InCur`  | Main unit MPPT2 current        | A       |
-| `batteryMppt2InPower`| Main unit MPPT2 power          | W       |
+| Sensor                | Description                 | Unit    |
+| --------------------- | --------------------------- | ------- |
+| `battery_level`       | Current state of charge     | %       |
+| `batterySoc`          | System battery SOC          | %       |
+| `input_power_total`   | Current charging power      | W       |
+| `output_power_total`  | Current discharging power   | W       |
+| `chargeRemaining`     | Time until fully charged    | minutes |
+| `dischargeRemaining`  | Time until fully discharged | minutes |
+| `batteryMppt1InVol`   | Main unit MPPT1 voltage     | V       |
+| `batteryMppt1InCur`   | Main unit MPPT1 current     | A       |
+| `batteryMppt1InPower` | Main unit MPPT1 power       | W       |
+| `batteryMppt2InVol`   | Main unit MPPT2 voltage     | V       |
+| `batteryMppt2InCur`   | Main unit MPPT2 current     | A       |
+| `batteryMppt2InPower` | Main unit MPPT2 power       | W       |
 
 ##### Battery Module Sensors (Virtual Devices)
 
-For modular battery systems, each additional battery module (1-3) appears as a separate virtual device with:
+For modular battery systems with B215 extension modules, each additional battery module (1-3) appears as a separate virtual device with:
 
-| Sensor        | Description           | Unit |
-| ------------- | --------------------- | ---- |
-| `Soc`         | Module state of charge| %    |
-| `Mppt1InVol`  | Module MPPT voltage   | V    |
-| `Mppt1InCur`  | Module MPPT current   | A    |
-| `Mppt1InPower`| Module MPPT power     | W    |
+| Sensor         | Description            | Unit |
+| -------------- | ---------------------- | ---- |
+| `Soc`          | Module state of charge | %    |
+| `Mppt1InVol`   | Module MPPT voltage    | V    |
+| `Mppt1InCur`   | Module MPPT current    | A    |
+| `Mppt1InPower` | Module MPPT power      | W    |
 
 ### Binary Sensors
 
@@ -188,14 +205,17 @@ Since the integration provides power sensors but not energy sensors for batterie
 All entities follow a consistent naming pattern to ensure uniqueness across multiple families and devices:
 
 #### Family/Space Level Entities
+
 Pattern: `sensor.sunlit_{family_id}_{sensor_key}`
 Example: `sensor.sunlit_12345_battery_level`
 
 #### Device Level Entities
+
 Pattern: `sensor.sunlit_{family_id}_{device_type}_{device_id}_{sensor_key}`
 Example: `sensor.sunlit_12345_battery_456_input_power_total`
 
 #### Virtual Device Entities (Battery Modules)
+
 Pattern: `sensor.sunlit_{family_id}_battery_{device_id}_module{N}_{sensor_key}`
 Example: `sensor.sunlit_12345_battery_456_module1_soc`
 
@@ -204,10 +224,12 @@ Example: `sensor.sunlit_12345_battery_456_module1_soc`
 The integration creates a hierarchical device structure:
 
 1. **Family Hub** - Virtual device representing the entire solar system
+
    - Contains aggregate sensors and system-wide metrics
    - All physical devices are linked to this hub
 
 2. **Physical Devices** - Actual hardware components
+
    - Smart meters (SHELLY_3EM_METER)
    - Inverters (YUNENG_MICRO_INVERTER)
    - Battery units (ENERGY_STORAGE_BATTERY)
@@ -220,8 +242,9 @@ The integration creates a hierarchical device structure:
 ### Modular Battery Architecture
 
 For battery systems with expansion modules:
+
 - **Main Unit (BK215)**: Contains system-wide sensors and dual MPPT inputs
-- **Module 1-3**: Additional battery packs with individual MPPT solar inputs
+- **B215 Module 1-3**: Additional battery packs (2.15 kWh each) with individual MPPT solar inputs
 - Each module tracks its own SOC and solar production independently
 - Virtual devices ensure clean organization in HomeAssistant UI
 
@@ -274,15 +297,19 @@ git clone https://github.com/cedricziel/ha-sunlit.git
 cd ha-sunlit
 
 # Install dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
+make setup
 
-# Run tests
-pytest tests/
+# Format code
+make format
 
-# Run linters
-ruff check custom_components/sunlit/
-black custom_components/sunlit/
+# Run linters (without making changes)
+make lint
+
+# Clean up cache files
+make clean
+
+# Show all available commands
+make help
 ```
 
 ### Running HomeAssistant locally
