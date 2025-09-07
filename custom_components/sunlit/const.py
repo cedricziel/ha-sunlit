@@ -50,6 +50,7 @@ METER_SENSORS = {
 INVERTER_SENSORS = {
     "current_power": "Current Power",
     "total_power_generation": "Total Energy Production",  # Actually energy in kWh
+    "total_yield": "Total Yield",  # Lifetime energy production
     "daily_earnings": "Daily Earnings",
 }
 

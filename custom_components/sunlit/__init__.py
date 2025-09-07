@@ -194,6 +194,28 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
 
                     if device.get("totalAcPower"):
                         total_ac_power += device["totalAcPower"]
+                    
+                    # Fetch detailed statistics for online meters
+                    if device.get("status") == "Online":
+                        try:
+                            detailed_stats = (
+                                await self.api_client.fetch_device_statistics(
+                                    device_id
+                                )
+                            )
+                            
+                            # Override with more accurate values if available
+                            for key in ["totalAcPower", "dailyBuyEnergy", "dailyRetEnergy", 
+                                        "totalBuyEnergy", "totalRetEnergy"]:
+                                if detailed_stats.get(key) is not None:
+                                    device_data[key.lower()] = detailed_stats[key]
+                                    
+                        except Exception as err:
+                            _LOGGER.warning(
+                                "Failed to fetch meter statistics for %s: %s",
+                                device_id,
+                                err,
+                            )
 
                 elif device_type == "YUNENG_MICRO_INVERTER":
                     if device.get("today"):
@@ -207,6 +229,29 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                             device_data["daily_earnings"] = device["today"][
                                 "totalEarnings"
                             ].get("earnings")
+                    
+                    # Fetch detailed statistics for online inverters
+                    if device.get("status") == "Online":
+                        try:
+                            detailed_stats = (
+                                await self.api_client.fetch_device_statistics(
+                                    device_id
+                                )
+                            )
+                            
+                            # Add total yield data
+                            device_data["total_yield"] = detailed_stats.get("totalYield")
+                            
+                            # Override current power with more accurate value if available
+                            if detailed_stats.get("currentPower") is not None:
+                                device_data["current_power"] = detailed_stats["currentPower"]
+                                
+                        except Exception as err:
+                            _LOGGER.warning(
+                                "Failed to fetch inverter statistics for %s: %s",
+                                device_id,
+                                err,
+                            )
 
                 elif device_type == "ENERGY_STORAGE_BATTERY":
                     # Basic battery data (always available)
