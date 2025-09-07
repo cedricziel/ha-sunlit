@@ -234,6 +234,9 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
             battery_count = 0
             total_input_power = 0
             total_output_power = 0
+            # Grid export aggregation
+            total_grid_export = 0
+            daily_grid_export = 0
 
             for device in devices:
                 device_id = str(device["deviceId"])
@@ -257,6 +260,12 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                     if device.get("totalAcPower"):
                         total_ac_power += device["totalAcPower"]
                     
+                    # Aggregate grid export energy
+                    if device.get("totalRetEnergy") is not None:
+                        total_grid_export += device["totalRetEnergy"]
+                    if device.get("dailyRetEnergy") is not None:
+                        daily_grid_export += device["dailyRetEnergy"]
+                    
                     # Fetch detailed statistics for online meters
                     if device.get("status") == "Online":
                         try:
@@ -271,6 +280,11 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                                         "totalBuyEnergy", "totalRetEnergy"]:
                                 if detailed_stats.get(key) is not None:
                                     device_data[key.lower()] = detailed_stats[key]
+                                    # Update aggregates with more accurate values
+                                    if key == "totalRetEnergy":
+                                        total_grid_export = detailed_stats[key]
+                                    elif key == "dailyRetEnergy":
+                                        daily_grid_export = detailed_stats[key]
                                     
                         except Exception as err:
                             _LOGGER.warning(
@@ -522,6 +536,10 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                 
                 sensor_data["family"]["total_solar_energy"] = round(total_solar_energy, 3) if total_solar_energy > 0 else 0
                 sensor_data["family"]["total_solar_power"] = total_solar_power if total_solar_power > 0 else None
+                
+                # Add grid export energy aggregates
+                sensor_data["family"]["total_grid_export_energy"] = round(total_grid_export, 2) if total_grid_export > 0 else 0
+                sensor_data["family"]["daily_grid_export_energy"] = round(daily_grid_export, 2) if daily_grid_export > 0 else 0
             
             # Add space_index data if available (override aggregates with more accurate data)
             if space_index:

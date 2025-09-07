@@ -133,6 +133,9 @@ FAMILY_SENSORS = {
     "battery_charging_remaining": "Charging Time Remaining",
     "battery_discharging_remaining": "Discharging Time Remaining",
     "inverter_current_power": "Inverter Current Power",
+    # Grid export tracking
+    "total_grid_export_energy": "Total Grid Export Energy",
+    "daily_grid_export_energy": "Daily Grid Export Energy",
     # Note: has_fault, battery_full, battery_bypass, battery_heater_*,
     # and boost_mode_* moved to binary_sensor
 }

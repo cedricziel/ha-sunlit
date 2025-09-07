@@ -31,6 +31,9 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     # Total solar energy
     elif key == "total_solar_energy":
         return SensorDeviceClass.ENERGY
+    # Grid export energy
+    elif key in ["total_grid_export_energy", "daily_grid_export_energy"]:
+        return SensorDeviceClass.ENERGY
     # Daily yield is energy
     elif key == "daily_yield":
         return SensorDeviceClass.ENERGY
@@ -82,6 +85,11 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     # Total solar energy is cumulative
     elif key == "total_solar_energy":
         return SensorStateClass.TOTAL_INCREASING
+    # Grid export energy
+    elif key == "total_grid_export_energy":
+        return SensorStateClass.TOTAL_INCREASING
+    elif key == "daily_grid_export_energy":
+        return SensorStateClass.TOTAL
     # Daily yield resets each day
     elif key == "daily_yield":
         return SensorStateClass.TOTAL
@@ -126,6 +134,9 @@ def get_unit_for_sensor(key: str) -> str | None:
         return UnitOfEnergy.KILO_WATT_HOUR
     # Total solar energy
     elif key == "total_solar_energy":
+        return UnitOfEnergy.KILO_WATT_HOUR
+    # Grid export energy
+    elif key in ["total_grid_export_energy", "daily_grid_export_energy"]:
         return UnitOfEnergy.KILO_WATT_HOUR
     # Daily yield
     elif key == "daily_yield":
@@ -186,6 +197,11 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
         return "mdi:solar-power-variant-outline"
     elif key == "total_solar_power":
         return "mdi:solar-power-variant"
+    # Grid export tracking
+    elif key == "total_grid_export_energy":
+        return "mdi:transmission-tower-export"
+    elif key == "daily_grid_export_energy":
+        return "mdi:transmission-tower-export"
     # Battery related
     elif "battery_full" in key:
         return "mdi:battery-check"
