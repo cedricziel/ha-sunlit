@@ -370,16 +370,34 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                             
                             # Battery module MPPT data
                             for module_num in [1, 2, 3]:
+                                # Check if this module has SOC data (indicates it exists)
+                                soc_field = f"battery{module_num}Soc"
+                                module_soc = detailed_stats.get(soc_field)
+                                
+                                if module_soc is not None:
+                                    _LOGGER.debug(
+                                        "Battery module %d found with SOC: %s%%",
+                                        module_num, module_soc
+                                    )
+                                
                                 mppt_suffixes = ["Mppt1InVol", "Mppt1InCur", "Mppt1InPower"]
+                                module_has_data = False
                                 for suffix in mppt_suffixes:
                                     field = f"battery{module_num}{suffix}"
                                     value = detailed_stats.get(field)
                                     device_data[field] = value
                                     if value is not None:
+                                        module_has_data = True
                                         _LOGGER.debug(
                                             "Battery module %d MPPT data: %s = %s",
                                             module_num, field, value
                                         )
+                                
+                                if module_soc is not None and not module_has_data:
+                                    _LOGGER.warning(
+                                        "Battery module %d has SOC (%s%%) but no MPPT data - module may be idle or disconnected",
+                                        module_num, module_soc
+                                    )
                             
                             # Calculate MPPT energy accumulation
                             import time

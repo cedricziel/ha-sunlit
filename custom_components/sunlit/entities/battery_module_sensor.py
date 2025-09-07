@@ -64,17 +64,25 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
             value = self.coordinator.data["devices"][self._device_id].get(
                 self.entity_description.key
             )
-            # Debug logging for missing values
-            if value is None and self.entity_description.key != "capacity":
-                import logging
-                _LOGGER = logging.getLogger(__name__)
-                _LOGGER.debug(
-                    "Battery module %d sensor '%s' looking for key '%s' - not found in device data. Available keys: %s",
-                    self._module_number,
-                    self._attr_name,
-                    self.entity_description.key,
-                    list(self.coordinator.data["devices"][self._device_id].keys())
-                )
+            
+            # For MPPT sensors, return None (unavailable) instead of 0 if no data
+            # This prevents showing misleading 0 values when module is disconnected
+            if value == 0 and "Mppt" in self.entity_description.key:
+                # Check if the module has SOC data (indicating it exists)
+                soc_key = f"battery{self._module_number}Soc"
+                has_soc = self.coordinator.data["devices"][self._device_id].get(soc_key) is not None
+                
+                # If module has SOC but MPPT is 0, it's likely disconnected
+                if has_soc:
+                    import logging
+                    _LOGGER = logging.getLogger(__name__)
+                    _LOGGER.debug(
+                        "Battery module %d has SOC but MPPT sensor '%s' is 0 - returning None for unavailable",
+                        self._module_number,
+                        self.entity_description.key
+                    )
+                    return None  # Show as unavailable instead of 0
+            
             return value
         return None
 
