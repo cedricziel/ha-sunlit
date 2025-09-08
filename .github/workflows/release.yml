@@ -65,7 +65,7 @@ jobs:
           echo "4. Add integration through UI: Settings -> Devices & Services -> Add Integration -> Sunlit" >> RELEASE_NOTES.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.VERSION }}
           name: Release v${{ steps.version.outputs.VERSION }}
