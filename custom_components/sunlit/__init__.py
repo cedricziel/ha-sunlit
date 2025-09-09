@@ -825,9 +825,54 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                     # Store last 10 entries in extra attributes
                     sensor_data["family"]["strategy_history"] = history_entries[:10]
 
+            # Log comprehensive sensor data for debugging
             _LOGGER.debug(
-                "Processed sensor data for family %s: %s", self.family_name, sensor_data
+                "Processed sensor data for family %s (%s):",
+                self.family_name,
+                self.family_id,
             )
+            _LOGGER.debug(
+                "  Family-level sensors: %s",
+                {k: v for k, v in sensor_data.items() if not k.startswith("devices")},
+            )
+
+            if "devices" in sensor_data:
+                _LOGGER.debug("  Found %d devices:", len(sensor_data["devices"]))
+                for device_id, device_data in sensor_data["devices"].items():
+                    device_type = device_data.get("deviceType", "Unknown")
+                    status = device_data.get("status", "Unknown")
+                    _LOGGER.debug(
+                        "    Device %s (type: %s, status: %s):",
+                        device_id,
+                        device_type,
+                        status,
+                    )
+
+                    # Log key metrics based on device type
+                    if device_type == "ENERGY_STORAGE_BATTERY":
+                        _LOGGER.debug(
+                            "      Battery SOC: %s%%, Input: %sW, Output: %sW",
+                            device_data.get("batterySoc"),
+                            device_data.get("input_power_total"),
+                            device_data.get("output_power_total"),
+                        )
+                        # Log module SOCs if present
+                        for i in [1, 2, 3]:
+                            soc = device_data.get(f"battery{i}Soc")
+                            if soc is not None:
+                                _LOGGER.debug("      Module %d SOC: %s%%", i, soc)
+                    elif device_type in ["SHELLY_3EM_METER", "SHELLY_PRO3EM_METER"]:
+                        _LOGGER.debug(
+                            "      Total AC Power: %sW",
+                            device_data.get("total_ac_power"),
+                        )
+                    elif device_type in [
+                        "YUNENG_MICRO_INVERTER",
+                        "SOLAR_MICRO_INVERTER",
+                    ]:
+                        _LOGGER.debug(
+                            "      Current Power: %sW", device_data.get("current_power")
+                        )
 
             return sensor_data
 

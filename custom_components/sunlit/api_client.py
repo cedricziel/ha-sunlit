@@ -120,6 +120,8 @@ class SunlitApiClient:
                         message = data.get("message", "Unknown error")
                         raise SunlitApiError(f"API error: {message}")
 
+                    # Log full response for debugging
+                    _LOGGER.debug("API Response from %s: %s", url, data)
                     return data
 
         except aiohttp.ClientError as err:
@@ -162,6 +164,11 @@ class SunlitApiClient:
                     # Store the token for future requests
                     self._access_token = content["access_token"]
                     _LOGGER.info("Login successful for user: %s", email)
+                    # Log response with masked token for debugging
+                    debug_content = content.copy()
+                    if "access_token" in debug_content:
+                        debug_content["access_token"] = "***MASKED***"
+                    _LOGGER.debug("Login response for %s: %s", email, debug_content)
                     return content
 
             _LOGGER.error("Invalid login response structure: %s", response)
@@ -188,6 +195,9 @@ class SunlitApiClient:
             response = await self._make_request("GET", API_FAMILY_LIST)
 
             # Extract families from response
+            # Log full response for debugging
+            _LOGGER.debug("Family list response: %s", response)
+
             if "content" in response:
                 families = response["content"]
                 _LOGGER.debug("Fetched %d families", len(families))
@@ -227,6 +237,9 @@ class SunlitApiClient:
             )
 
             # Extract content from response
+            # Log full response for debugging
+            _LOGGER.debug("Device statistics response for %s: %s", device_id, response)
+
             if "content" in response:
                 data = response["content"]
                 _LOGGER.debug(
@@ -417,6 +430,10 @@ class SunlitApiClient:
                     paginated_data["content"], list
                 ):
                     devices = paginated_data["content"]
+                    # Log full response for debugging
+                    _LOGGER.debug(
+                        "Device list response for family %s: %s", family_id, response
+                    )
                     _LOGGER.debug(
                         "Fetched %d devices for family %s (type: %s, page: %d/%d)",
                         len(devices),
@@ -466,6 +483,9 @@ class SunlitApiClient:
             response = await self._make_request("POST", API_SPACE_SOC, json=payload)
 
             # Extract data from response
+            # Log full response for debugging
+            _LOGGER.debug("Space SOC response for %s: %s", space_id, response)
+
             if "content" in response:
                 data = response["content"]
                 _LOGGER.debug(
@@ -524,6 +544,11 @@ class SunlitApiClient:
             )
 
             # Extract data from response
+            # Log full response for debugging
+            _LOGGER.debug(
+                "Current strategy response for family %s: %s", family_id, response
+            )
+
             if "content" in response:
                 data = response["content"]
                 _LOGGER.debug(
@@ -577,6 +602,11 @@ class SunlitApiClient:
             )
 
             # Extract data from response
+            # Log full response for debugging
+            _LOGGER.debug(
+                "Strategy history response for family %s: %s", family_id, response
+            )
+
             if "content" in response:
                 data = response["content"]
                 content_list = data.get("content", [])
@@ -648,6 +678,9 @@ class SunlitApiClient:
             response = await self._make_request("POST", API_SPACE_INDEX, json=payload)
 
             # Extract data from response
+            # Log full response for debugging
+            _LOGGER.debug("Space index response for %s: %s", space_id, response)
+
             if "content" in response:
                 data = response["content"]
                 _LOGGER.debug(
