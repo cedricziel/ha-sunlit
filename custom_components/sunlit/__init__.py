@@ -265,7 +265,7 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                 # Process based on device type
                 device_type = device.get("deviceType")
 
-                if device_type == "SHELLY_3EM_METER":
+                if device_type in ["SHELLY_3EM_METER", "SHELLY_PRO3EM_METER"]:
                     device_data["total_ac_power"] = device.get("totalAcPower")
                     device_data["daily_buy_energy"] = device.get("dailyBuyEnergy")
                     device_data["daily_ret_energy"] = device.get("dailyRetEnergy")
@@ -311,7 +311,7 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                                 err,
                             )
 
-                elif device_type == "YUNENG_MICRO_INVERTER":
+                elif device_type in ["YUNENG_MICRO_INVERTER", "SOLAR_MICRO_INVERTER"]:
                     if device.get("today"):
                         device_data["current_power"] = device["today"].get(
                             "currentPower"

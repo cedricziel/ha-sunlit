@@ -11,7 +11,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (BATTERY_MODULE_SENSORS, BATTERY_SENSORS,
                     DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER,
-                    DEVICE_TYPE_METER, DOMAIN, FAMILY_SENSORS,
+                    DEVICE_TYPE_INVERTER_SOLAR, DEVICE_TYPE_METER,
+                    DEVICE_TYPE_METER_PRO, DOMAIN, FAMILY_SENSORS,
                     INVERTER_SENSORS, METER_SENSORS)
 from .entities.battery_module_sensor import SunlitBatteryModuleSensor
 from .entities.battery_sensor import SunlitBatterySensor
@@ -30,7 +31,9 @@ def create_device_sensor(device_type: str, **kwargs):
     """Factory function to create appropriate device sensor class."""
     sensor_class_map = {
         DEVICE_TYPE_METER: SunlitMeterSensor,
+        DEVICE_TYPE_METER_PRO: SunlitMeterSensor,  # Pro variant uses same sensor class
         DEVICE_TYPE_INVERTER: SunlitInverterSensor,
+        DEVICE_TYPE_INVERTER_SOLAR: SunlitInverterSensor,  # Generic variant uses same sensor class
         DEVICE_TYPE_BATTERY: SunlitBatterySensor,
     }
 
@@ -86,9 +89,12 @@ async def async_setup_entry(
 
                         # Determine which sensors to create based on device type
                         sensor_map = {}
-                        if device_type == DEVICE_TYPE_METER:
+                        if device_type in [DEVICE_TYPE_METER, DEVICE_TYPE_METER_PRO]:
                             sensor_map = METER_SENSORS
-                        elif device_type == DEVICE_TYPE_INVERTER:
+                        elif device_type in [
+                            DEVICE_TYPE_INVERTER,
+                            DEVICE_TYPE_INVERTER_SOLAR,
+                        ]:
                             sensor_map = INVERTER_SENSORS
                         elif device_type == DEVICE_TYPE_BATTERY:
                             sensor_map = BATTERY_SENSORS
