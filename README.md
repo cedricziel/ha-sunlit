@@ -81,29 +81,33 @@ The integration will create devices and sensors automatically based on your Sunl
 
 ### Family/Space Level Sensors
 
-| Sensor                     | Description                       | Unit     | Update |
-| -------------------------- | --------------------------------- | -------- | ------ |
-| `device_count`             | Total number of devices           | count    | 30s    |
-| `online_devices`           | Number of online devices          | count    | 30s    |
-| `offline_devices`          | Number of offline devices         | count    | 30s    |
-| `total_ac_power`           | Combined AC power from all meters | W        | 30s    |
-| `average_battery_level`    | Average SOC across all batteries  | %        | 30s    |
-| `total_input_power`        | Total battery charging power      | W        | 30s    |
-| `total_output_power`       | Total battery discharging power   | W        | 30s    |
-| `battery_strategy`         | Current battery charging strategy | text     | 30s    |
-| `battery_status`           | Overall battery system status     | text     | 30s    |
-| `rated_power`              | System rated power capacity       | W        | 30s    |
-| `max_output_power`         | Maximum output power limit        | W        | 30s    |
-| `hw_soc_min`               | Hardware minimum SOC limit        | %        | 30s    |
-| `hw_soc_max`               | Hardware maximum SOC limit        | %        | 30s    |
-| `strategy_soc_min`         | Strategy minimum SOC              | %        | 30s    |
-| `strategy_soc_max`         | Strategy maximum SOC              | %        | 30s    |
-| `last_strategy_change`     | Timestamp of last strategy change | datetime | 30s    |
-| `strategy_changes_today`   | Number of strategy changes in 24h | count    | 30s    |
-| `total_solar_energy`       | Total solar energy production     | kWh      | 30s    |
-| `total_solar_power`        | Total solar power production      | W        | 30s    |
-| `daily_grid_export_energy` | Daily energy exported to grid     | kWh      | 30s    |
-| `total_grid_export_energy` | Total energy exported to grid     | kWh      | 30s    |
+| Sensor                      | Description                       | Unit     | Update |
+| --------------------------- | --------------------------------- | -------- | ------ |
+| `device_count`              | Total number of devices           | count    | 30s    |
+| `online_devices`            | Number of online devices          | count    | 30s    |
+| `offline_devices`           | Number of offline devices         | count    | 30s    |
+| `total_ac_power`            | Combined AC power from all meters | W        | 30s    |
+| `average_battery_level`     | Average SOC across all batteries  | %        | 30s    |
+| `total_input_power`         | Total battery charging power      | W        | 30s    |
+| `total_output_power`        | Total battery discharging power   | W        | 30s    |
+| `battery_strategy`          | Current battery charging strategy | text     | 30s    |
+| `battery_status`            | Overall battery system status     | text     | 30s    |
+| `rated_power`               | System rated power capacity       | W        | 30s    |
+| `max_output_power`          | Maximum output power limit        | W        | 30s    |
+| `hw_soc_min`                | Hardware minimum SOC limit        | %        | 30s    |
+| `hw_soc_max`                | Hardware maximum SOC limit        | %        | 30s    |
+| `strategy_soc_min`          | Strategy minimum SOC              | %        | 30s    |
+| `strategy_soc_max`          | Strategy maximum SOC              | %        | 30s    |
+| `last_strategy_change`      | Timestamp of last strategy change | datetime | 30s    |
+| `strategy_changes_today`    | Number of strategy changes in 24h | count    | 30s    |
+| `total_solar_energy`        | Total solar energy production     | kWh      | 30s    |
+| `total_solar_power`         | Total solar power production      | W        | 30s    |
+| `daily_grid_export_energy`  | Daily energy exported to grid     | kWh      | 30s    |
+| `total_grid_export_energy`  | Total energy exported to grid     | kWh      | 30s    |
+| `ev3600_auto_strategy_mode` | EV3600 inverter strategy mode     | text     | 30s    |
+| `storage_strategy`          | Storage strategy configuration    | text     | 30s    |
+| `normal_charge_box_mode`    | Normal charge box mode            | text     | 30s    |
+| `inverter_sn_list`          | Inverter serial numbers list      | text     | 30s    |
 
 ### Device-Specific Sensors
 
@@ -157,12 +161,31 @@ For modular battery systems with B215 extension modules, each additional battery
 
 ### Binary Sensors
 
-| Sensor         | Description            | Device Class |
-| -------------- | ---------------------- | ------------ |
-| `has_fault`    | Any device has a fault | problem      |
-| `battery_full` | Battery fully charged  | battery      |
-| `fault`        | Device has fault       | problem      |
-| `power`        | Device is powered on   | power        |
+#### Family/Space Level Binary Sensors
+
+| Sensor                         | Description                     | Device Class |
+| ------------------------------ | ------------------------------- | ------------ |
+| `has_fault`                    | Any device has a fault          | problem      |
+| `battery_full`                 | Battery fully charged           | battery      |
+| `battery_bypass`               | Battery bypass mode active      | None         |
+| `battery_heater_1`             | Battery heater 1 active         | heat         |
+| `battery_heater_2`             | Battery heater 2 active         | heat         |
+| `battery_heater_3`             | Battery heater 3 active         | heat         |
+| `boost_mode_enabled`           | Boost mode enabled              | None         |
+| `boost_mode_switching`         | Boost mode switching            | running      |
+| `ev3600_auto_strategy_exist`   | EV3600 auto strategy configured | None         |
+| `ev3600_auto_strategy_running` | EV3600 auto strategy active     | running      |
+| `tariff_strategy_exist`        | Tariff strategy configured      | None         |
+| `enable_local_smart_strategy`  | Local smart strategy enabled    | None         |
+| `ac_couple_enabled`            | AC coupling enabled             | None         |
+| `charging_box_boost_on`        | Charging box boost active       | None         |
+
+#### Device Level Binary Sensors
+
+| Sensor  | Description          | Device Class |
+| ------- | -------------------- | ------------ |
+| `fault` | Device has fault     | problem      |
+| `power` | Device is powered on | power        |
 
 ## Energy Dashboard Integration
 
