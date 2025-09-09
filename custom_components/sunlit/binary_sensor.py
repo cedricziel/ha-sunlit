@@ -60,6 +60,37 @@ FAMILY_BINARY_SENSORS = {
         "device_class": BinarySensorDeviceClass.RUNNING,
         "icon": "mdi:toggle-switch",
     },
+    # Charging box strategy binary sensors
+    "ev3600_auto_strategy_exist": {
+        "name": "EV3600 Auto Strategy Exists",
+        "device_class": None,
+        "icon": "mdi:home-battery",
+    },
+    "ev3600_auto_strategy_running": {
+        "name": "EV3600 Auto Strategy Running",
+        "device_class": BinarySensorDeviceClass.RUNNING,
+        "icon": "mdi:sync",
+    },
+    "tariff_strategy_exist": {
+        "name": "Tariff Strategy Exists",
+        "device_class": None,
+        "icon": "mdi:currency-usd",
+    },
+    "enable_local_smart_strategy": {
+        "name": "Local Smart Strategy",
+        "device_class": None,
+        "icon": "mdi:brain",
+    },
+    "ac_couple_enabled": {
+        "name": "AC Coupling",
+        "device_class": None,
+        "icon": "mdi:power-plug",
+    },
+    "charging_box_boost_on": {
+        "name": "Charging Box Boost",
+        "device_class": None,
+        "icon": "mdi:lightning-bolt",
+    },
 }
 
 DEVICE_BINARY_SENSORS = {

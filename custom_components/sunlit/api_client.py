@@ -8,7 +8,8 @@ from typing import Any
 import aiohttp
 import async_timeout
 
-from .const import (API_BASE_URL, API_BATTERY_IO_POWER, API_DEVICE_DETAILS,
+from .const import (API_BASE_URL, API_BATTERY_IO_POWER,
+                    API_CHARGING_BOX_CHECK_STRATEGY, API_DEVICE_DETAILS,
                     API_DEVICE_LIST, API_DEVICE_STATISTICS, API_FAMILY_LIST,
                     API_SPACE_CURRENT_STRATEGY, API_SPACE_INDEX, API_SPACE_SOC,
                     API_SPACE_STRATEGY_HISTORY, API_USER_LOGIN)
@@ -682,6 +683,60 @@ class SunlitApiClient:
         except Exception as err:
             _LOGGER.error("Unexpected error testing connection: %s", err)
             return False
+
+    async def get_charging_box_strategy(self, space_id: int) -> dict[str, Any]:
+        """Check charging box strategy for a space.
+
+        Args:
+            space_id: The space/family ID
+
+        Returns:
+            Dictionary containing charging box strategy information:
+            - ev3600AutoStrategyExist: Whether EV auto strategy exists
+            - ev3600AutoStrategyRunning: Whether EV auto strategy is running
+            - ev3600AutoStrategyMode: Auto strategy mode (null if not set)
+            - boostOn: Whether boost mode is on
+            - storageStrategy: Storage strategy (null if not set)
+            - normalChargeBoxMode: Normal charge box mode (null if not set)
+            - tariffStrategyExist: Whether tariff strategy exists
+            - inverterSn: List of inverter serial numbers
+            - enableLocalSmartStrategy: Whether local smart strategy is enabled
+            - deyeLocalSnList: List of Deye local serial numbers
+            - acCoupleEnabled: Whether AC coupling is enabled
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload = {"spaceId": int(space_id)}
+            response = await self._make_request(
+                "POST", API_CHARGING_BOX_CHECK_STRATEGY, json=payload
+            )
+
+            if "content" in response:
+                _LOGGER.debug(
+                    "Fetched charging box strategy for space %s: %s",
+                    space_id,
+                    response["content"],
+                )
+                return response["content"]
+
+            _LOGGER.warning(
+                "No charging box strategy data found for space %s", space_id
+            )
+            return {}
+
+        except (SunlitAuthError, SunlitConnectionError):
+            raise
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to fetch charging box strategy for space %s: %s", space_id, err
+            )
+            raise SunlitApiError(
+                f"Failed to fetch charging box strategy: {err}"
+            ) from err
 
     def process_sensor_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """Process raw API data into sensor-friendly format.

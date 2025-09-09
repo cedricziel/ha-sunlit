@@ -189,6 +189,22 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                     except Exception as err:
                         _LOGGER.debug("Could not fetch strategy history data: %s", err)
 
+                    # Fetch charging box strategy data
+                    try:
+                        charging_box_data = (
+                            await self.api_client.get_charging_box_strategy(
+                                self.family_id
+                            )
+                        )
+                        _LOGGER.debug(
+                            "Charging box data for family %s: %s",
+                            self.family_name,
+                            charging_box_data,
+                        )
+                    except Exception as err:
+                        _LOGGER.debug("Could not fetch charging box strategy: %s", err)
+                        charging_box_data = {}
+
             _LOGGER.debug(
                 "Received %d devices for family %s", len(devices), self.family_name
             )
@@ -730,6 +746,48 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                 )
                 sensor_data["family"]["current_soc_max"] = current_strategy.get(
                     "socMax"
+                )
+
+            # Add charging box strategy data to family sensors
+            if charging_box_data:
+                # Text sensors (can be None/null)
+                sensor_data["family"]["ev3600_auto_strategy_mode"] = (
+                    charging_box_data.get("ev3600AutoStrategyMode")
+                )
+                sensor_data["family"]["storage_strategy"] = charging_box_data.get(
+                    "storageStrategy"
+                )
+                sensor_data["family"]["normal_charge_box_mode"] = charging_box_data.get(
+                    "normalChargeBoxMode"
+                )
+
+                # List of inverter serial numbers - convert to comma-separated string
+                inverter_sn_list = charging_box_data.get("inverterSn", [])
+                if inverter_sn_list:
+                    sensor_data["family"]["inverter_sn_list"] = ", ".join(
+                        inverter_sn_list
+                    )
+
+                # Binary sensors (boolean values)
+                sensor_data["family"]["ev3600_auto_strategy_exist"] = (
+                    charging_box_data.get("ev3600AutoStrategyExist", False)
+                )
+                sensor_data["family"]["ev3600_auto_strategy_running"] = (
+                    charging_box_data.get("ev3600AutoStrategyRunning", False)
+                )
+                sensor_data["family"]["tariff_strategy_exist"] = charging_box_data.get(
+                    "tariffStrategyExist", False
+                )
+                sensor_data["family"]["enable_local_smart_strategy"] = (
+                    charging_box_data.get("enableLocalSmartStrategy", False)
+                )
+                sensor_data["family"]["ac_couple_enabled"] = charging_box_data.get(
+                    "acCoupleEnabled", False
+                )
+
+                # Boost mode (we already have boost sensors from space_index, this confirms)
+                sensor_data["family"]["charging_box_boost_on"] = charging_box_data.get(
+                    "boostOn", False
                 )
 
             # Process strategy history data

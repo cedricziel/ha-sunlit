@@ -24,6 +24,7 @@ API_SPACE_SOC = "/v1.1/space/soc"
 API_SPACE_CURRENT_STRATEGY = "/v1.1/space/currentStrategy"
 API_SPACE_STRATEGY_HISTORY = "/v1.1/space/strategyHistory"
 API_SPACE_INDEX = "/v1.5/space/index"
+API_CHARGING_BOX_CHECK_STRATEGY = "/v1.6/chargingBox/checkSpaceStrategy"
 
 # Configuration keys
 CONF_EMAIL = "email"
@@ -137,4 +138,9 @@ FAMILY_SENSORS = {
     "daily_grid_export_energy": "Daily Grid Export Energy",
     # Note: has_fault, battery_full, battery_bypass, battery_heater_*,
     # and boost_mode_* moved to binary_sensor
+    # Charging box strategy sensors
+    "ev3600_auto_strategy_mode": "EV3600 Auto Strategy Mode",
+    "storage_strategy": "Storage Strategy",
+    "normal_charge_box_mode": "Normal Charge Box Mode",
+    "inverter_sn_list": "Inverter Serial Numbers",
 }

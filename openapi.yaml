@@ -3,10 +3,10 @@ info:
   title: Sunlit Solar API
   description: |
     Unofficial OpenAPI specification for the Sunlit Solar API.
-    
+
     This API is used to retrieve data from Sunlit Solar installations including
     solar panels, inverters, batteries, and smart meters.
-    
+
     **Note:** This is a reverse-engineered specification based on observed API behavior.
     The actual API is proprietary to Sunlit Solar GmbH.
   version: 1.0.0
@@ -38,14 +38,14 @@ paths:
       description: Retrieve a list of all families/spaces associated with the account
       operationId: getFamilyList
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FamilyListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/FamilyListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /user/login:
     post:
@@ -59,21 +59,21 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
       responses:
-        '200':
+        "200":
           description: Successful authentication
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
-        '401':
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
           description: Invalid credentials
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
-      security: []  # No auth required for login endpoint
+                $ref: "#/components/schemas/ApiResponse"
+      security: [] # No auth required for login endpoint
 
   /v1.2/device/list:
     post:
@@ -101,14 +101,14 @@ paths:
                   description: Device type filter (use "" for all types)
                   example: ""
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DeviceListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/DeviceListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /v1.1/statistics/static/device:
     post:
@@ -131,14 +131,14 @@ paths:
                   description: The device ID
                   example: 67890
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DeviceStatisticsResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/DeviceStatisticsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /v1.3/statistics/instantPower/batteryIO:
     post:
@@ -176,14 +176,14 @@ paths:
                   description: Day (DD format)
                   example: "15"
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BatteryIOPowerResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/BatteryIOPowerResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /v1.1/space/soc:
     post:
@@ -206,14 +206,14 @@ paths:
                   description: The space/family ID
                   example: 12345
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SpaceSOCResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/SpaceSOCResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /v1.1/space/currentStrategy:
     post:
@@ -236,14 +236,14 @@ paths:
                   description: The family ID
                   example: 12345
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CurrentStrategyResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/CurrentStrategyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /v1.5/space/index:
     post:
@@ -266,14 +266,14 @@ paths:
                   description: The space/family ID
                   example: 12345
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SpaceIndexResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/SpaceIndexResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /v1.1/space/strategyHistory:
     post:
@@ -296,14 +296,47 @@ paths:
                   description: The family ID
                   example: 12345
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StrategyHistoryResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/StrategyHistoryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.6/chargingBox/checkSpaceStrategy:
+    post:
+      tags:
+        - Space
+      summary: Check charging box strategy
+      description: |
+        Retrieve charging box and inverter strategy configuration for a space.
+        This includes EV3600 bi-directional inverter settings, tariff strategies,
+        and AC coupling configuration.
+      operationId: checkChargingBoxStrategy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  description: The space/family ID
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargingBoxStrategyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /device/{deviceId}:
     get:
@@ -320,15 +353,15 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DeviceDetailsResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
+                $ref: "#/components/schemas/DeviceDetailsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
           description: Device not found
 
 components:
@@ -376,22 +409,22 @@ components:
 
     FamilyListResponse:
       allOf:
-        - $ref: '#/components/schemas/ApiResponse'
+        - $ref: "#/components/schemas/ApiResponse"
         - type: object
           properties:
             content:
               type: array
               items:
-                $ref: '#/components/schemas/Family'
+                $ref: "#/components/schemas/Family"
 
     DeviceListResponse:
       allOf:
-        - $ref: '#/components/schemas/ApiResponse'
+        - $ref: "#/components/schemas/ApiResponse"
         - type: object
           properties:
             content:
-              $ref: '#/components/schemas/PaginatedDeviceList'
-    
+              $ref: "#/components/schemas/PaginatedDeviceList"
+
     PaginatedDeviceList:
       type: object
       description: Paginated device list with metadata
@@ -399,10 +432,10 @@ components:
         content:
           type: array
           items:
-            $ref: '#/components/schemas/Device'
+            $ref: "#/components/schemas/Device"
           description: List of devices
         pageable:
-          $ref: '#/components/schemas/Pageable'
+          $ref: "#/components/schemas/Pageable"
         totalPages:
           type: integer
           description: Total number of pages
@@ -420,7 +453,7 @@ components:
           description: Current page number
           example: 0
         sort:
-          $ref: '#/components/schemas/Sort'
+          $ref: "#/components/schemas/Sort"
         numberOfElements:
           type: integer
           description: Number of elements in current page
@@ -437,13 +470,13 @@ components:
           type: boolean
           description: Whether the result is empty
           example: false
-    
+
     Pageable:
       type: object
       description: Pagination information
       properties:
         sort:
-          $ref: '#/components/schemas/Sort'
+          $ref: "#/components/schemas/Sort"
         pageSize:
           type: integer
           description: Size of the page
@@ -464,7 +497,7 @@ components:
           type: boolean
           description: Whether pagination is enabled
           example: true
-    
+
     Sort:
       type: object
       description: Sort information
@@ -484,11 +517,11 @@ components:
 
     DeviceStatisticsResponse:
       allOf:
-        - $ref: '#/components/schemas/ApiResponse'
+        - $ref: "#/components/schemas/ApiResponse"
         - type: object
           properties:
             content:
-              $ref: '#/components/schemas/BatteryStatistics'
+              $ref: "#/components/schemas/BatteryStatistics"
 
     BatteryIOPowerResponse:
       type: object
@@ -566,15 +599,76 @@ components:
         history:
           type: array
           items:
-            $ref: '#/components/schemas/StrategyHistoryEntry'
+            $ref: "#/components/schemas/StrategyHistoryEntry"
 
-    SpaceIndexResponse:
+    ChargingBoxStrategyResponse:
       allOf:
-        - $ref: '#/components/schemas/ApiResponse'
+        - $ref: "#/components/schemas/ApiResponse"
         - type: object
           properties:
             content:
-              $ref: '#/components/schemas/SpaceIndexContent'
+              $ref: "#/components/schemas/ChargingBoxStrategyContent"
+
+    ChargingBoxStrategyContent:
+      type: object
+      description: Charging box and inverter strategy configuration
+      properties:
+        ev3600AutoStrategyExist:
+          type: boolean
+          description: Whether EV3600 bi-directional inverter auto strategy exists
+          example: false
+        ev3600AutoStrategyRunning:
+          type: boolean
+          description: Whether EV3600 bi-directional inverter auto strategy is currently running
+          example: false
+        ev3600AutoStrategyMode:
+          type: ["string", "null"]
+          description: EV3600 auto strategy mode (null if not configured)
+          example: null
+        boostOn:
+          type: boolean
+          description: Whether boost mode is currently active
+          example: false
+        storageStrategy:
+          type: ["string", "null"]
+          description: Current storage strategy (null if not set)
+          example: null
+        normalChargeBoxMode:
+          type: ["string", "null"]
+          description: Normal charge box operating mode (null if not set)
+          example: null
+        tariffStrategyExist:
+          type: boolean
+          description: Whether a tariff-based charging strategy exists
+          example: true
+        inverterSn:
+          type: array
+          description: List of inverter serial numbers
+          items:
+            type: string
+          example: ["E17000035549"]
+        enableLocalSmartStrategy:
+          type: boolean
+          description: Whether local smart strategy is enabled
+          example: false
+        deyeLocalSnList:
+          type: array
+          description: List of Deye local serial numbers
+          items:
+            type: string
+          example: []
+        acCoupleEnabled:
+          type: boolean
+          description: Whether AC coupling is enabled for the system
+          example: false
+
+    SpaceIndexResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/SpaceIndexContent"
 
     SpaceIndexContent:
       type: object
@@ -585,19 +679,19 @@ components:
           description: Space identifier
           example: 34038
         today:
-          $ref: '#/components/schemas/TodayMetrics'
+          $ref: "#/components/schemas/TodayMetrics"
         eleMeter:
-          $ref: '#/components/schemas/MeterStatus'
+          $ref: "#/components/schemas/MeterStatus"
         inverter:
-          $ref: '#/components/schemas/InverterStatus'
+          $ref: "#/components/schemas/InverterStatus"
         battery:
-          $ref: '#/components/schemas/BatteryStatus'
+          $ref: "#/components/schemas/BatteryStatus"
         chargingBox:
-          $ref: '#/components/schemas/ChargingBoxStatus'
+          $ref: "#/components/schemas/ChargingBoxStatus"
         boostSetting:
-          $ref: '#/components/schemas/BoostSetting'
+          $ref: "#/components/schemas/BoostSetting"
         spaceChargePileDTO:
-          $ref: '#/components/schemas/EVChargerStatus'
+          $ref: "#/components/schemas/EVChargerStatus"
 
     TodayMetrics:
       type: object
@@ -628,7 +722,7 @@ components:
           description: Whether home power data is needed
           example: true
         homePower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Current home power consumption in watts
           example: null
 
@@ -664,11 +758,11 @@ components:
           description: Device status
           example: "Offline"
         currentPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Current power output in watts
           example: null
         modifyDate:
-          type: ['integer', 'null']
+          type: ["integer", "null"]
           description: Last update timestamp
           example: null
         deviceType:
@@ -720,11 +814,11 @@ components:
           description: Battery SOC percentage
           example: 10.0
         chargingRemaining:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Charging time remaining in minutes
           example: null
         dischargingRemaining:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Discharging time remaining in minutes
           example: null
         inputPower:
@@ -768,31 +862,31 @@ components:
           description: Fault status
           example: false
         acInputPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: AC input power
           example: null
         invertOutPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Inverter output power
           example: null
         acInputPhase:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: AC input phase
           example: null
         homeModeParam:
-          type: ['object', 'null']
+          type: ["object", "null"]
           description: Home mode parameters
           example: null
         carChgModeParam:
-          type: ['object', 'null']
+          type: ["object", "null"]
           description: Car charging mode parameters
           example: null
         chgModeParam:
-          type: ['object', 'null']
+          type: ["object", "null"]
           description: Charging mode parameters
           example: null
         modifyDate:
-          type: ['integer', 'null']
+          type: ["integer", "null"]
           description: Last update timestamp
           example: null
 
@@ -809,7 +903,7 @@ components:
           description: Boost mode enabled
           example: false
         batteryResult:
-          type: ['object', 'null']
+          type: ["object", "null"]
           description: Battery result data
           example: null
 
@@ -827,7 +921,7 @@ components:
           type: string
           description: Device type
           example: "STAR_CHARGE_EVSE"
-    
+
     LoginRequest:
       type: object
       required:
@@ -843,10 +937,10 @@ components:
           description: User password
           format: password
           example: "password123"
-    
+
     LoginResponse:
       allOf:
-        - $ref: '#/components/schemas/ApiResponse'
+        - $ref: "#/components/schemas/ApiResponse"
         - type: object
           properties:
             content:
@@ -889,22 +983,22 @@ components:
                   description: User nickname
                   example: "username"
                 headPicUrl:
-                  type: ['string', 'null']
+                  type: ["string", "null"]
                   description: User profile picture URL
                   example: null
-        deviceStatus:
-          type: string
-          enum: [Online, Offline, NotExist]
-          description: Device status
-          example: "NotExist"
-        fault:
-          type: boolean
-          description: Fault status
-          example: false
-        evseStatus:
-          type: ['string', 'null']
-          description: EVSE status
-          example: null
+          deviceStatus:
+            type: string
+            enum: [Online, Offline, NotExist]
+            description: Device status
+            example: "NotExist"
+          fault:
+            type: boolean
+            description: Fault status
+            example: false
+          evseStatus:
+            type: ["string", "null"]
+            description: EVSE status
+            example: null
 
     DeviceDetailsResponse:
       type: object
@@ -915,7 +1009,7 @@ components:
           description: Result code (1 = success)
           example: 1
         device:
-          $ref: '#/components/schemas/Device'
+          $ref: "#/components/schemas/Device"
 
     Family:
       type: object
@@ -957,11 +1051,11 @@ components:
               description: Currency code
               example: "EUR"
         rabotOnboarding:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: Rabot energy trading platform onboarding status
           example: null
         rabotCustomerId:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: Rabot customer identifier
           example: null
 
@@ -969,11 +1063,11 @@ components:
       type: object
       properties:
         spaceId:
-          type: ['integer', 'null']
+          type: ["integer", "null"]
           description: Space/family identifier
           example: 34038
         stationName:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: Station name
           example: null
         deviceCount:
@@ -992,7 +1086,7 @@ components:
             - Offline
           example: "Online"
         subStatus:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: Sub-status information
           example: null
         modifyDate:
@@ -1000,7 +1094,7 @@ components:
           description: Last modification timestamp in milliseconds
           example: 1757166321349
         today:
-          type: ['object', 'null']
+          type: ["object", "null"]
           description: Today's statistics (for inverters)
           properties:
             currentPower:
@@ -1022,7 +1116,7 @@ components:
                   type: string
                   example: "EUR"
         collectorSn:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: Collector serial number
           example: null
         deviceSn:
@@ -1046,86 +1140,86 @@ components:
             - ENERGY_STORAGE_BATTERY
           example: "ENERGY_STORAGE_BATTERY"
         batteryLevel:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery level percentage (for battery devices)
           example: 10.0
         chargeRemaining:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Charge time remaining in minutes
           example: null
         dischargeRemaining:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Discharge time remaining in minutes
           example: null
         isChargingStatus:
-          type: ['boolean', 'null']
+          type: ["boolean", "null"]
           description: Whether battery is charging
           example: null
         heaterStatusList:
-          type: ['array', 'null']
+          type: ["array", "null"]
           items:
             type: boolean
           description: Heater status for each battery module
           example: [false, false, false]
         inputPowerTotal:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Total input power in watts
           example: 96.0
         outputPowerTotal:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Total output power in watts
           example: 92.0
         totalAcPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Total AC power in watts (for meters)
           example: 3050.78
         dailyBuyEnergy:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Daily energy bought from grid in kWh
           example: 7.21
         dailyRetEnergy:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Daily energy returned to grid in kWh
           example: 0.12
         totalBuyEnergy:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Total energy bought from grid in kWh
           example: 3744.46
         totalRetEnergy:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Total energy returned to grid in kWh
           example: 53.38
         starChargeEvseDto:
-          type: ['object', 'null']
+          type: ["object", "null"]
           description: EV charger data
           example: null
         batteryChargingBoxDto:
-          type: ['object', 'null']
+          type: ["object", "null"]
           description: Battery charging box data
           example: null
         # Additional fields from device details endpoint
         firmwareVersion:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: Device firmware version
           example: "1.2.3"
         hwVersion:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: Device hardware version
           example: "A1"
         systemMultiStatus:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: System status
         supportReboot:
-          type: ['boolean', 'null']
+          type: ["boolean", "null"]
           description: Whether device supports remote reboot
         ssid:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: WiFi SSID if applicable
         manufacturer:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: Device manufacturer
         currentPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Current power in watts (for inverters)
           example: 3000
 
@@ -1195,7 +1289,7 @@ components:
           description: Device status
           example: "Online"
         subStatus:
-          type: ['string', 'null']
+          type: ["string", "null"]
           description: Sub-status information
           example: null
         deviceType:
@@ -1203,27 +1297,27 @@ components:
           description: Device type
           example: "ENERGY_STORAGE_BATTERY"
         batterySoc:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: System battery SOC
           example: 16.0
         battery1Soc:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery module 1 SOC
           example: 15.0
         battery2Soc:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery module 2 SOC
           example: 14.0
         battery3Soc:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery module 3 SOC
           example: null
         chargeRemaining:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Charge time remaining in hours
           example: 24.73
         dischargeRemaining:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Discharge time remaining in hours
           example: null
         fault:
@@ -1231,11 +1325,11 @@ components:
           description: Fault status
           example: false
         inputPowerTotal:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Total input power
           example: null
         outputPowerTotal:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Total output power
           example: null
         off:
@@ -1243,133 +1337,133 @@ components:
           description: Device off status
           example: false
         currentPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Current power
           example: null
         totalYield:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Total yield
           example: null
         heaterStatusList:
-          type: ['array', 'null']
+          type: ["array", "null"]
           items:
             type: boolean
           description: Heater status for each module
           example: [false, false, false]
         totalAcPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Total AC power
           example: null
         dailyBuyEnergy:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Daily energy bought
           example: null
         dailyRetEnergy:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Daily energy returned
           example: null
         totalBuyEnergy:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Total energy bought
           example: null
         totalRetEnergy:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Total energy returned
           example: null
         batteryMppt1Data:
           oneOf:
-            - $ref: '#/components/schemas/MpptData'
-            - type: 'null'
+            - $ref: "#/components/schemas/MpptData"
+            - type: "null"
           description: Main unit MPPT1 data
         batteryMppt2Data:
           oneOf:
-            - $ref: '#/components/schemas/MpptData'
-            - type: 'null'
+            - $ref: "#/components/schemas/MpptData"
+            - type: "null"
           description: Main unit MPPT2 data
         battery1MpptData:
           oneOf:
-            - $ref: '#/components/schemas/MpptData'
-            - type: 'null'
+            - $ref: "#/components/schemas/MpptData"
+            - type: "null"
           description: Battery module 1 MPPT data
         battery2MpptData:
           oneOf:
-            - $ref: '#/components/schemas/MpptData'
-            - type: 'null'
+            - $ref: "#/components/schemas/MpptData"
+            - type: "null"
           description: Battery module 2 MPPT data
         battery3MpptData:
           oneOf:
-            - $ref: '#/components/schemas/MpptData'
-            - type: 'null'
+            - $ref: "#/components/schemas/MpptData"
+            - type: "null"
           description: Battery module 3 MPPT data
         mpptCollectTime:
-          type: ['integer', 'null']
+          type: ["integer", "null"]
           description: MPPT data collection timestamp
           example: 1757236235455
         batteryMppt1InVol:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Main unit MPPT1 voltage
           example: 34
         batteryMppt1InCur:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Main unit MPPT1 current
           example: 1.9
         batteryMppt1InPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Main unit MPPT1 power
           example: 64.6
         batteryMppt2InVol:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Main unit MPPT2 voltage
           example: null
         batteryMppt2InCur:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Main unit MPPT2 current
           example: null
         batteryMppt2InPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Main unit MPPT2 power
           example: null
         battery1Mppt1InVol:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery 1 MPPT voltage
           example: 32
         battery1Mppt1InCur:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery 1 MPPT current
           example: 1.2
         battery1Mppt1InPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery 1 MPPT power
           example: 38.4
         battery2Mppt1InVol:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery 2 MPPT voltage
           example: 32
         battery2Mppt1InCur:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery 2 MPPT current
           example: 4.0
         battery2Mppt1InPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery 2 MPPT power
           example: 128.0
         battery3Mppt1InVol:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery 3 MPPT voltage
           example: null
         battery3Mppt1InCur:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery 3 MPPT current
           example: null
         battery3Mppt1InPower:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery 3 MPPT power
           example: null
         mpptCollectionTime:
-          type: ['integer', 'null']
+          type: ["integer", "null"]
           description: MPPT collection timestamp (duplicate of mpptCollectTime)
           example: 1757236235455
         batteryLevel:
-          type: ['number', 'null']
+          type: ["number", "null"]
           description: Battery level percentage
           example: 15.0
