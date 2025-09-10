@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/cedricziel/ha-sunlit/compare/v0.2.1...v0.2.2) (2025-09-10)
+
+
+### Bug Fixes
+
+* add aiohttp to dependencies ([1aee98c](https://github.com/cedricziel/ha-sunlit/commit/1aee98cddcd88a0a5f9f8e0aab466d108cb0c93b))
+
 ## [0.2.1](https://github.com/cedricziel/ha-sunlit/compare/v0.2.0...v0.2.1) (2025-09-10)
 
 
