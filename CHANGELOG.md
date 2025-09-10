@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/cedricziel/ha-sunlit/compare/v0.2.2...v0.2.3) (2025-09-10)
+
+
+### Bug Fixes
+
+* uninitialized variable ([d109745](https://github.com/cedricziel/ha-sunlit/commit/d109745481f4fe8010cae091832f04f389bebf00))
+
 ## [0.2.2](https://github.com/cedricziel/ha-sunlit/compare/v0.2.1...v0.2.2) (2025-09-10)
 
 
