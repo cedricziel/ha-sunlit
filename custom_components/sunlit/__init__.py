@@ -122,6 +122,9 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from REST API."""
         try:
+            # Initialize variables that might not be set in all code paths
+            charging_box_data = {}
+
             # For global/unassigned devices, fetch differently
             if self.is_global:
                 # Fetch all devices and filter for those without spaceId
