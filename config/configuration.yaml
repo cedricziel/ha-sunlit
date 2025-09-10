@@ -12,4 +12,4 @@ tts:
 logger:
   default: info
 #  logs:
-#    custom_components.sunlit_sensors: debug
+#    custom_components.sunlit: debug
