@@ -5,3 +5,4 @@ pip>=21.3.1
 xmltodict>=0.13.0
 charset_normalizer>=3.2.0
 pycountry>=23.12.11
+aiohttp>=3.8.0

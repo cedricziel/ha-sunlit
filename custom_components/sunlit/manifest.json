@@ -1,12 +1,16 @@
 {
     "domain": "sunlit",
     "name": "Sunlit REST Integration",
-    "codeowners": [],
+    "codeowners": [
+        "@cedricziel"
+    ],
     "config_flow": true,
     "dependencies": [],
     "documentation": "https://github.com/cedricziel/ha-sunlit",
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/cedricziel/ha-sunlit/issues",
-    "requirements": [],
+    "requirements": [
+        "aiohttp"
+    ],
     "version": "0.2.1"
 }
