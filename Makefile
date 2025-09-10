@@ -1,4 +1,4 @@
-.PHONY: help format lint check setup clean
+.PHONY: help format lint check test test-cov setup clean
 
 help: ## Show this help message
 	@echo "Usage: make [target]"
@@ -26,6 +26,16 @@ lint: ## Run all linters without making changes
 
 check: lint ## Alias for lint
 
+test: ## Run tests with pytest
+	@echo "Running tests..."
+	@pytest tests/test_simple_api_client.py tests/test_api_client.py -v --ignore=tests/test_config_flow.py --ignore=tests/test_coordinator.py
+	@echo "✓ Tests completed"
+
+test-cov: ## Run tests with coverage report
+	@echo "Running tests with coverage..."
+	@pytest tests/test_simple_api_client.py tests/test_api_client.py -v --ignore=tests/test_config_flow.py --ignore=tests/test_coordinator.py --cov=custom_components.sunlit --cov-report=term-missing --cov-report=xml --cov-report=html --timeout=30
+	@echo "✓ Coverage report generated (see htmlcov/index.html)"
+
 setup: ## Install development dependencies
 	@echo "Installing dependencies..."
 	@python3 -m pip install --requirement requirements.txt
@@ -41,4 +51,5 @@ clean: ## Clean up cache and temporary files
 	@find . -type f -name ".coverage" -delete
 	@rm -rf .ruff_cache
 	@rm -rf .pytest_cache
+	@rm -rf htmlcov
 	@echo "✓ Cleaned up cache files"

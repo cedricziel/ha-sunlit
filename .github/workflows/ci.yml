@@ -32,19 +32,10 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+        run: make setup
 
-      - name: Run ruff check
-        run: ruff check custom_components/sunlit/
-
-      - name: Run ruff format check
-        run: ruff format --check custom_components/sunlit/
-
-      - name: Run isort
-        run: isort --check-only custom_components/sunlit/
+      - name: Run linters
+        run: make lint
 
   test:
     name: Test Python ${{ matrix.python-version }}
@@ -71,20 +62,10 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+        run: make setup
 
-      - name: Run pytest with coverage
-        run: |
-          pytest tests/ \
-            --cov=custom_components.sunlit \
-            --cov-report=term-missing \
-            --cov-report=xml \
-            --cov-report=html \
-            --timeout=30 \
-            -v
+      - name: Run tests with coverage
+        run: make test-cov
 
   validate-hacs:
     name: Validate HACS
