@@ -6,15 +6,14 @@ import hashlib
 import logging
 from typing import Any
 
-import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import voluptuous as vol
 
 from .api_client import SunlitApiClient, SunlitAuthError, SunlitConnectionError
-from .const import (CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_FAMILIES,
-                    CONF_PASSWORD, DOMAIN)
+from .const import CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_FAMILIES, CONF_PASSWORD, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 

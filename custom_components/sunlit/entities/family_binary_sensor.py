@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorEntity, BinarySensorEntityDescription)
+    BinarySensorEntity,
+    BinarySensorEntityDescription,
+)
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 

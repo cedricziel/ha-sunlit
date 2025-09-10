@@ -5,7 +5,9 @@ from __future__ import annotations
 import logging
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass, BinarySensorEntityDescription)
+    BinarySensorDeviceClass,
+    BinarySensorEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback

@@ -9,17 +9,28 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import (BATTERY_MODULE_SENSORS, BATTERY_SENSORS,
-                    DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER,
-                    DEVICE_TYPE_INVERTER_SOLAR, DEVICE_TYPE_METER,
-                    DEVICE_TYPE_METER_PRO, DOMAIN, FAMILY_SENSORS,
-                    INVERTER_SENSORS, METER_SENSORS)
+from .const import (
+    BATTERY_MODULE_SENSORS,
+    BATTERY_SENSORS,
+    DEVICE_TYPE_BATTERY,
+    DEVICE_TYPE_INVERTER,
+    DEVICE_TYPE_INVERTER_SOLAR,
+    DEVICE_TYPE_METER,
+    DEVICE_TYPE_METER_PRO,
+    DOMAIN,
+    FAMILY_SENSORS,
+    INVERTER_SENSORS,
+    METER_SENSORS,
+)
 from .entities.battery_module_sensor import SunlitBatteryModuleSensor
 from .entities.battery_sensor import SunlitBatterySensor
 from .entities.family_sensor import SunlitFamilySensor
-from .entities.helpers import (get_device_class_for_sensor,
-                               get_icon_for_sensor, get_state_class_for_sensor,
-                               get_unit_for_sensor)
+from .entities.helpers import (
+    get_device_class_for_sensor,
+    get_icon_for_sensor,
+    get_state_class_for_sensor,
+    get_unit_for_sensor,
+)
 from .entities.inverter_sensor import SunlitInverterSensor
 from .entities.meter_sensor import SunlitMeterSensor
 from .entities.unknown_device_sensor import SunlitUnknownDeviceSensor

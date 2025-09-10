@@ -37,18 +37,14 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
-      - name: Run ruff
+      - name: Run ruff check
         run: ruff check custom_components/sunlit/
 
-      - name: Run black
-        run: black --check custom_components/sunlit/
+      - name: Run ruff format check
+        run: ruff format --check custom_components/sunlit/
 
       - name: Run isort
         run: isort --check-only custom_components/sunlit/
-
-      - name: Run flake8
-        run: flake8 custom_components/sunlit/
-        continue-on-error: true # Don't fail on flake8 for now
 
   test:
     name: Test Python ${{ matrix.python-version }}

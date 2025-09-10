@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.sensor import (SensorEntity,
-                                             SensorEntityDescription)
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .. import SunlitDataUpdateCoordinator
-from ..const import (DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER,
-                     DEVICE_TYPE_METER, DOMAIN)
+from ..const import DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER, DEVICE_TYPE_METER, DOMAIN
 from .base import normalize_device_type
 
 

@@ -4,4 +4,13 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+echo "Installing runtime dependencies..."
 python3 -m pip install --requirement requirements.txt
+
+echo "Installing development dependencies..."
+python3 -m pip install --requirement requirements-dev.txt
+
+echo "Installing pre-commit hooks..."
+pre-commit install
+
+echo "✓ Setup complete!"

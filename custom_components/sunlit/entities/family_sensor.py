@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from homeassistant.components.sensor import (SensorEntity,
-                                             SensorEntityDescription)
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -48,7 +47,7 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
 
             # Convert timestamp from milliseconds to datetime for timestamp sensors
             if self.entity_description.key == "last_strategy_change" and value:
-                return datetime.fromtimestamp(value / 1000, tz=timezone.utc)
+                return datetime.fromtimestamp(value / 1000, tz=UTC)
 
             return value
         return None

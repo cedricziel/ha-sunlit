@@ -6,9 +6,9 @@ help: ## Show this help message
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
 
-format: ## Format code with black, isort, and ruff
-	@echo "Formatting with black..."
-	@black custom_components/sunlit/
+format: ## Format code with ruff and isort
+	@echo "Formatting with ruff..."
+	@ruff format custom_components/sunlit/
 	@echo "Sorting imports with isort..."
 	@isort custom_components/sunlit/
 	@echo "Fixing with ruff..."
@@ -18,8 +18,8 @@ format: ## Format code with black, isort, and ruff
 lint: ## Run all linters without making changes
 	@echo "Running ruff check..."
 	@ruff check custom_components/sunlit/
-	@echo "Running black check..."
-	@black --check custom_components/sunlit/
+	@echo "Running ruff format check..."
+	@ruff format --check custom_components/sunlit/
 	@echo "Running isort check..."
 	@isort --check-only custom_components/sunlit/
 	@echo "✓ All checks passed"

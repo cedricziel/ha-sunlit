@@ -1,6 +1,6 @@
 [run]
 source = custom_components.sunlit
-omit = 
+omit =
     */tests/*
     */test_*.py
     */__pycache__/*

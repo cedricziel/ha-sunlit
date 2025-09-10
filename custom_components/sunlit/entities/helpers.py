@@ -1,36 +1,34 @@
 """Helper functions for Sunlit sensors."""
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from homeassistant.const import (PERCENTAGE, UnitOfElectricCurrent,
-                                 UnitOfElectricPotential, UnitOfEnergy,
-                                 UnitOfPower, UnitOfTime)
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfTime,
+)
 
 
 def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     """Get the appropriate device class for a sensor."""
     # Check for status and strategy fields first (they're text, not numeric)
-    if "status" in key.lower() or "strategy" in key.lower():
-        return None
-    # Currency and text fields
-    elif key in ["currency", "battery_count"]:
-        return None
-    # battery_full is a boolean, not a battery percentage
-    elif key == "battery_full":
+    if (
+        "status" in key.lower()
+        or "strategy" in key.lower()
+        or key in ["currency", "battery_count"]
+        or key == "battery_full"
+    ):
         return None
     # Battery capacity
-    elif "capacity" in key.lower():
-        return SensorDeviceClass.ENERGY
-    # MPPT energy sensors
-    elif "mpptenergy" in key.lower().replace("_", "").replace(" ", ""):
-        return SensorDeviceClass.ENERGY
-    # Total solar energy
-    elif key == "total_solar_energy":
-        return SensorDeviceClass.ENERGY
-    # Grid export energy
-    elif key in ["total_grid_export_energy", "daily_grid_export_energy"]:
-        return SensorDeviceClass.ENERGY
-    # Daily yield is energy
-    elif key == "daily_yield":
+    elif (
+        "capacity" in key.lower()
+        or "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
+        or key == "total_solar_energy"
+        or key in ["total_grid_export_energy", "daily_grid_export_energy"]
+        or key == "daily_yield"
+    ):
         return SensorDeviceClass.ENERGY
     # Daily earnings is monetary
     elif key == "daily_earnings":
@@ -57,9 +55,7 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
         return SensorDeviceClass.CURRENT
     elif "energy" in key.lower():
         return SensorDeviceClass.ENERGY
-    elif "soc" in key.lower():
-        return SensorDeviceClass.BATTERY
-    elif "battery" in key.lower() or "level" in key.lower():
+    elif "soc" in key.lower() or "battery" in key.lower() or "level" in key.lower():
         return SensorDeviceClass.BATTERY
     elif key == "last_strategy_change":
         return SensorDeviceClass.TIMESTAMP
@@ -74,24 +70,18 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     if key in ["rated_power", "max_output_power", "currency", "battery_count"]:
         return None
     # Special case: total_power_generation is cumulative energy
-    elif key == "total_power_generation":
+    elif (
+        key == "total_power_generation"
+        or "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
+        or key == "total_solar_energy"
+        or key == "total_grid_export_energy"
+    ):
         return SensorStateClass.TOTAL_INCREASING
-    # MPPT energy sensors are cumulative
-    elif "mpptenergy" in key.lower().replace("_", "").replace(" ", ""):
-        return SensorStateClass.TOTAL_INCREASING
-    # Total solar energy is cumulative
-    elif key == "total_solar_energy":
-        return SensorStateClass.TOTAL_INCREASING
-    # Grid export energy
-    elif key == "total_grid_export_energy":
-        return SensorStateClass.TOTAL_INCREASING
-    elif key == "daily_grid_export_energy":
-        return SensorStateClass.TOTAL
-    # Daily yield resets each day
-    elif key == "daily_yield":
-        return SensorStateClass.TOTAL
-    # Daily earnings
-    elif key == "daily_earnings":
+    elif (
+        key == "daily_grid_export_energy"
+        or key == "daily_yield"
+        or key == "daily_earnings"
+    ):
         return SensorStateClass.TOTAL
     # Energy sensors need special handling
     elif "energy" in key.lower():
@@ -104,9 +94,7 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
         else:
             # Other energy sensors
             return SensorStateClass.TOTAL_INCREASING
-    elif "power" in key.lower():
-        return SensorStateClass.MEASUREMENT
-    elif key in [
+    elif "power" in key.lower() or key in [
         "device_count",
         "online_devices",
         "offline_devices",
@@ -124,22 +112,14 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
 def get_unit_for_sensor(key: str) -> str | None:
     """Get the appropriate unit for a sensor."""
     # Battery capacity
-    if "capacity" in key.lower():
-        return UnitOfEnergy.KILO_WATT_HOUR
-    # MPPT energy sensors
-    elif "mpptenergy" in key.lower().replace("_", "").replace(" ", ""):
-        return UnitOfEnergy.KILO_WATT_HOUR
-    # Total solar energy
-    elif key == "total_solar_energy":
-        return UnitOfEnergy.KILO_WATT_HOUR
-    # Grid export energy
-    elif key in ["total_grid_export_energy", "daily_grid_export_energy"]:
-        return UnitOfEnergy.KILO_WATT_HOUR
-    # Daily yield
-    elif key == "daily_yield":
-        return UnitOfEnergy.KILO_WATT_HOUR
-    # Special case: total_power_generation is actually energy in kWh
-    elif key == "total_power_generation":
+    if (
+        "capacity" in key.lower()
+        or "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
+        or key == "total_solar_energy"
+        or key in ["total_grid_export_energy", "daily_grid_export_energy"]
+        or key == "daily_yield"
+        or key == "total_power_generation"
+    ):
         return UnitOfEnergy.KILO_WATT_HOUR
     # Time remaining sensors
     elif "remaining" in key.lower():
@@ -168,9 +148,9 @@ def get_unit_for_sensor(key: str) -> str | None:
         return UnitOfElectricCurrent.AMPERE
     elif "energy" in key.lower():
         return UnitOfEnergy.KILO_WATT_HOUR
-    elif "soc" in key.lower():
-        return PERCENTAGE
-    elif "battery_level" in key or "average_battery_level" in key:
+    elif (
+        "soc" in key.lower() or "battery_level" in key or "average_battery_level" in key
+    ):
         return PERCENTAGE
     elif "earnings" in key:
         return "EUR"  # Could be made configurable, will use currency field
@@ -204,9 +184,7 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     elif key == "total_solar_power":
         return "mdi:solar-power-variant"
     # Grid export tracking
-    elif key == "total_grid_export_energy":
-        return "mdi:transmission-tower-export"
-    elif key == "daily_grid_export_energy":
+    elif key == "total_grid_export_energy" or key == "daily_grid_export_energy":
         return "mdi:transmission-tower-export"
     # Battery related
     elif "battery_full" in key:

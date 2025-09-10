@@ -9,12 +9,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import (DataUpdateCoordinator,
-                                                      UpdateFailed)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api_client import SunlitApiClient
-from .const import (CONF_ACCESS_TOKEN, CONF_FAMILIES, DEFAULT_SCAN_INTERVAL,
-                    DOMAIN)
+from .const import CONF_ACCESS_TOKEN, CONF_FAMILIES, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -474,9 +472,9 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                                             energy_increment = (
                                                 avg_power * time_delta_hours
                                             ) / 1000
-                                            self.mppt_energy[
-                                                energy_key
-                                            ] += energy_increment
+                                            self.mppt_energy[energy_key] += (
+                                                energy_increment
+                                            )
                                     else:
                                         # Initialize energy accumulator
                                         self.mppt_energy[energy_key] = 0
@@ -510,9 +508,9 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                                             energy_increment = (
                                                 avg_power * time_delta_hours
                                             ) / 1000
-                                            self.mppt_energy[
-                                                energy_key
-                                            ] += energy_increment
+                                            self.mppt_energy[energy_key] += (
+                                                energy_increment
+                                            )
                                     else:
                                         self.mppt_energy[energy_key] = 0
 
