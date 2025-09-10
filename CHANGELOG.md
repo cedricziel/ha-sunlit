@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/cedricziel/ha-sunlit/compare/v0.2.0...v0.2.1) (2025-09-10)
+
+
+### Bug Fixes
+
+* bring back manifest ([865878c](https://github.com/cedricziel/ha-sunlit/commit/865878cf5c768e39b3dbfcd7633d8abc85c22585))
+* bump python version to 3.13 ([2c9e0a8](https://github.com/cedricziel/ha-sunlit/commit/2c9e0a8a786f522810fe124d4b11289f210fd3b5))
+
 ## [0.2.0](https://github.com/cedricziel/ha-sunlit/compare/v0.1.0...v0.2.0) (2025-09-10)
 
 
