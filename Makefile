@@ -28,12 +28,12 @@ check: lint ## Alias for lint
 
 test: ## Run tests with pytest
 	@echo "Running tests..."
-	@pytest tests/test_simple_api_client.py tests/test_api_client.py -v --ignore=tests/test_config_flow.py --ignore=tests/test_coordinator.py
+	@pytest tests/ -v
 	@echo "✓ Tests completed"
 
 test-cov: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
-	@pytest tests/test_simple_api_client.py tests/test_api_client.py -v --ignore=tests/test_config_flow.py --ignore=tests/test_coordinator.py --cov=custom_components.sunlit --cov-report=term-missing --cov-report=xml --cov-report=html --timeout=30
+	@pytest tests/ -v --cov=custom_components.sunlit --cov-report=term-missing --cov-report=xml --cov-report=html --timeout=30
 	@echo "✓ Coverage report generated (see htmlcov/index.html)"
 
 setup: ## Install development dependencies
