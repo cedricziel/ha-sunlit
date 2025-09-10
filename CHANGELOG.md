@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0](https://github.com/cedricziel/ha-sunlit/compare/v0.1.0...v0.2.0) (2025-09-10)
+
+
+### Features
+
+* add charging box strategy endpoint support ([7eb0670](https://github.com/cedricziel/ha-sunlit/commit/7eb0670676742ada8d4c8b1a71ababcfc32d189f))
+* add comprehensive debug logging for troubleshooting ([3e15462](https://github.com/cedricziel/ha-sunlit/commit/3e154624342e28ab7b5993f875e64c071106f409))
+* add support for new device types ([34bf5b7](https://github.com/cedricziel/ha-sunlit/commit/34bf5b7c967d1ce83f9daffad7621427728a27d0))
+
+
+### Bug Fixes
+
+* correct debug config ([e053cb1](https://github.com/cedricziel/ha-sunlit/commit/e053cb13504582d8f11eee5d0b0a0bc5677d4f2e))
+* remove release job ([5f90c8f](https://github.com/cedricziel/ha-sunlit/commit/5f90c8f586666bcce9d2120ee91d60298662ff74))
+
 ## [0.1.0](https://github.com/cedricziel/ha-sunlit/compare/v0.0.1...v0.1.0) (2025-09-07)
 
 
