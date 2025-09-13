@@ -81,14 +81,19 @@ async def test_coordinator_update_success(
     # Verify API calls
     api_client.fetch_space_index.assert_called_once_with("34038")
     api_client.fetch_space_soc.assert_called_once_with("34038")
-    api_client.fetch_current_strategy.assert_called_once_with("34038")
-    api_client.fetch_device_statistics.assert_called_once_with("battery_001")
+    api_client.fetch_space_current_strategy.assert_called_once_with("34038")
+    # fetch_device_statistics is called for all online devices
+    assert api_client.fetch_device_statistics.call_count == 3
+    api_client.fetch_device_statistics.assert_any_call("meter_001")
+    api_client.fetch_device_statistics.assert_any_call("inverter_001")
+    api_client.fetch_device_statistics.assert_any_call("battery_001")
 
 
 async def test_coordinator_update_partial_failure(
     hass: HomeAssistant,
     enable_custom_integrations,
     space_index_response,
+    device_statistics_response,
 ):
     """Test coordinator handles partial API failures gracefully."""
     api_client = AsyncMock()
@@ -103,6 +108,8 @@ async def test_coordinator_update_partial_failure(
     api_client.get_charging_box_strategy.side_effect = Exception(
         "Charging box API failed"
     )
+    # Mock fetch_device_statistics to return valid data
+    api_client.fetch_device_statistics.return_value = device_statistics_response["content"]
 
     coordinator = SunlitDataUpdateCoordinator(
         hass,
@@ -164,18 +171,16 @@ async def test_coordinator_battery_module_creation(
 
     data = await coordinator._async_update_data()
 
-    # Should have created virtual battery modules
+    # Check that battery device has module data
     devices = data["devices"]
-    assert "battery_001_module1" in devices
-    assert "battery_001_module2" in devices
+    assert "battery_001" in devices
 
-    # Check module data
-    module1 = devices["battery_001_module1"]
-    assert module1["deviceType"] == "BATTERY_MODULE"
-    assert module1["Soc"] == 84
-    assert module1["Mppt1InVol"] == 398.2
-    assert module1["Mppt1InPower"] == 2190.1
-    assert module1["capacity"] == 2.15
+    # Check battery has module SOC data from statistics
+    battery = devices["battery_001"]
+    assert battery["battery1Soc"] == 84
+    assert battery["battery2Soc"] == 86
+    assert battery["battery1Mppt1InVol"] == 398.2
+    assert battery["battery1Mppt1InPower"] == 2190.1
 
 
 async def test_coordinator_solar_energy_aggregation(
@@ -281,6 +286,7 @@ async def test_coordinator_strategy_history_processing(
     enable_custom_integrations,
     space_index_response,
     strategy_history_response,
+    device_statistics_response,
 ):
     """Test strategy history processing."""
     api_client = AsyncMock()
@@ -289,10 +295,11 @@ async def test_coordinator_strategy_history_processing(
     api_client.fetch_space_soc.return_value = {}
     api_client.fetch_current_strategy.return_value = {}
     api_client.fetch_space_current_strategy.return_value = {}
-    api_client.fetch_space_strategy_history.return_value = strategy_history_response[
-        "content"
-    ]
+    # The API client returns response["content"], which has its own "content" field
+    api_client.fetch_space_strategy_history.return_value = strategy_history_response["content"]
     api_client.get_charging_box_strategy.return_value = {}
+    # Mock fetch_device_statistics for online devices
+    api_client.fetch_device_statistics.return_value = device_statistics_response["content"]
 
     coordinator = SunlitDataUpdateCoordinator(
         hass,

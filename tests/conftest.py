@@ -11,6 +11,12 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
+@pytest.fixture(autouse=True)
+def auto_enable_custom_integrations(enable_custom_integrations):
+    """Enable custom integrations for all tests."""
+    yield
+
+
 @pytest.fixture
 def mock_aioresponse():
     """Create an aioresponses instance for mocking HTTP calls."""
@@ -213,21 +219,32 @@ def current_strategy_response():
 @pytest.fixture
 def strategy_history_response():
     """Sample strategy history API response."""
+    from datetime import datetime, timedelta
+
+    # Create timestamps within the last 24 hours
+    now = datetime.now()
+    two_hours_ago = now - timedelta(hours=2)
+    four_hours_ago = now - timedelta(hours=4)
+
     return {
         "code": 0,
         "message": {"DE": "Ok"},
-        "content": [
-            {
-                "timestamp": 1757165913195,
-                "strategyType": "SELF_CONSUMPTION",
-                "status": "ACTIVE",
-            },
-            {
-                "timestamp": 1757165813195,
-                "strategyType": "GRID_FEED",
-                "status": "COMPLETED",
-            },
-        ],
+        "content": {
+            "content": [
+                {
+                    "modifyDate": int(two_hours_ago.timestamp() * 1000),
+                    "strategy": "SELF_CONSUMPTION",
+                    "status": "ACTIVE",
+                },
+                {
+                    "modifyDate": int(four_hours_ago.timestamp() * 1000),
+                    "strategy": "GRID_FEED",
+                    "status": "COMPLETED",
+                },
+            ],
+            "totalElements": 2,
+            "totalPages": 1,
+        },
     }
 
 

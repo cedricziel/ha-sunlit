@@ -12,7 +12,7 @@ from custom_components.sunlit.api_client import SunlitAuthError, SunlitConnectio
 from custom_components.sunlit.const import CONF_ACCESS_TOKEN, CONF_FAMILIES
 
 
-async def test_form_user_init(hass: HomeAssistant, enable_custom_integrations):
+async def test_form_user_init(hass: HomeAssistant):
     """Test we get the form on user init."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -24,7 +24,6 @@ async def test_form_user_init(hass: HomeAssistant, enable_custom_integrations):
 
 async def test_form_authentication_success(
     hass: HomeAssistant,
-    enable_custom_integrations,
     mock_aioresponse,
     api_base_url,
     families_response,
@@ -67,7 +66,6 @@ async def test_form_authentication_success(
 
 async def test_form_family_selection(
     hass: HomeAssistant,
-    enable_custom_integrations,
     mock_aioresponse,
     api_base_url,
     families_response,
@@ -115,7 +113,6 @@ async def test_form_family_selection(
 
 async def test_form_authentication_error(
     hass: HomeAssistant,
-    enable_custom_integrations,
     mock_aioresponse,
     api_base_url,
     api_error_response,
@@ -143,7 +140,6 @@ async def test_form_authentication_error(
 
 async def test_form_connection_error(
     hass: HomeAssistant,
-    enable_custom_integrations,
 ):
     """Test connection error handling."""
     result = await hass.config_entries.flow.async_init(
@@ -168,7 +164,6 @@ async def test_form_connection_error(
 
 async def test_form_no_families_selected(
     hass: HomeAssistant,
-    enable_custom_integrations,
     families_response,
 ):
     """Test error when no families are selected."""
@@ -201,7 +196,6 @@ async def test_form_no_families_selected(
 
 async def test_form_single_family_auto_select(
     hass: HomeAssistant,
-    enable_custom_integrations,
 ):
     """Test automatic selection when only one family exists."""
     single_family_response = {
@@ -226,8 +220,8 @@ async def test_form_single_family_auto_select(
         "custom_components.sunlit.config_flow.SunlitApiClient",
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
-        mock_client.login.return_value = {"access_token": "test_api_key_123"}
-        mock_client.get_families.return_value = single_family_response["content"]
+        mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
+        mock_client.fetch_families = AsyncMock(return_value=single_family_response["content"])
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -253,7 +247,6 @@ async def test_form_single_family_auto_select(
 
 async def test_form_duplicate_entry(
     hass: HomeAssistant,
-    enable_custom_integrations,
     mock_config_entry,
 ):
     """Test duplicate entry prevention."""

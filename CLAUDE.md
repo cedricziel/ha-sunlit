@@ -132,3 +132,4 @@ Battery modules (B215 extension modules 1-3) are created as separate virtual dev
 - Total solar energy aggregation across all inverters
 - B215 battery module virtual devices
 - Makefile for development workflow
+- if we need to compare api responses, the openapi spec that's included in the project can guide us.
