@@ -121,6 +121,7 @@ def device_list_response():
                 "deviceStatus": 1,  # Online
                 "fault": False,
                 "off": False,
+                "deviceCount": 3,  # 3 battery modules for testing
             },
         ],
     }
@@ -163,6 +164,7 @@ def space_index_response():
                     "batterySoc": 85,
                     "inputPowerTotal": 500,
                     "outputPowerTotal": 0,
+                    "deviceCount": 3,  # 3 battery modules for testing
                 },
             ],
             "today": {

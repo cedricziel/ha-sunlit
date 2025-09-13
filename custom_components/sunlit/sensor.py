@@ -242,11 +242,19 @@ async def async_setup_entry(
 
                         # For battery devices, create virtual devices for battery modules
                         if device_type == DEVICE_TYPE_BATTERY:
-                            # Check for battery modules (1, 2, 3) and create virtual devices
-                            for module_num in [1, 2, 3]:
-                                # Check if this module exists (by checking if any of its data is present)
+                            # Get actual number of battery modules from device coordinator
+                            module_count = device_coordinator.get_battery_module_count(
+                                device_id
+                            )
 
-                                # Always create module devices for batteries to ensure stable entities
+                            _LOGGER.debug(
+                                "Creating battery module sensors for device %s: %d modules",
+                                device_id,
+                                module_count,
+                            )
+
+                            # Create virtual devices only for existing battery modules
+                            for module_num in range(1, module_count + 1):
                                 # Create sensors for this battery module
                                 for (
                                     suffix,
