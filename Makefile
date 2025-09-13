@@ -28,7 +28,7 @@ check: lint ## Alias for lint
 
 test: ## Run tests with pytest
 	@echo "Running tests..."
-	@pytest tests/ -v
+	@pytest tests/ -v --asyncio-mode=auto
 	@echo "✓ Tests completed"
 
 test-cov: ## Run tests with coverage report

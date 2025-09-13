@@ -11,9 +11,9 @@ from custom_components.sunlit import SunlitDataUpdateCoordinator
 from custom_components.sunlit.const import DEFAULT_SCAN_INTERVAL, DOMAIN
 
 
-@pytest.mark.asyncio
 async def test_coordinator_update_success(
     hass: HomeAssistant,
+    enable_custom_integrations,
     mock_config_entry,
     space_index_response,
     space_soc_response,
@@ -81,9 +81,9 @@ async def test_coordinator_update_success(
     api_client.fetch_device_statistics.assert_called_once_with("battery_001")
 
 
-@pytest.mark.asyncio
 async def test_coordinator_update_partial_failure(
     hass: HomeAssistant,
+    enable_custom_integrations,
     space_index_response,
 ):
     """Test coordinator handles partial API failures gracefully."""
@@ -117,9 +117,9 @@ async def test_coordinator_update_partial_failure(
     assert len(coordinator.data["devices"]) == 3
 
 
-@pytest.mark.asyncio
 async def test_coordinator_battery_module_creation(
     hass: HomeAssistant,
+    enable_custom_integrations,
     space_index_response,
     device_statistics_response,
 ):
@@ -170,9 +170,9 @@ async def test_coordinator_battery_module_creation(
     assert module1["capacity"] == 2.15
 
 
-@pytest.mark.asyncio
 async def test_coordinator_solar_energy_aggregation(
     hass: HomeAssistant,
+    enable_custom_integrations,
     space_index_response,
 ):
     """Test solar energy aggregation across inverters."""
@@ -214,9 +214,9 @@ async def test_coordinator_solar_energy_aggregation(
     assert family_data["total_solar_energy"] == 2500.0  # 1000 + 1500
 
 
-@pytest.mark.asyncio
 async def test_coordinator_update_interval(
     hass: HomeAssistant,
+    enable_custom_integrations,
     space_index_response,
 ):
     """Test coordinator update interval is correct."""
@@ -238,9 +238,9 @@ async def test_coordinator_update_interval(
     assert coordinator.update_interval == timedelta(seconds=30)
 
 
-@pytest.mark.asyncio
 async def test_coordinator_error_handling(
     hass: HomeAssistant,
+    enable_custom_integrations,
 ):
     """Test coordinator error handling when all APIs fail."""
     api_client = AsyncMock()
@@ -258,9 +258,9 @@ async def test_coordinator_error_handling(
         await coordinator.async_config_entry_first_refresh()
 
 
-@pytest.mark.asyncio
 async def test_coordinator_strategy_history_processing(
     hass: HomeAssistant,
+    enable_custom_integrations,
     space_index_response,
     strategy_history_response,
 ):
@@ -289,9 +289,9 @@ async def test_coordinator_strategy_history_processing(
     assert family_data["strategy_changes_today"] == 2
 
 
-@pytest.mark.asyncio
 async def test_coordinator_grid_export_tracking(
     hass: HomeAssistant,
+    enable_custom_integrations,
     space_index_response,
 ):
     """Test grid export energy tracking."""

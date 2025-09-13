@@ -11,8 +11,7 @@ from custom_components.sunlit import DOMAIN
 from custom_components.sunlit.const import CONF_ACCESS_TOKEN, CONF_FAMILIES
 
 
-@pytest.mark.asyncio
-async def test_form_user_init(hass: HomeAssistant):
+async def test_form_user_init(hass: HomeAssistant, enable_custom_integrations):
     """Test we get the form on user init."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -22,9 +21,9 @@ async def test_form_user_init(hass: HomeAssistant):
     assert result["step_id"] == "user"
 
 
-@pytest.mark.asyncio
 async def test_form_authentication_success(
     hass: HomeAssistant,
+    enable_custom_integrations,
     mock_aioresponse,
     api_base_url,
     families_response,
@@ -60,9 +59,9 @@ async def test_form_authentication_success(
         assert result2["errors"] == {}
 
 
-@pytest.mark.asyncio
 async def test_form_family_selection(
     hass: HomeAssistant,
+    enable_custom_integrations,
     mock_aioresponse,
     api_base_url,
     families_response,
@@ -106,9 +105,9 @@ async def test_form_family_selection(
         assert result3["data"][CONF_FAMILIES][1]["family_name"] == "Test"
 
 
-@pytest.mark.asyncio
 async def test_form_authentication_error(
     hass: HomeAssistant,
+    enable_custom_integrations,
     mock_aioresponse,
     api_base_url,
     api_error_response,
@@ -140,9 +139,9 @@ async def test_form_authentication_error(
         assert result2["errors"] == {"base": "invalid_auth"}
 
 
-@pytest.mark.asyncio
 async def test_form_connection_error(
     hass: HomeAssistant,
+    enable_custom_integrations,
 ):
     """Test connection error handling."""
     result = await hass.config_entries.flow.async_init(
@@ -165,9 +164,9 @@ async def test_form_connection_error(
         assert result2["errors"] == {"base": "cannot_connect"}
 
 
-@pytest.mark.asyncio
 async def test_form_no_families_selected(
     hass: HomeAssistant,
+    enable_custom_integrations,
     families_response,
 ):
     """Test error when no families are selected."""
@@ -197,9 +196,9 @@ async def test_form_no_families_selected(
         assert result3["errors"] == {"base": "no_families"}
 
 
-@pytest.mark.asyncio
 async def test_form_single_family_auto_select(
     hass: HomeAssistant,
+    enable_custom_integrations,
 ):
     """Test automatic selection when only one family exists."""
     single_family_response = {
@@ -240,9 +239,9 @@ async def test_form_single_family_auto_select(
         assert result2["data"][CONF_FAMILIES][0]["family_name"] == "Garage"
 
 
-@pytest.mark.asyncio
 async def test_form_duplicate_entry(
     hass: HomeAssistant,
+    enable_custom_integrations,
     mock_config_entry,
 ):
     """Test duplicate entry prevention."""

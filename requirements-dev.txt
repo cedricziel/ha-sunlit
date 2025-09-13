@@ -1,10 +1,10 @@
 # Development and testing dependencies
-pytest==8.4.1
-pytest-asyncio==1.1.0
-pytest-cov==6.2.1
-pytest-timeout==2.4.0
-aioresponses==0.7.8
-pytest-homeassistant-custom-component==0.13.278
+pytest
+pytest-asyncio<1.0.0
+pytest-cov
+pytest-timeout
+aioresponses
+pytest-homeassistant-custom-component
 
 # Linting and formatting
 ruff==0.8.6
