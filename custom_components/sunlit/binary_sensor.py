@@ -116,7 +116,14 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the binary sensor platform."""
-    coordinators = hass.data[DOMAIN][config_entry.entry_id]
+    integration_data = hass.data[DOMAIN][config_entry.entry_id]
+
+    # Handle both old and new data structures
+    if isinstance(integration_data, dict) and "coordinators" in integration_data:
+        coordinators = integration_data["coordinators"]
+    else:
+        # Fallback for old structure
+        coordinators = integration_data
 
     sensors = []
 

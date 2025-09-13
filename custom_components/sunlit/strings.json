@@ -27,5 +27,31 @@
     "abort": {
       "already_configured": "This account is already configured"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Sunlit Options",
+        "description": "Configure SOC event settings for {config_title}",
+        "data": {
+          "enable_soc_events": "Enable SOC Events",
+          "soc_threshold_critical_low": "Critical Low Threshold (%)",
+          "soc_threshold_low": "Low Threshold (%)",
+          "soc_threshold_high": "High Threshold (%)",
+          "soc_threshold_critical_high": "Critical High Threshold (%)",
+          "soc_change_threshold": "Significant Change Threshold (%)",
+          "min_event_interval": "Minimum Event Interval (seconds)"
+        },
+        "data_description": {
+          "enable_soc_events": "Enable or disable battery SOC event notifications",
+          "soc_threshold_critical_low": "Battery SOC percentage considered critically low",
+          "soc_threshold_low": "Battery SOC percentage considered low",
+          "soc_threshold_high": "Battery SOC percentage considered high",
+          "soc_threshold_critical_high": "Battery SOC percentage considered critically high",
+          "soc_change_threshold": "Minimum SOC change percentage to trigger an event",
+          "min_event_interval": "Minimum time between events (rate limiting)"
+        }
+      }
+    }
   }
 }

@@ -10,17 +10,56 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api_client import SunlitApiClient
-from .const import CONF_ACCESS_TOKEN, CONF_FAMILIES, DOMAIN
+from .const import (
+    CONF_ACCESS_TOKEN,
+    CONF_FAMILIES,
+    DEFAULT_OPTIONS,
+    DOMAIN,
+    OPT_ENABLE_SOC_EVENTS,
+    OPT_MIN_EVENT_INTERVAL,
+    OPT_SOC_CHANGE_THRESHOLD,
+    OPT_SOC_THRESHOLD_CRITICAL_HIGH,
+    OPT_SOC_THRESHOLD_CRITICAL_LOW,
+    OPT_SOC_THRESHOLD_HIGH,
+    OPT_SOC_THRESHOLD_LOW,
+)
 from .coordinators import (
     SunlitDeviceCoordinator,
     SunlitFamilyCoordinator,
     SunlitMpptEnergyCoordinator,
     SunlitStrategyHistoryCoordinator,
 )
+from .event_manager import SunlitEventManager
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Migrate old entry."""
+    _LOGGER.debug(
+        "Migrating config entry from version %s.%s",
+        config_entry.version,
+        config_entry.minor_version,
+    )
+
+    if config_entry.version == 1 and config_entry.minor_version < 2:
+        # Migrate to version 1.2: Add default options if not present
+        new_options = {**DEFAULT_OPTIONS}
+        # Preserve any existing options
+        if config_entry.options:
+            new_options.update(config_entry.options)
+
+        hass.config_entries.async_update_entry(
+            config_entry,
+            options=new_options,
+            minor_version=2,
+        )
+
+        _LOGGER.info("Migration to version 1.2 successful: Added default options")
+
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -40,9 +79,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api_client = SunlitApiClient(session, access_token, ha_version=str(ha_version))
 
     coordinators = {}
+    event_managers = {}
+
+    # Prepare SOC event options if enabled
+    # After migration, options will always contain defaults
+    soc_events_enabled = entry.options[OPT_ENABLE_SOC_EVENTS]
+    soc_event_options = None
+
+    if soc_events_enabled:
+        soc_event_options = {
+            "soc_thresholds": {
+                "critical_low": entry.options[OPT_SOC_THRESHOLD_CRITICAL_LOW],
+                "low": entry.options[OPT_SOC_THRESHOLD_LOW],
+                "high": entry.options[OPT_SOC_THRESHOLD_HIGH],
+                "critical_high": entry.options[OPT_SOC_THRESHOLD_CRITICAL_HIGH],
+            },
+            "soc_change_threshold": entry.options[OPT_SOC_CHANGE_THRESHOLD],
+            "min_event_interval_seconds": entry.options[OPT_MIN_EVENT_INTERVAL],
+        }
 
     # Create coordinators for selected families
     for family_id, family_info in families.items():
+        # Create event manager if SOC events are enabled
+        event_manager = None
+        if soc_events_enabled:
+            event_manager = SunlitEventManager(
+                hass,
+                family_id=str(family_info["id"]),
+                config_options=soc_event_options,
+            )
+            event_managers[family_id] = event_manager
+
         # Create specialized coordinators
         family_coordinator = SunlitFamilyCoordinator(
             hass,
@@ -57,6 +124,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             api_client=api_client,
             family_id=str(family_info["id"]),
             family_name=family_info["name"],
+            event_manager=event_manager,
         )
         await device_coordinator.async_config_entry_first_refresh()
 
@@ -104,12 +172,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
             await global_family_coordinator.async_config_entry_first_refresh()
 
+            # Create event manager for global devices if enabled
+            global_event_manager = None
+            if soc_events_enabled:
+                global_event_manager = SunlitEventManager(
+                    hass,
+                    family_id="global",
+                    config_options=soc_event_options,
+                )
+                event_managers["global"] = global_event_manager
+
             global_device_coordinator = SunlitDeviceCoordinator(
                 hass,
                 api_client=api_client,
                 family_id="global",
                 family_name="Unassigned Devices",
                 is_global=True,
+                event_manager=global_event_manager,
             )
             await global_device_coordinator.async_config_entry_first_refresh()
 
@@ -124,11 +203,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.warning("Failed to check for unassigned devices: %s", err)
 
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = coordinators
+    hass.data[DOMAIN][entry.entry_id] = {
+        "coordinators": coordinators,
+        "event_managers": event_managers,
+        "api_client": api_client,
+    }
+
+    # Add update listener for options changes
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
+
+
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    # Reload the integration when options change
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

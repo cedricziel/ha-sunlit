@@ -7,13 +7,41 @@ import logging
 from typing import Any
 
 from homeassistant import config_entries
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    BooleanSelector,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
+)
 import voluptuous as vol
 
 from .api_client import SunlitApiClient, SunlitAuthError, SunlitConnectionError
-from .const import CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_FAMILIES, CONF_PASSWORD, DOMAIN
+from .const import (
+    CONF_ACCESS_TOKEN,
+    CONF_EMAIL,
+    CONF_FAMILIES,
+    CONF_PASSWORD,
+    DEFAULT_ENABLE_SOC_EVENTS,
+    DEFAULT_MIN_EVENT_INTERVAL,
+    DEFAULT_OPTIONS,
+    DEFAULT_SOC_CHANGE_THRESHOLD,
+    DEFAULT_SOC_THRESHOLD_CRITICAL_HIGH,
+    DEFAULT_SOC_THRESHOLD_CRITICAL_LOW,
+    DEFAULT_SOC_THRESHOLD_HIGH,
+    DEFAULT_SOC_THRESHOLD_LOW,
+    DOMAIN,
+    OPT_ENABLE_SOC_EVENTS,
+    OPT_MIN_EVENT_INTERVAL,
+    OPT_SOC_CHANGE_THRESHOLD,
+    OPT_SOC_THRESHOLD_CRITICAL_HIGH,
+    OPT_SOC_THRESHOLD_CRITICAL_LOW,
+    OPT_SOC_THRESHOLD_HIGH,
+    OPT_SOC_THRESHOLD_LOW,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +50,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Sunlit REST."""
 
     VERSION = 1
+    MINOR_VERSION = 2
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Get the options flow for this handler."""
+        return OptionsFlowHandler(config_entry)
 
     def __init__(self):
         """Initialize the config flow."""
@@ -136,6 +173,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_ACCESS_TOKEN: self.access_token,
                         CONF_FAMILIES: self.families,
                     },
+                    options=DEFAULT_OPTIONS,
                 )
 
         # Create options for family selection
@@ -158,4 +196,122 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
 
-""
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options flow for Sunlit integration."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the options for the Sunlit integration."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        # Build the options schema with current values as defaults
+        options_schema = vol.Schema(
+            {
+                vol.Optional(
+                    OPT_ENABLE_SOC_EVENTS,
+                    default=self.config_entry.options.get(
+                        OPT_ENABLE_SOC_EVENTS, DEFAULT_ENABLE_SOC_EVENTS
+                    ),
+                ): BooleanSelector(),
+                vol.Optional(
+                    OPT_SOC_THRESHOLD_CRITICAL_LOW,
+                    default=self.config_entry.options.get(
+                        OPT_SOC_THRESHOLD_CRITICAL_LOW,
+                        DEFAULT_SOC_THRESHOLD_CRITICAL_LOW,
+                    ),
+                ): NumberSelector(
+                    NumberSelectorConfig(
+                        min=1,
+                        max=50,
+                        step=1,
+                        mode=NumberSelectorMode.SLIDER,
+                        unit_of_measurement="%",
+                    )
+                ),
+                vol.Optional(
+                    OPT_SOC_THRESHOLD_LOW,
+                    default=self.config_entry.options.get(
+                        OPT_SOC_THRESHOLD_LOW, DEFAULT_SOC_THRESHOLD_LOW
+                    ),
+                ): NumberSelector(
+                    NumberSelectorConfig(
+                        min=5,
+                        max=60,
+                        step=1,
+                        mode=NumberSelectorMode.SLIDER,
+                        unit_of_measurement="%",
+                    )
+                ),
+                vol.Optional(
+                    OPT_SOC_THRESHOLD_HIGH,
+                    default=self.config_entry.options.get(
+                        OPT_SOC_THRESHOLD_HIGH, DEFAULT_SOC_THRESHOLD_HIGH
+                    ),
+                ): NumberSelector(
+                    NumberSelectorConfig(
+                        min=60,
+                        max=95,
+                        step=1,
+                        mode=NumberSelectorMode.SLIDER,
+                        unit_of_measurement="%",
+                    )
+                ),
+                vol.Optional(
+                    OPT_SOC_THRESHOLD_CRITICAL_HIGH,
+                    default=self.config_entry.options.get(
+                        OPT_SOC_THRESHOLD_CRITICAL_HIGH,
+                        DEFAULT_SOC_THRESHOLD_CRITICAL_HIGH,
+                    ),
+                ): NumberSelector(
+                    NumberSelectorConfig(
+                        min=80,
+                        max=100,
+                        step=1,
+                        mode=NumberSelectorMode.SLIDER,
+                        unit_of_measurement="%",
+                    )
+                ),
+                vol.Optional(
+                    OPT_SOC_CHANGE_THRESHOLD,
+                    default=self.config_entry.options.get(
+                        OPT_SOC_CHANGE_THRESHOLD, DEFAULT_SOC_CHANGE_THRESHOLD
+                    ),
+                ): NumberSelector(
+                    NumberSelectorConfig(
+                        min=1,
+                        max=50,
+                        step=1,
+                        mode=NumberSelectorMode.SLIDER,
+                        unit_of_measurement="%",
+                    )
+                ),
+                vol.Optional(
+                    OPT_MIN_EVENT_INTERVAL,
+                    default=self.config_entry.options.get(
+                        OPT_MIN_EVENT_INTERVAL, DEFAULT_MIN_EVENT_INTERVAL
+                    ),
+                ): NumberSelector(
+                    NumberSelectorConfig(
+                        min=0,
+                        max=3600,
+                        step=10,
+                        mode=NumberSelectorMode.BOX,
+                        unit_of_measurement="seconds",
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=options_schema,
+            description_placeholders={
+                "config_title": self.config_entry.title,
+            },
+        )

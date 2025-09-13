@@ -1,0 +1,155 @@
+# Example automations for Sunlit SOC events
+# Copy these to your HomeAssistant configuration.yaml or automations.yaml
+
+# Battery Low Warning - Send notification when battery crosses low threshold
+- id: sunlit_battery_low_warning
+  alias: "Sunlit: Battery Low Warning"
+  description: "Send notification when battery SOC drops below low threshold"
+  trigger:
+    - platform: event
+      event_type: sunlit_soc_threshold
+      event_data:
+        threshold_name: "low"
+        direction: "below"
+  action:
+    - service: notify.mobile_app_your_phone # Replace with your notification service
+      data:
+        title: "Battery Low ⚠️"
+        message: >
+          Battery {{ trigger.event.data.device_key }} is low at {{ trigger.event.data.current_soc }}%
+          (crossed {{ trigger.event.data.threshold_value }}% threshold)
+        data:
+          priority: high
+          tag: "battery_low"
+
+# Battery Critical Low - Turn on energy saving mode
+- id: sunlit_battery_critical_low
+  alias: "Sunlit: Battery Critical Low"
+  description: "Activate energy saving when battery critically low"
+  trigger:
+    - platform: event
+      event_type: sunlit_soc_threshold
+      event_data:
+        threshold_name: "critical_low"
+        direction: "below"
+  action:
+    # Turn off non-essential devices
+    - service: switch.turn_off
+      target:
+        entity_id:
+          - switch.pool_pump
+          - switch.electric_heating
+    # Send critical alert
+    - service: notify.mobile_app_your_phone
+      data:
+        title: "CRITICAL: Battery Very Low 🔋"
+        message: >
+          Battery at {{ trigger.event.data.current_soc }}%!
+          Turning off non-essential devices to conserve power.
+        data:
+          priority: high
+          color: "red"
+          tag: "battery_critical"
+
+# Battery Charged - Resume normal operation
+- id: sunlit_battery_charged
+  alias: "Sunlit: Battery Charged"
+  description: "Resume normal operation when battery charged"
+  trigger:
+    - platform: event
+      event_type: sunlit_soc_threshold
+      event_data:
+        threshold_name: "high"
+        direction: "above"
+  action:
+    # Turn back on essential devices that were turned off
+    - service: switch.turn_on
+      target:
+        entity_id:
+          - switch.pool_pump
+    - service: notify.mobile_app_your_phone
+      data:
+        title: "Battery Charged ✅"
+        message: "Battery at {{ trigger.event.data.current_soc }}%. Resuming normal operation."
+        data:
+          tag: "battery_charged"
+
+# Significant SOC Change Alert
+- id: sunlit_soc_significant_change
+  alias: "Sunlit: Significant SOC Change"
+  description: "Alert on rapid battery drain or charge"
+  trigger:
+    - platform: event
+      event_type: sunlit_soc_change
+  condition:
+    # Only alert on large changes (>10%)
+    - condition: template
+      value_template: "{{ trigger.event.data.change_amount > 10 }}"
+  action:
+    - service: notify.mobile_app_your_phone
+      data:
+        title: "Rapid Battery {{ 'Drain' if trigger.event.data.direction == 'decrease' else 'Charge' }}"
+        message: >
+          Battery {{ trigger.event.data.device_key }} {{ trigger.event.data.direction }}d
+          by {{ trigger.event.data.change_amount }}% ({{ trigger.event.data.baseline_soc }}% → {{ trigger.event.data.current_soc }}%)
+        data:
+          tag: "soc_change"
+
+# SOC Limit Reached - Strategy/BMS limit hit
+- id: sunlit_soc_limit_reached
+  alias: "Sunlit: SOC Limit Reached"
+  description: "Alert when SOC reaches configured limits"
+  trigger:
+    - platform: event
+      event_type: sunlit_soc_limit
+  action:
+    - service: notify.mobile_app_your_phone
+      data:
+        title: "SOC Limit Reached"
+        message: >
+          Battery {{ trigger.event.data.device_key }} reached {{ trigger.event.data.limit_type }}
+          limit of {{ trigger.event.data.limit_value }}% (current: {{ trigger.event.data.current_soc }}%)
+        data:
+          tag: "soc_limit"
+
+# Data Logger - Log all SOC events to file for analysis
+- id: sunlit_soc_event_logger
+  alias: "Sunlit: SOC Event Logger"
+  description: "Log all SOC events to file"
+  trigger:
+    - platform: event
+      event_type: sunlit_soc_threshold
+    - platform: event
+      event_type: sunlit_soc_change
+    - platform: event
+      event_type: sunlit_soc_limit
+  action:
+    - service: system_log.write
+      data:
+        message: >
+          SOC Event: {{ trigger.event.event_type }} -
+          Device: {{ trigger.event.data.device_key }},
+          SOC: {{ trigger.event.data.current_soc }}%,
+          Data: {{ trigger.event.data | to_json }}
+        level: info
+
+# Multiple Battery System - Handle individual module events
+- id: sunlit_module_soc_alert
+  alias: "Sunlit: Module SOC Alert"
+  description: "Alert when individual battery modules have SOC issues"
+  trigger:
+    - platform: event
+      event_type: sunlit_soc_threshold
+  condition:
+    # Only for module-specific events (not system-wide)
+    - condition: template
+      value_template: "{{ 'module' in trigger.event.data.device_key }}"
+  action:
+    - service: notify.mobile_app_your_phone
+      data:
+        title: "Battery Module {{ trigger.event.data.threshold_name | title }}"
+        message: >
+          {{ trigger.event.data.device_key | replace('_', ' ') | title }}
+          is {{ trigger.event.data.threshold_name }} at {{ trigger.event.data.current_soc }}%
+        data:
+          tag: "module_soc"
