@@ -65,6 +65,10 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
             # Aggregates for family-level metrics
             total_grid_export = 0
             daily_grid_export = 0
+            # Total solar power is the sum of all solar inputs:
+            # - Inverter power (panels connected to inverters)
+            # - Battery MPPT power (panels connected directly to battery)
+            # - Battery module MPPT power (panels on extension modules)
             total_solar_power = 0
             total_solar_energy = 0
 
@@ -91,13 +95,27 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                 elif device_type in ["YUNENG_MICRO_INVERTER", "SOLAR_MICRO_INVERTER"]:
                     await self._process_inverter_device(device, device_id, data)
                     # Update aggregates
-                    if data.get("current_power") is not None:
-                        total_solar_power += data["current_power"]
+                    # Don't add inverter power to total_solar_power!
+                    # Inverters convert DC->AC from battery (OUTPUT), not solar generation (INPUT)
+                    # Only track energy for historical data
                     if data.get("total_power_generation") is not None:
                         total_solar_energy += data["total_power_generation"]
 
                 elif device_type == "ENERGY_STORAGE_BATTERY":
                     await self._process_battery_device(device, device_id, data)
+                    # Update aggregates with battery MPPT solar input
+                    # Battery MPPT1 and MPPT2 inputs represent solar power going into the battery
+                    if data.get("batteryMppt1InPower") is not None:
+                        total_solar_power += data["batteryMppt1InPower"]
+                    if data.get("batteryMppt2InPower") is not None:
+                        total_solar_power += data["batteryMppt2InPower"]
+
+                    # Add solar power from battery extension modules
+                    module_count = data.get("module_count", 1)
+                    for module_num in range(1, module_count + 1):
+                        mppt_key = f"battery{module_num}Mppt1InPower"
+                        if data.get(mppt_key) is not None:
+                            total_solar_power += data[mppt_key]
 
                 device_data[device_id] = data
 
@@ -105,9 +123,7 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
             result = {
                 "devices": device_data,
                 "aggregates": {
-                    "total_solar_power": total_solar_power
-                    if total_solar_power > 0
-                    else None,
+                    "total_solar_power": total_solar_power,  # Always return value, 0 when no solar
                     "total_solar_energy": round(total_solar_energy, 3)
                     if total_solar_energy > 0
                     else 0,

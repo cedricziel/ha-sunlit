@@ -36,6 +36,24 @@ hass -c config
 
 ## Architecture
 
+### System Architecture
+
+**IMPORTANT: Understanding the Sunlit Solar System Components**
+
+- **Solar Panels**: Generate DC power from sunlight, connected ONLY to battery MPPT controllers
+- **Battery MPPT Controllers**: Convert solar DC to optimal voltage for battery charging (INPUT)
+- **Battery System**: Stores energy, has multiple MPPT inputs for solar panels
+- **Inverters (YUNENG/SOLAR_MICRO_INVERTER)**: Convert battery DC to home AC (OUTPUT)
+  - **NOT solar generators** - they are DC→AC converters
+  - Their "current_power" is battery OUTPUT to home, not solar generation
+  - At night, inverter power = battery supplying the home
+- **Smart Meters**: Measure grid import/export
+
+**Solar Power Calculation**:
+- `total_solar_power` = Sum of MPPT inputs ONLY
+- Does NOT include inverter power (that's OUTPUT, not INPUT)
+- Solar sources: batteryMppt1InPower, batteryMppt2InPower, battery module MPPT powers
+
 ### Integration Structure
 
 The integration follows HomeAssistant's standard custom component pattern:
