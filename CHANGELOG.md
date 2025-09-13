@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0](https://github.com/cedricziel/ha-sunlit/compare/v0.2.3...v0.3.0) (2025-09-13)
+
+
+### Features
+
+* add comprehensive testing infrastructure ([1175449](https://github.com/cedricziel/ha-sunlit/commit/11754491d154a7b7e7feda81ecd9547fe906b698))
+
+
+### Bug Fixes
+
+* correct sensor device class for last_strategy_change ([bcf100e](https://github.com/cedricziel/ha-sunlit/commit/bcf100ed1fc656595dd9dd03cfc2f90b9bdff755))
+* cov target ([35645eb](https://github.com/cedricziel/ha-sunlit/commit/35645ebab202c0debd6c3063f269c77c34889b67))
+* downgrade pytest-cov to resolve coverage version conflict ([db0c3a5](https://github.com/cedricziel/ha-sunlit/commit/db0c3a56d762b88c7908f239fd7b87ce34aca69a))
+* resolve test infrastructure issues with pytest-asyncio compatibility ([b92b8a6](https://github.com/cedricziel/ha-sunlit/commit/b92b8a6c3af258668b68bcc8a5ae93c44e4772e6))
+* update dependencies to support pytest-homeassistant-custom-component ([75fe76d](https://github.com/cedricziel/ha-sunlit/commit/75fe76d6c9edaee7740a26b3f76447d2c82a72da))
+* upgrade pytest-homeassistant-custom-component==0.13.278 ([5ea7e35](https://github.com/cedricziel/ha-sunlit/commit/5ea7e35c5232cd3854fdfd71cdbc4d642c77c795))
+
 ## [0.2.3](https://github.com/cedricziel/ha-sunlit/compare/v0.2.2...v0.2.3) (2025-09-10)
 
 
