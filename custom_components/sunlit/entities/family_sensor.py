@@ -45,26 +45,27 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
     def native_value(self) -> Any:
         """Return the state of the sensor."""
         if self.coordinator.data:
-            # Check in family data first
-            if "family" in self.coordinator.data:
-                value = self.coordinator.data["family"].get(self.entity_description.key)
-            # Then check in strategy data (for strategy coordinator)
+            value = None
+
+            # Check the appropriate section based on coordinator type
+            # Device coordinator uses aggregates
+            if "aggregates" in self.coordinator.data:
+                value = self.coordinator.data["aggregates"].get(
+                    self.entity_description.key
+                )
+            # Strategy coordinator uses strategy
             elif "strategy" in self.coordinator.data:
                 value = self.coordinator.data["strategy"].get(
                     self.entity_description.key
                 )
-            # Then check in mppt_energy data (for MPPT coordinator)
+            # MPPT coordinator uses mppt_energy
             elif "mppt_energy" in self.coordinator.data:
                 value = self.coordinator.data["mppt_energy"].get(
                     self.entity_description.key
                 )
-            # Then check in aggregates data (for device coordinator)
-            elif "aggregates" in self.coordinator.data:
-                value = self.coordinator.data["aggregates"].get(
-                    self.entity_description.key
-                )
-            else:
-                value = None
+            # Family coordinator uses family
+            elif "family" in self.coordinator.data:
+                value = self.coordinator.data["family"].get(self.entity_description.key)
 
             # Convert timestamp from milliseconds to datetime for timestamp sensors
             if self.entity_description.key == "last_strategy_change" and value:
@@ -79,10 +80,11 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
         if not self.coordinator.last_update_success or not self.coordinator.data:
             return False
 
-        # Check if the key exists in any of the data sections
-        if "family" in self.coordinator.data:
+        # Check if the key exists in the appropriate data section
+        # Match the order used in native_value for consistency
+        if "aggregates" in self.coordinator.data:
             return self.entity_description.key in self.coordinator.data.get(
-                "family", {}
+                "aggregates", {}
             )
         elif "strategy" in self.coordinator.data:
             return self.entity_description.key in self.coordinator.data.get(
@@ -92,9 +94,9 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
             return self.entity_description.key in self.coordinator.data.get(
                 "mppt_energy", {}
             )
-        elif "aggregates" in self.coordinator.data:
+        elif "family" in self.coordinator.data:
             return self.entity_description.key in self.coordinator.data.get(
-                "aggregates", {}
+                "family", {}
             )
 
         return False
