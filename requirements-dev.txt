@@ -9,7 +9,7 @@ pytest-homeassistant-custom-component
 # Linting and formatting
 ruff==0.8.6
 black==25.1.0
-isort==5.13.2
+isort==6.0.1
 
 # Pre-commit hooks
 pre-commit==4.3.0
