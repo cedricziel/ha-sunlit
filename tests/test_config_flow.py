@@ -53,7 +53,7 @@ async def test_form_authentication_success(
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
-        mock_client.get_families = AsyncMock(return_value=families_response["content"])
+        mock_client.fetch_families = AsyncMock(return_value=families_response["content"])
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -93,7 +93,7 @@ async def test_form_family_selection(
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
-        mock_client.get_families = AsyncMock(return_value=families_response["content"])
+        mock_client.fetch_families = AsyncMock(return_value=families_response["content"])
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -107,7 +107,7 @@ async def test_form_family_selection(
         )
 
         assert result3["type"] == FlowResultType.CREATE_ENTRY
-        assert result3["title"] == "Sunlit Solar"
+        assert result3["title"] == "Sunlit (Garage, Test)"
         assert result3["data"]["access_token"] == "test_api_key_123"
         assert "families" in result3["data"]
         assert len(result3["data"]["families"]) == 2
@@ -181,7 +181,7 @@ async def test_form_no_families_selected(
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
-        mock_client.get_families = AsyncMock(return_value=families_response["content"])
+        mock_client.fetch_families = AsyncMock(return_value=families_response["content"])
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -234,12 +234,21 @@ async def test_form_single_family_auto_select(
             {"email": "test@example.com", "password": "test_password"},
         )
 
-        # Should skip family selection and create entry directly
-        assert result2["type"] == FlowResultType.CREATE_ENTRY
-        assert result2["title"] == "Sunlit Solar"
-        assert result2["data"]["access_token"] == "test_api_key_123"
-        assert "families" in result2["data"]
-        assert len(result2["data"]["families"]) == 1
+        # Should show family selection even with single family
+        assert result2["type"] == FlowResultType.FORM
+        assert result2["step_id"] == "select_families"
+
+        # Select the single family
+        result3 = await hass.config_entries.flow.async_configure(
+            result2["flow_id"],
+            {"families": ["34038"]},
+        )
+
+        assert result3["type"] == FlowResultType.CREATE_ENTRY
+        assert result3["title"] == "Sunlit (Garage)"
+        assert result3["data"]["access_token"] == "test_api_key_123"
+        assert "families" in result3["data"]
+        assert len(result3["data"]["families"]) == 1
 
 
 async def test_form_duplicate_entry(

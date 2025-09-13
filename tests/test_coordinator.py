@@ -55,14 +55,14 @@ async def test_coordinator_update_success(
     )
 
     # Initial update
-    await coordinator.async_refresh()
+    data = await coordinator._async_update_data()
 
-    assert coordinator.data is not None
-    assert "family" in coordinator.data
-    assert "devices" in coordinator.data
+    assert data is not None
+    assert "family" in data
+    assert "devices" in data
 
     # Check family data
-    family_data = coordinator.data["family"]
+    family_data = data["family"]
     assert family_data["device_count"] == 3
     assert family_data["online_devices"] == 3
     assert family_data["offline_devices"] == 0
@@ -73,7 +73,7 @@ async def test_coordinator_update_success(
     assert family_data["hw_soc_max"] == 95
 
     # Check device data
-    devices = coordinator.data["devices"]
+    devices = data["devices"]
     assert "meter_001" in devices
     assert "inverter_001" in devices
     assert "battery_001" in devices
@@ -112,15 +112,15 @@ async def test_coordinator_update_partial_failure(
     )
 
     # Should not raise, but continue with partial data
-    await coordinator.async_refresh()
+    data = await coordinator._async_update_data()
 
-    assert coordinator.data is not None
-    assert "family" in coordinator.data
-    assert "devices" in coordinator.data
+    assert data is not None
+    assert "family" in data
+    assert "devices" in data
 
     # Should have device data from space_index
-    assert coordinator.data["family"]["device_count"] == 3
-    assert len(coordinator.data["devices"]) == 3
+    assert data["family"]["device_count"] == 3
+    assert len(data["devices"]) == 3
 
 
 async def test_coordinator_battery_module_creation(
@@ -138,8 +138,8 @@ async def test_coordinator_battery_module_creation(
             "deviceId": "battery_001",
             "deviceName": "Energy Storage",
             "deviceType": "ENERGY_STORAGE_BATTERY",
-            "deviceStatus": 1,
-            "battery_level": 85,
+            "status": "Online",
+            "batteryLevel": 85,
         }
     ]
 
@@ -162,10 +162,10 @@ async def test_coordinator_battery_module_creation(
         "Garage",
     )
 
-    await coordinator.async_refresh()
+    data = await coordinator._async_update_data()
 
     # Should have created virtual battery modules
-    devices = coordinator.data["devices"]
+    devices = data["devices"]
     assert "battery_001_module1" in devices
     assert "battery_001_module2" in devices
 
@@ -191,14 +191,16 @@ async def test_coordinator_solar_energy_aggregation(
         {
             "deviceId": "inverter_001",
             "deviceType": "YUNENG_MICRO_INVERTER",
-            "current_power": 1500,
-            "total_power_generation": 1000.0,
+            "status": "Online",
+            "currentPower": 1500,
+            "totalPowerGeneration": 1000.0,
         },
         {
             "deviceId": "inverter_002",
             "deviceType": "YUNENG_MICRO_INVERTER",
-            "current_power": 2000,
-            "total_power_generation": 1500.0,
+            "status": "Online",
+            "currentPower": 2000,
+            "totalPowerGeneration": 1500.0,
         },
     ]
 
@@ -209,6 +211,7 @@ async def test_coordinator_solar_energy_aggregation(
     api_client.fetch_space_current_strategy.return_value = {}
     api_client.fetch_space_strategy_history.return_value = []
     api_client.get_charging_box_strategy.return_value = {}
+    api_client.fetch_device_statistics.return_value = {}
 
     coordinator = SunlitDataUpdateCoordinator(
         hass,
@@ -217,9 +220,9 @@ async def test_coordinator_solar_energy_aggregation(
         "Garage",
     )
 
-    await coordinator.async_refresh()
+    data = await coordinator._async_update_data()
 
-    family_data = coordinator.data["family"]
+    family_data = data["family"]
     assert family_data["total_solar_power"] == 3500  # 1500 + 2000
     assert family_data["total_solar_energy"] == 2500.0  # 1000 + 1500
 
@@ -238,6 +241,7 @@ async def test_coordinator_update_interval(
     api_client.fetch_space_current_strategy.return_value = {}
     api_client.fetch_space_strategy_history.return_value = []
     api_client.get_charging_box_strategy.return_value = {}
+    api_client.fetch_device_statistics.return_value = {}
 
     coordinator = SunlitDataUpdateCoordinator(
         hass,
@@ -266,8 +270,10 @@ async def test_coordinator_error_handling(
         "Garage",
     )
 
-    await coordinator.async_refresh()
-    assert coordinator.last_update_success is False
+    # Should raise UpdateFailed when calling _async_update_data
+    from homeassistant.helpers.update_coordinator import UpdateFailed
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
 
 
 async def test_coordinator_strategy_history_processing(
@@ -295,9 +301,9 @@ async def test_coordinator_strategy_history_processing(
         "Garage",
     )
 
-    await coordinator.async_refresh()
+    data = await coordinator._async_update_data()
 
-    family_data = coordinator.data["family"]
+    family_data = data["family"]
     assert family_data["last_strategy_type"] == "SELF_CONSUMPTION"
     assert family_data["last_strategy_status"] == "ACTIVE"
     assert family_data["strategy_changes_today"] == 2
@@ -316,14 +322,16 @@ async def test_coordinator_grid_export_tracking(
         {
             "deviceId": "meter_001",
             "deviceType": "SHELLY_3EM_METER",
-            "daily_ret_energy": 10.5,
-            "total_ret_energy": 1234.5,
+            "status": "Online",
+            "dailyRetEnergy": 10.5,
+            "totalRetEnergy": 1234.5,
         },
         {
             "deviceId": "meter_002",
             "deviceType": "SHELLY_PRO3EM_METER",
-            "daily_ret_energy": 5.3,
-            "total_ret_energy": 567.8,
+            "status": "Online",
+            "dailyRetEnergy": 5.3,
+            "totalRetEnergy": 567.8,
         },
     ]
 
@@ -334,6 +342,7 @@ async def test_coordinator_grid_export_tracking(
     api_client.fetch_space_current_strategy.return_value = {}
     api_client.fetch_space_strategy_history.return_value = []
     api_client.get_charging_box_strategy.return_value = {}
+    api_client.fetch_device_statistics.return_value = {}
 
     coordinator = SunlitDataUpdateCoordinator(
         hass,
@@ -342,8 +351,8 @@ async def test_coordinator_grid_export_tracking(
         "Garage",
     )
 
-    await coordinator.async_refresh()
+    data = await coordinator._async_update_data()
 
-    family_data = coordinator.data["family"]
+    family_data = data["family"]
     assert family_data["daily_grid_export_energy"] == 15.8  # 10.5 + 5.3
     assert family_data["total_grid_export_energy"] == 1802.3  # 1234.5 + 567.8

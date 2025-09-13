@@ -157,54 +157,51 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                 # Fetch device list for the family (still needed for device discovery)
                 devices = await self.api_client.fetch_device_list(self.family_id)
 
-            # Only fetch individual endpoints if space_index is not available and not global
+            # Fetch additional endpoints for non-global coordinators
             if not self.is_global:
                 space_soc = {}
                 current_strategy = {}
                 strategy_history = {}
 
-                if not space_index:
-                    # Fallback to individual endpoints
-                    try:
-                        space_soc = await self.api_client.fetch_space_soc(
+                # Always try to fetch SOC data
+                try:
+                    space_soc = await self.api_client.fetch_space_soc(self.family_id)
+                except Exception as err:
+                    _LOGGER.debug("Could not fetch space SOC data: %s", err)
+
+                # Always try to fetch current strategy
+                try:
+                    current_strategy = (
+                        await self.api_client.fetch_space_current_strategy(
                             self.family_id
                         )
-                    except Exception as err:
-                        _LOGGER.debug("Could not fetch space SOC data: %s", err)
+                    )
+                except Exception as err:
+                    _LOGGER.debug("Could not fetch current strategy data: %s", err)
 
-                    try:
-                        current_strategy = (
-                            await self.api_client.fetch_space_current_strategy(
-                                self.family_id
-                            )
+                # Always try to fetch strategy history
+                try:
+                    strategy_history = (
+                        await self.api_client.fetch_space_strategy_history(
+                            self.family_id
                         )
-                    except Exception as err:
-                        _LOGGER.debug("Could not fetch current strategy data: %s", err)
+                    )
+                except Exception as err:
+                    _LOGGER.debug("Could not fetch strategy history data: %s", err)
 
-                    try:
-                        strategy_history = (
-                            await self.api_client.fetch_space_strategy_history(
-                                self.family_id
-                            )
-                        )
-                    except Exception as err:
-                        _LOGGER.debug("Could not fetch strategy history data: %s", err)
-
-                    # Fetch charging box strategy data
-                    try:
-                        charging_box_data = (
-                            await self.api_client.get_charging_box_strategy(
-                                self.family_id
-                            )
-                        )
-                        _LOGGER.debug(
-                            "Charging box data for family %s: %s",
-                            self.family_name,
-                            charging_box_data,
-                        )
-                    except Exception as err:
-                        _LOGGER.debug("Could not fetch charging box strategy: %s", err)
-                        charging_box_data = {}
+                # Fetch charging box strategy data
+                try:
+                    charging_box_data = await self.api_client.get_charging_box_strategy(
+                        self.family_id
+                    )
+                    _LOGGER.debug(
+                        "Charging box data for family %s: %s",
+                        self.family_name,
+                        charging_box_data,
+                    )
+                except Exception as err:
+                    _LOGGER.debug("Could not fetch charging box strategy: %s", err)
+                    charging_box_data = {}
 
             _LOGGER.debug(
                 "Received %d devices for family %s", len(devices), self.family_name
@@ -314,6 +311,7 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                             )
 
                 elif device_type in ["YUNENG_MICRO_INVERTER", "SOLAR_MICRO_INVERTER"]:
+                    # Handle data in "today" structure or directly
                     if device.get("today"):
                         device_data["current_power"] = device["today"].get(
                             "currentPower"
@@ -325,6 +323,13 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
                             device_data["daily_earnings"] = device["today"][
                                 "totalEarnings"
                             ].get("earnings")
+                    else:
+                        # Handle direct fields (from space_index deviceList)
+                        device_data["current_power"] = device.get("currentPower")
+                        device_data["total_power_generation"] = device.get(
+                            "totalPowerGeneration"
+                        )
+                        device_data["daily_earnings"] = device.get("dailyEarnings")
 
                     # Fetch detailed statistics for online inverters
                     if device.get("status") == "Online":
@@ -577,6 +582,15 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
 
                 # Sum energy and power from all devices
                 for device_id, device_data in sensor_data.get("devices", {}).items():
+                    device_type = device_data.get("deviceType")
+
+                    # Add inverter power and energy
+                    if device_type in ["YUNENG_MICRO_INVERTER", "SOLAR_MICRO_INVERTER"]:
+                        if device_data.get("current_power") is not None:
+                            total_solar_power += device_data["current_power"]
+                        if device_data.get("total_power_generation") is not None:
+                            total_solar_energy += device_data["total_power_generation"]
+
                     # Main unit MPPT energy
                     for mppt_num in [1, 2]:
                         energy_key = f"batteryMppt{mppt_num}Energy"
