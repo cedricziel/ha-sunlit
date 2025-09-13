@@ -9,7 +9,7 @@ from custom_components.sunlit.coordinators.device import SunlitDeviceCoordinator
 
 @pytest.mark.asyncio
 async def test_total_solar_power_includes_all_sources():
-    """Test that total_solar_power includes inverter + battery MPPT + module MPPT power."""
+    """Test that total_solar_power includes ONLY battery MPPT + module MPPT power (NOT inverter)."""
 
     # Create mock hass
     hass = MagicMock()
@@ -24,7 +24,7 @@ async def test_total_solar_power_includes_all_sources():
             "deviceType": "YUNENG_MICRO_INVERTER",
             "status": "Online",
             "today": {
-                "currentPower": 1500,  # Inverter producing 1500W
+                "currentPower": 1500,  # Inverter OUTPUT (should NOT be in solar total)
                 "totalPowerGeneration": 100
             }
         },
@@ -72,19 +72,23 @@ async def test_total_solar_power_includes_all_sources():
     aggregates = data["aggregates"]
 
     # Total solar power should be:
-    # Inverter: 1500W
+    # Inverter: 0W (NOT included - it's OUTPUT not solar)
     # Battery MPPT1: 800W
     # Battery MPPT2: 600W
     # Module 1 MPPT: 500W
     # Module 2 MPPT: 400W
     # Module 3 MPPT: 300W
-    # Total: 4100W
-    expected_total = 1500 + 800 + 600 + 500 + 400 + 300
+    # Total: 2600W (MPPT inputs only)
+    expected_total = 800 + 600 + 500 + 400 + 300
 
     assert aggregates["total_solar_power"] == expected_total, \
         f"Expected total solar power to be {expected_total}W, got {aggregates['total_solar_power']}W"
 
-    # Verify battery output power is NOT included in solar total
+    # Verify inverter power is NOT included in solar total
+    assert aggregates["total_solar_power"] != expected_total + 1500, \
+        "Inverter power should NOT be included in total solar power - it's OUTPUT not INPUT"
+
+    # Verify battery output power is also NOT included
     assert aggregates["total_solar_power"] != expected_total + 500, \
         "Battery output power should NOT be included in total solar power"
 
@@ -100,7 +104,7 @@ async def test_total_solar_power_includes_all_sources():
 
 @pytest.mark.asyncio
 async def test_total_solar_power_without_battery_mppt():
-    """Test total_solar_power with only inverters (no battery MPPT)."""
+    """Test total_solar_power with only inverters (should be 0 - inverters are OUTPUT not solar)."""
 
     hass = MagicMock()
     api_client = MagicMock()
@@ -137,9 +141,9 @@ async def test_total_solar_power_without_battery_mppt():
     data = await coordinator._async_update_data()
     aggregates = data["aggregates"]
 
-    # Total should be sum of inverters only
-    assert aggregates["total_solar_power"] == 2000 + 1800, \
-        f"Expected 3800W (2000+1800), got {aggregates['total_solar_power']}W"
+    # Total should be 0 - inverters are OUTPUT devices, not solar generators
+    assert aggregates["total_solar_power"] == 0, \
+        f"Expected 0W (no solar inputs), got {aggregates['total_solar_power']}W"
 
 
 @pytest.mark.asyncio
@@ -181,6 +185,6 @@ async def test_total_solar_power_battery_only():
     assert aggregates["total_solar_power"] == 1200 + 900, \
         f"Expected 2100W (1200+900 MPPT), got {aggregates['total_solar_power']}W"
 
-    # Verify output is not included
+    # Verify battery output is not included
     assert aggregates["total_solar_power"] != 2000, \
         "Battery output should not be counted as solar power"

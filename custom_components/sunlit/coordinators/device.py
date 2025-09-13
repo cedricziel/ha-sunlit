@@ -95,8 +95,9 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                 elif device_type in ["YUNENG_MICRO_INVERTER", "SOLAR_MICRO_INVERTER"]:
                     await self._process_inverter_device(device, device_id, data)
                     # Update aggregates
-                    if data.get("current_power") is not None:
-                        total_solar_power += data["current_power"]
+                    # Don't add inverter power to total_solar_power!
+                    # Inverters convert DC->AC from battery (OUTPUT), not solar generation (INPUT)
+                    # Only track energy for historical data
                     if data.get("total_power_generation") is not None:
                         total_solar_energy += data["total_power_generation"]
 
@@ -122,9 +123,7 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
             result = {
                 "devices": device_data,
                 "aggregates": {
-                    "total_solar_power": total_solar_power
-                    if total_solar_power > 0
-                    else None,
+                    "total_solar_power": total_solar_power,  # Always return value, 0 when no solar
                     "total_solar_energy": round(total_solar_energy, 3)
                     if total_solar_energy > 0
                     else 0,

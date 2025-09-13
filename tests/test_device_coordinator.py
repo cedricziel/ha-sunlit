@@ -84,7 +84,15 @@ async def test_device_coordinator_update_success(
 
     # Check aggregates
     aggregates = data["aggregates"]
-    assert aggregates["total_solar_power"] == 2500
+    # Inverter power should NOT be included in total_solar_power (it's OUTPUT not solar)
+    # Total should be sum of battery MPPT inputs from device_statistics_response fixture:
+    # batteryMppt1InPower: 3284.1
+    # batteryMppt2InPower: 3083.34
+    # battery1Mppt1InPower: 2190.1
+    # battery2Mppt1InPower: 2332.18
+    # Total: 10889.72
+    expected_solar = 3284.1 + 3083.34 + 2190.1 + 2332.18
+    assert aggregates["total_solar_power"] == pytest.approx(expected_solar, rel=1e-3)
     assert aggregates["total_solar_energy"] == 5678.9
     assert aggregates["daily_grid_export_energy"] == 10.5
     assert aggregates["total_grid_export_energy"] == 1234.5
@@ -218,5 +226,6 @@ async def test_device_coordinator_inverter_variations(
 
     # Check aggregates
     aggregates = data["aggregates"]
-    assert aggregates["total_solar_power"] == 3000  # 1000 + 2000
+    # Inverters are OUTPUT devices, not solar generators, so total_solar_power should be 0
+    assert aggregates["total_solar_power"] == 0  # No MPPT inputs = 0W solar
     assert aggregates["total_solar_energy"] == 300  # 100 + 200
