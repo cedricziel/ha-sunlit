@@ -58,6 +58,11 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
                 value = self.coordinator.data["mppt_energy"].get(
                     self.entity_description.key
                 )
+            # Then check in aggregates data (for device coordinator)
+            elif "aggregates" in self.coordinator.data:
+                value = self.coordinator.data["aggregates"].get(
+                    self.entity_description.key
+                )
             else:
                 value = None
 
@@ -86,6 +91,10 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
         elif "mppt_energy" in self.coordinator.data:
             return self.entity_description.key in self.coordinator.data.get(
                 "mppt_energy", {}
+            )
+        elif "aggregates" in self.coordinator.data:
+            return self.entity_description.key in self.coordinator.data.get(
+                "aggregates", {}
             )
 
         return False

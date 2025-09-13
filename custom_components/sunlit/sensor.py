@@ -105,6 +105,14 @@ async def async_setup_entry(
                 ):
                     family_data.update(mppt_coordinator.data["mppt_energy"])
 
+                # Add device aggregates if available
+                if (
+                    device_coordinator
+                    and device_coordinator.data
+                    and "aggregates" in device_coordinator.data
+                ):
+                    family_data.update(device_coordinator.data["aggregates"])
+
                 for key in family_data:
                     if key in FAMILY_SENSORS and key not in skip_fields:
                         sensor_description = SensorEntityDescription(
@@ -131,6 +139,17 @@ async def async_setup_entry(
                             coord = (
                                 mppt_coordinator
                                 if mppt_coordinator
+                                else family_coordinator
+                            )
+                        elif key in [
+                            "total_solar_power",
+                            "total_solar_energy",
+                            "total_grid_export_energy",
+                            "daily_grid_export_energy",
+                        ]:
+                            coord = (
+                                device_coordinator
+                                if device_coordinator
                                 else family_coordinator
                             )
                         else:

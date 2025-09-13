@@ -73,6 +73,9 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
             if space_index:
                 await self._process_space_index(space_index, family_data)
 
+            # Calculate device counts and fault status for regular families
+            await self._calculate_device_metrics(family_data)
+
             # Fetch SOC limits
             await self._fetch_soc_limits(family_data)
 
@@ -221,3 +224,33 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
                 )
         except Exception as err:
             _LOGGER.debug("Could not fetch charging box strategy: %s", err)
+
+    async def _calculate_device_metrics(self, family_data: dict) -> None:
+        """Calculate device counts and fault status for regular families."""
+        try:
+            # Fetch device list to calculate metrics
+            devices = await self.api_client.fetch_device_list(self.family_id)
+
+            # Calculate device counts
+            family_data["device_count"] = len(devices)
+            family_data["online_devices"] = sum(
+                1 for d in devices if d.get("status") == "Online"
+            )
+            family_data["offline_devices"] = sum(
+                1 for d in devices if d.get("status") == "Offline"
+            )
+
+            # Calculate fault status for binary sensor
+            family_data["has_fault"] = any(d.get("fault", False) for d in devices)
+
+            _LOGGER.debug(
+                "Family %s: %d devices (%d online, %d offline), has_fault: %s",
+                self.family_name,
+                family_data["device_count"],
+                family_data["online_devices"],
+                family_data["offline_devices"],
+                family_data["has_fault"],
+            )
+
+        except Exception as err:
+            _LOGGER.debug("Could not calculate device metrics: %s", err)

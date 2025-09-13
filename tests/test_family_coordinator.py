@@ -145,6 +145,7 @@ async def test_family_coordinator_complete_failure(
     """Test family coordinator handles complete API failure gracefully."""
     api_client = AsyncMock()
     api_client.fetch_space_index.side_effect = Exception("Complete API failure")
+    api_client.fetch_device_list.side_effect = Exception("Device list API failed")
     api_client.fetch_space_soc.side_effect = Exception("SOC API failed")
     api_client.fetch_space_current_strategy.side_effect = Exception("Strategy API failed")
     api_client.get_charging_box_strategy.side_effect = Exception("Charging box API failed")
