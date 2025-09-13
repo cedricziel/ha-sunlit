@@ -78,9 +78,7 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                 device_type = device.get("deviceType")
 
                 if device_type in ["SHELLY_3EM_METER", "SHELLY_PRO3EM_METER"]:
-                    await self._process_meter_device(
-                        device, device_id, data, total_grid_export, daily_grid_export
-                    )
+                    await self._process_meter_device(device, device_id, data)
                     # Update aggregates
                     if device.get("totalRetEnergy") is not None:
                         total_grid_export += device["totalRetEnergy"]
@@ -88,9 +86,7 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                         daily_grid_export += device["dailyRetEnergy"]
 
                 elif device_type in ["YUNENG_MICRO_INVERTER", "SOLAR_MICRO_INVERTER"]:
-                    await self._process_inverter_device(
-                        device, device_id, data, total_solar_power, total_solar_energy
-                    )
+                    await self._process_inverter_device(device, device_id, data)
                     # Update aggregates
                     if data.get("current_power") is not None:
                         total_solar_power += data["current_power"]
@@ -129,12 +125,7 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
             ) from err
 
     async def _process_meter_device(
-        self,
-        device: dict,
-        device_id: str,
-        data: dict,
-        total_grid_export: float,
-        daily_grid_export: float,
+        self, device: dict, device_id: str, data: dict
     ) -> None:
         """Process meter device data."""
         data["total_ac_power"] = device.get("totalAcPower")
@@ -164,12 +155,7 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                 )
 
     async def _process_inverter_device(
-        self,
-        device: dict,
-        device_id: str,
-        data: dict,
-        total_solar_power: float,
-        total_solar_energy: float,
+        self, device: dict, device_id: str, data: dict
     ) -> None:
         """Process inverter device data."""
         # Handle data structure variations
@@ -207,6 +193,23 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
         data["input_power_total"] = device.get("inputPowerTotal")
         data["output_power_total"] = device.get("outputPowerTotal")
 
+        # Extract actual battery module count from device configuration
+        # This represents the number of physical battery modules (1-3), not online status
+        device_count = device.get("deviceCount")
+        if device_count is not None and device_count > 0:
+            # deviceCount represents the number of sub-devices (battery modules)
+            data["module_count"] = device_count
+        else:
+            # Fallback: default to 1 for main battery
+            data["module_count"] = 1
+
+        _LOGGER.debug(
+            "Battery device %s has %d modules (deviceCount: %s)",
+            device_id,
+            data["module_count"],
+            device_count,
+        )
+
         # Fetch detailed statistics for online batteries
         if device.get("status") == "Online":
             try:
@@ -217,8 +220,9 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                 data["chargeRemaining"] = stats.get("chargeRemaining")
                 data["dischargeRemaining"] = stats.get("dischargeRemaining")
 
-                # Individual battery module SOCs
-                for i in [1, 2, 3]:
+                # Individual battery module SOCs - only for existing modules
+                module_count = data.get("module_count", 1)
+                for i in range(1, module_count + 1):
                     soc_key = f"battery{i}Soc"
                     data[soc_key] = stats.get(soc_key)
 
@@ -234,8 +238,8 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                 for field in mppt_fields:
                     data[field] = stats.get(field)
 
-                # Battery module MPPT data
-                for module_num in [1, 2, 3]:
+                # Battery module MPPT data - only for existing modules
+                for module_num in range(1, module_count + 1):
                     for suffix in ["Mppt1InVol", "Mppt1InCur", "Mppt1InPower"]:
                         field = f"battery{module_num}{suffix}"
                         data[field] = stats.get(field)
@@ -252,3 +256,21 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                     device_id,
                     err,
                 )
+
+    def get_battery_module_count(self, device_id: str) -> int:
+        """Get the number of battery modules for a specific battery device.
+
+        Args:
+            device_id: The battery device ID
+
+        Returns:
+            int: Number of modules for this battery (1 for main battery, up to 3 total)
+        """
+        if not self.data or "devices" not in self.data:
+            return 1
+
+        device_data = self.data["devices"].get(device_id)
+        if not device_data:
+            return 1
+
+        return device_data.get("module_count", 1)

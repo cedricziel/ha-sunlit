@@ -27,6 +27,8 @@ async def test_mppt_coordinator_energy_calculation(
             }
         }
     }
+    # Fix: Add get_battery_module_count method for dynamic module discovery
+    device_coordinator.get_battery_module_count.return_value = 3
 
     coordinator = SunlitMpptEnergyCoordinator(
         hass,
@@ -144,6 +146,8 @@ async def test_mppt_coordinator_partial_mppt_data(
             }
         }
     }
+    # Fix: Add get_battery_module_count method for dynamic module discovery (only 1 module for partial test)
+    device_coordinator.get_battery_module_count.return_value = 1
 
     coordinator = SunlitMpptEnergyCoordinator(
         hass,

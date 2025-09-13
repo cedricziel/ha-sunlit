@@ -54,6 +54,7 @@ def mock_coordinators():
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
+    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
     device_coordinator.data = {
         "devices": {
             "meter_001": {
@@ -387,6 +388,7 @@ async def test_meter_device_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
+    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
     device_coordinator.data = {
         "devices": {
             "meter_001": {
@@ -493,6 +495,7 @@ async def test_battery_device_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
+    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
     device_coordinator.data = {
         "devices": {
             "battery_001": {
@@ -638,9 +641,11 @@ async def test_battery_module_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
+    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
     device_coordinator.data = {
         "devices": {
             "battery_001": {
+                "module_count": 3,  # Dynamic module count for testing
                 # Module 1 data
                 "battery1Soc": 85,
                 "battery1Mppt1InVol": 400.5,
@@ -702,8 +707,10 @@ async def test_battery_module_sensor_creation(
         and hasattr(s, "_module_number")  # Only battery module sensors
     ]
 
-    # Should have 3 modules × 6 sensors per module = 18 battery module sensors
-    expected_module_count = 3 * len(BATTERY_MODULE_SENSORS)
+    # Should have dynamic module count × 6 sensors per module
+    # We need to get the actual module count from the test device
+    test_module_count = 3  # Based on our test fixture deviceCount
+    expected_module_count = test_module_count * len(BATTERY_MODULE_SENSORS)
     assert (
         len(battery_module_sensors) == expected_module_count
     ), f"Expected {expected_module_count} battery module sensors, got {len(battery_module_sensors)}"
@@ -794,6 +801,7 @@ async def test_unknown_device_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
+    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
     device_coordinator.data = {
         "devices": {
             "unknown_001": {
@@ -946,6 +954,7 @@ async def test_inverter_device_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
+    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
     device_coordinator.data = {
         "devices": {
             "inverter_001": {
@@ -1057,9 +1066,11 @@ async def test_battery_module_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
+    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
     device_coordinator.data = {
         "devices": {
             "battery_001": {
+                "module_count": 3,  # Dynamic module count for testing
                 # Module 1 data
                 "battery1Soc": 85,
                 "battery1Mppt1InVol": 400.5,
@@ -1121,8 +1132,10 @@ async def test_battery_module_sensor_creation(
         and hasattr(s, "_module_number")  # Only battery module sensors
     ]
 
-    # Should have 3 modules × 6 sensors per module = 18 battery module sensors
-    expected_module_count = 3 * len(BATTERY_MODULE_SENSORS)
+    # Should have dynamic module count × 6 sensors per module
+    # We need to get the actual module count from the test device
+    test_module_count = 3  # Based on our test fixture deviceCount
+    expected_module_count = test_module_count * len(BATTERY_MODULE_SENSORS)
     assert (
         len(battery_module_sensors) == expected_module_count
     ), f"Expected {expected_module_count} battery module sensors, got {len(battery_module_sensors)}"
@@ -1213,6 +1226,7 @@ async def test_unknown_device_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
+    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
     device_coordinator.data = {
         "devices": {
             "unknown_001": {

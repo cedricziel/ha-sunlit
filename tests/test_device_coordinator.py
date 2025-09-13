@@ -38,6 +38,7 @@ async def test_device_coordinator_update_success(
             "batteryLevel": 85,
             "inputPowerTotal": 500,
             "outputPowerTotal": 0,
+            "deviceCount": 3,  # Fix: Add deviceCount for dynamic module discovery
         },
     ]
     api_client.fetch_device_statistics.return_value = device_statistics_response[

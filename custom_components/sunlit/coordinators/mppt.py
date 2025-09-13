@@ -134,7 +134,10 @@ class SunlitMpptEnergyCoordinator(DataUpdateCoordinator):
         current_time: float,
     ) -> None:
         """Calculate energy for battery module MPPT inputs."""
-        for module_num in [1, 2, 3]:
+        # Get actual number of battery modules for this device
+        module_count = self.device_coordinator.get_battery_module_count(device_id)
+
+        for module_num in range(1, module_count + 1):
             power_key = f"battery{module_num}Mppt1InPower"
             energy_key = f"battery{module_num}Mppt1Energy"
 
