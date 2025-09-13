@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/cedricziel/ha-sunlit/compare/v0.3.0...v1.0.0) (2025-09-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* Internal architecture change, no API changes
+
+### Features
+
+* split monolithic coordinator into specialized coordinators ([#28](https://github.com/cedricziel/ha-sunlit/issues/28)) ([a6c719a](https://github.com/cedricziel/ha-sunlit/commit/a6c719aacb4a1fa803bc28f7d4e3daf5114a6b87))
+
 ## [0.3.0](https://github.com/cedricziel/ha-sunlit/compare/v0.2.3...v0.3.0) (2025-09-13)
 
 
