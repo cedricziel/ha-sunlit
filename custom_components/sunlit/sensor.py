@@ -154,11 +154,9 @@ async def async_setup_entry(
                             "total_grid_export_energy",
                             "daily_grid_export_energy",
                         ]:
-                            coord = (
-                                device_coordinator
-                                if device_coordinator
-                                else family_coordinator
-                            )
+                            # These aggregates come from device coordinator only
+                            # Don't fall back to family coordinator as it doesn't have these keys
+                            coord = device_coordinator
                         else:
                             coord = family_coordinator
 
