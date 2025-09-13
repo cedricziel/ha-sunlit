@@ -6,13 +6,21 @@ from datetime import UTC, datetime
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.const import EntityCategory
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
 
-from ..const import DOMAIN
+from ..const import (
+    DOMAIN,
+    SENSOR_GROUP_BATTERY,
+    SENSOR_GROUP_INFO,
+    SENSOR_GROUP_STATUS,
+    SENSOR_GROUP_STRATEGY,
+    SENSOR_GROUPS,
+)
 
 
 class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
@@ -40,6 +48,21 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
 
         # Short friendly name for UI (used with has_entity_name)
         self._attr_name = description.name
+
+    @property
+    def entity_category(self) -> EntityCategory | None:
+        """Return the entity category based on sensor group."""
+        sensor_group = SENSOR_GROUPS.get(self.entity_description.key)
+
+        if sensor_group in (SENSOR_GROUP_BATTERY, SENSOR_GROUP_STRATEGY):
+            # Battery management and strategy control are configuration
+            return EntityCategory.CONFIG
+        elif sensor_group in (SENSOR_GROUP_INFO, SENSOR_GROUP_STATUS):
+            # System information and status are diagnostic
+            return EntityCategory.DIAGNOSTIC
+
+        # Overview, energy, and financial sensors are primary (no category)
+        return None
 
     @property
     def native_value(self) -> Any:
