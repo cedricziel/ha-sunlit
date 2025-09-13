@@ -40,7 +40,7 @@ hass -c config
 
 The integration follows HomeAssistant's standard custom component pattern:
 
-- **DataUpdateCoordinator Pattern**: Uses `SunlitDataUpdateCoordinator` in `__init__.py` for efficient data fetching with 30-second polling interval
+- **Multiple DataUpdateCoordinators**: Uses specialized coordinators with different update intervals for optimal performance
 - **Config Flow**: UI-based configuration through `config_flow.py` with API key authentication
 - **Entity Platforms**: Multiple platforms for different entity types:
   - `sensor.py`: Numeric and text sensors
@@ -48,12 +48,34 @@ The integration follows HomeAssistant's standard custom component pattern:
 
 ### Key Components
 
-1. **Coordinator** (`__init__.py`):
+1. **Coordinators** (in `coordinators/` directory):
 
-   - Manages API polling and data caching
-   - Fetches data from multiple endpoints (device list, space SOC, strategy, statistics)
-   - Aggregates family-level metrics
-   - Handles online device statistics
+   The integration uses multiple specialized DataUpdateCoordinators with different update intervals:
+
+   - **SunlitFamilyCoordinator** (`family.py`):
+     - Handles family-level aggregated data
+     - Update interval: 30 seconds
+     - Fetches: space index, SOC limits, current strategy, charging box strategy
+     - Provides: device counts, power totals, battery levels, strategy info
+
+   - **SunlitDeviceCoordinator** (`device.py`):
+     - Manages individual device states and readings
+     - Update interval: 30 seconds
+     - Fetches: device list, device statistics for online devices
+     - Provides: device status, meter readings, inverter power, battery SOC
+     - Creates virtual battery module devices
+
+   - **SunlitStrategyHistoryCoordinator** (`strategy.py`):
+     - Tracks battery strategy changes over time
+     - Update interval: 5 minutes (less volatile data)
+     - Fetches: strategy history from API
+     - Provides: last strategy change, changes today, strategy history
+
+   - **SunlitMpptEnergyCoordinator** (`mppt.py`):
+     - Accumulates MPPT energy using trapezoidal integration
+     - Update interval: 1 minute (for accurate energy calculation)
+     - Depends on: device coordinator for power readings
+     - Provides: cumulative MPPT energy for each channel
 
 2. **Config Flow** (`config_flow.py`):
 
@@ -83,14 +105,54 @@ The integration follows HomeAssistant's standard custom component pattern:
 
 ### Data Processing Logic
 
-The `_async_update_data()` method in `__init__.py`:
+Each coordinator has its own `_async_update_data()` method with specific responsibilities:
 
-- Fetches device list for each family
-- Aggregates metrics across all devices
-- Fetches additional data for online battery devices
-- Creates virtual device data for battery modules
-- Processes strategy history for recent changes
-- Calculates total solar energy and grid export energy
+**Family Coordinator**:
+- Fetches space index data (today's metrics, battery/inverter/meter status)
+- Retrieves SOC limits (hardware, battery BMS, strategy limits)
+- Gets current battery strategy and charging box configuration
+- Aggregates device counts and online/offline status
+
+**Device Coordinator**:
+- Fetches complete device list for the family
+- For each online device, retrieves detailed statistics
+- Processes device-specific data (meter readings, inverter power, battery SOC)
+- Creates virtual battery module entries with MPPT data
+- Aggregates total solar power/energy and grid export metrics
+
+**Strategy Coordinator**:
+- Fetches strategy history from the API
+- Identifies the most recent strategy change
+- Counts strategy changes within the current day
+- Maintains a history buffer for UI display
+
+**MPPT Energy Coordinator**:
+- Reads current MPPT power values from device coordinator
+- Applies trapezoidal integration to calculate energy accumulation
+- Tracks each MPPT channel independently (battery and module MPPTs)
+- Resets accumulation when power drops to zero
+
+### Coordinator Interaction
+
+The coordinators work together to provide complete system data:
+
+1. **Initialization** (`__init__.py`):
+   - Creates all coordinators for each configured family
+   - Family and Device coordinators are always created
+   - Strategy coordinator created for families with battery systems
+   - MPPT coordinator depends on Device coordinator for power readings
+
+2. **Sensor Creation** (`sensor.py`):
+   - Family sensors use data from Family, Strategy, and MPPT coordinators
+   - Device sensors use data from Device coordinator
+   - Each sensor is assigned to the appropriate coordinator based on data type
+   - Strategy-related sensors update every 5 minutes, others every 30 seconds
+
+3. **Data Flow**:
+   - Device coordinator provides device registry for all other components
+   - MPPT coordinator reads power values from Device coordinator
+   - Sensors combine data from multiple coordinators when needed
+   - Binary sensors use Family and Device coordinators
 
 ### Entity Design
 
@@ -128,8 +190,15 @@ Battery modules (B215 extension modules 1-3) are created as separate virtual dev
 
 ## Recent Features
 
+- Refactored coordinator architecture with specialized coordinators
+- Different update intervals based on data volatility (30s, 1min, 5min)
+- Fixed `last_strategy_change` sensor to use TIMESTAMP device class
+- MPPT energy accumulation with trapezoidal integration
 - Grid export energy tracking (daily and total)
 - Total solar energy aggregation across all inverters
 - B215 battery module virtual devices
 - Makefile for development workflow
-- if we need to compare api responses, the openapi spec that's included in the project can guide us.
+
+## API Reference
+
+If we need to compare API responses, the OpenAPI spec that's included in the project can guide us.

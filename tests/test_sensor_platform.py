@@ -9,23 +9,28 @@ from homeassistant.const import UnitOfEnergy, UnitOfPower
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry
 
-from custom_components.sunlit import SunlitDataUpdateCoordinator
+from custom_components.sunlit.coordinators.family import SunlitFamilyCoordinator
+from custom_components.sunlit.coordinators.device import SunlitDeviceCoordinator
+from custom_components.sunlit.coordinators.strategy import SunlitStrategyHistoryCoordinator
+from custom_components.sunlit.coordinators.mppt import SunlitMpptEnergyCoordinator
 from custom_components.sunlit.const import DOMAIN
 from custom_components.sunlit.sensor import async_setup_entry
 
 
 @pytest.fixture
-def mock_coordinator():
-    """Create a mock coordinator with test data."""
-    coordinator = MagicMock(spec=SunlitDataUpdateCoordinator)
-    coordinator.family_id = "test_family_123"
-    coordinator.family_name = "Test Family"
+def mock_coordinators():
+    """Create mock coordinators with test data."""
+    # Create family coordinator
+    family_coordinator = MagicMock(spec=SunlitFamilyCoordinator)
+    family_coordinator.family_id = "test_family_123"
+    family_coordinator.family_name = "Test Family"
+    family_coordinator.devices = {}
 
     # Create timestamps for strategy history
     now = datetime.now()
     two_hours_ago = now - timedelta(hours=2)
 
-    coordinator.data = {
+    family_coordinator.data = {
         "family": {
             "device_count": 3,
             "online_devices": 2,
@@ -35,15 +40,18 @@ def mock_coordinator():
             "battery_strategy": "SELF_CONSUMPTION",
             "hw_soc_min": 10,
             "hw_soc_max": 95,
-            "last_strategy_change": int(two_hours_ago.timestamp() * 1000),
-            "last_strategy_type": "SELF_CONSUMPTION",
-            "last_strategy_status": "ACTIVE",
-            "strategy_changes_today": 2,
             "total_solar_energy": 1234.5,
             "total_solar_power": 3500,
             "daily_grid_export_energy": 15.8,
             "total_grid_export_energy": 1802.3,
         },
+    }
+
+    # Create device coordinator
+    device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
+    device_coordinator.family_id = "test_family_123"
+    device_coordinator.family_name = "Test Family"
+    device_coordinator.data = {
         "devices": {
             "meter_001": {
                 "total_ac_power": 1500,
@@ -71,7 +79,7 @@ def mock_coordinator():
         },
     }
 
-    coordinator.devices = {
+    device_coordinator.devices = {
         "meter_001": {
             "deviceId": "meter_001",
             "deviceType": "SHELLY_3EM_METER",
@@ -89,22 +97,43 @@ def mock_coordinator():
         },
     }
 
-    return coordinator
+    # Create strategy coordinator
+    strategy_coordinator = MagicMock(spec=SunlitStrategyHistoryCoordinator)
+    strategy_coordinator.family_id = "test_family_123"
+    strategy_coordinator.family_name = "Test Family"
+    strategy_coordinator.data = {
+        "strategy": {
+            "last_strategy_change": int(two_hours_ago.timestamp() * 1000),
+            "last_strategy_type": "SELF_CONSUMPTION",
+            "last_strategy_status": "ACTIVE",
+            "strategy_changes_today": 2,
+        }
+    }
+
+    # Create MPPT coordinator (can be None for tests)
+    mppt_coordinator = None
+
+    return {
+        "family": family_coordinator,
+        "device": device_coordinator,
+        "strategy": strategy_coordinator,
+        "mppt": mppt_coordinator,
+    }
 
 
 async def test_family_sensor_creation(
     hass: HomeAssistant,
     enable_custom_integrations,
     mock_config_entry,
-    mock_coordinator,
+    mock_coordinators,
 ):
     """Test that family sensors are created with correct attributes."""
     mock_config_entry.add_to_hass(hass)
 
-    # Set up the coordinator
+    # Set up the coordinators
     hass.data[DOMAIN] = {
         mock_config_entry.entry_id: {
-            "test_family_123": mock_coordinator
+            "test_family_123": mock_coordinators
         }
     }
 
@@ -156,15 +185,15 @@ async def test_device_sensor_creation(
     hass: HomeAssistant,
     enable_custom_integrations,
     mock_config_entry,
-    mock_coordinator,
+    mock_coordinators,
 ):
     """Test that device sensors are created with correct types."""
     mock_config_entry.add_to_hass(hass)
 
-    # Set up the coordinator
+    # Set up the coordinators
     hass.data[DOMAIN] = {
         mock_config_entry.entry_id: {
-            "test_family_123": mock_coordinator
+            "test_family_123": mock_coordinators
         }
     }
 
@@ -218,15 +247,15 @@ async def test_timestamp_sensor_value(
     hass: HomeAssistant,
     enable_custom_integrations,
     mock_config_entry,
-    mock_coordinator,
+    mock_coordinators,
 ):
     """Test that last_strategy_change sensor returns proper datetime value."""
     mock_config_entry.add_to_hass(hass)
 
-    # Set up the coordinator
+    # Set up the coordinators
     hass.data[DOMAIN] = {
         mock_config_entry.entry_id: {
-            "test_family_123": mock_coordinator
+            "test_family_123": mock_coordinators
         }
     }
 
@@ -261,15 +290,15 @@ async def test_sensor_count(
     hass: HomeAssistant,
     enable_custom_integrations,
     mock_config_entry,
-    mock_coordinator,
+    mock_coordinators,
 ):
     """Test that the correct number of sensors are created."""
     mock_config_entry.add_to_hass(hass)
 
-    # Set up the coordinator
+    # Set up the coordinators
     hass.data[DOMAIN] = {
         mock_config_entry.entry_id: {
-            "test_family_123": mock_coordinator
+            "test_family_123": mock_coordinators
         }
     }
 

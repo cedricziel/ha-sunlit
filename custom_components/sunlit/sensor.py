@@ -63,13 +63,49 @@ async def async_setup_entry(
     sensors = []
 
     # Process multiple family coordinators
-    for _, coordinator in coordinators.items():
-        if coordinator.data:
-            # Create family aggregate sensors
-            if "family" in coordinator.data:
+    for family_id, coordinator_set in coordinators.items():
+        # Use the new specialized coordinators
+        if not isinstance(coordinator_set, dict):
+            # Handle old coordinator structure for backwards compatibility
+            _LOGGER.warning(
+                "Old coordinator structure detected, skipping family %s", family_id
+            )
+            continue
+
+        family_coordinator = coordinator_set.get("family")
+        device_coordinator = coordinator_set.get("device")
+        strategy_coordinator = coordinator_set.get("strategy")
+        mppt_coordinator = coordinator_set.get("mppt")
+
+        # Skip if essential coordinators are missing
+        if not family_coordinator or not device_coordinator:
+            _LOGGER.warning("Missing essential coordinators for family %s", family_id)
+            continue
+
+        if family_coordinator.data:
+            # Create family aggregate sensors from family coordinator
+            if "family" in family_coordinator.data:
                 # Skip binary sensor fields (they're handled by binary_sensor platform)
                 skip_fields = {"has_fault", "battery_full"}
-                for key in coordinator.data["family"]:
+                family_data = family_coordinator.data["family"]
+
+                # Add strategy data if available
+                if (
+                    strategy_coordinator
+                    and strategy_coordinator.data
+                    and "strategy" in strategy_coordinator.data
+                ):
+                    family_data.update(strategy_coordinator.data["strategy"])
+
+                # Add MPPT energy data if available
+                if (
+                    mppt_coordinator
+                    and mppt_coordinator.data
+                    and "mppt_energy" in mppt_coordinator.data
+                ):
+                    family_data.update(mppt_coordinator.data["mppt_energy"])
+
+                for key in family_data:
                     if key in FAMILY_SENSORS and key not in skip_fields:
                         sensor_description = SensorEntityDescription(
                             key=key,
@@ -78,12 +114,34 @@ async def async_setup_entry(
                             state_class=get_state_class_for_sensor(key),
                             native_unit_of_measurement=get_unit_for_sensor(key),
                         )
+                        # Use appropriate coordinator based on data source
+                        if key in [
+                            "last_strategy_type",
+                            "last_strategy_change",
+                            "last_strategy_status",
+                            "strategy_changes_today",
+                            "strategy_history",
+                        ]:
+                            coord = (
+                                strategy_coordinator
+                                if strategy_coordinator
+                                else family_coordinator
+                            )
+                        elif key.startswith("mppt") and "energy" in key:
+                            coord = (
+                                mppt_coordinator
+                                if mppt_coordinator
+                                else family_coordinator
+                            )
+                        else:
+                            coord = family_coordinator
+
                         sensor = SunlitFamilySensor(
-                            coordinator=coordinator,
+                            coordinator=coord,
                             description=sensor_description,
                             entry_id=config_entry.entry_id,
-                            family_id=coordinator.family_id,
-                            family_name=coordinator.family_name,
+                            family_id=family_coordinator.family_id,
+                            family_name=family_coordinator.family_name,
                         )
                         # Set icon if available
                         icon = get_icon_for_sensor(key)
@@ -91,11 +149,16 @@ async def async_setup_entry(
                             sensor._attr_icon = icon
                         sensors.append(sensor)
 
-            # Create individual device sensors
-            if "devices" in coordinator.data:
-                for device_id in coordinator.data["devices"]:
-                    if device_id in coordinator.devices:
-                        device_info = coordinator.devices[device_id]
+            # Create individual device sensors from device coordinator
+            if device_coordinator.data and "devices" in device_coordinator.data:
+                for device_id, device_data in device_coordinator.data[
+                    "devices"
+                ].items():
+                    if (
+                        device_coordinator.devices
+                        and device_id in device_coordinator.devices
+                    ):
+                        device_info = device_coordinator.devices[device_id]
                         device_type = device_info.get("deviceType")
 
                         # Determine which sensors to create based on device type
@@ -125,11 +188,11 @@ async def async_setup_entry(
                                 )
                                 sensor = create_device_sensor(
                                     device_type=device_type,
-                                    coordinator=coordinator,
+                                    coordinator=device_coordinator,
                                     description=sensor_description,
                                     entry_id=config_entry.entry_id,
-                                    family_id=coordinator.family_id,
-                                    family_name=coordinator.family_name,
+                                    family_id=device_coordinator.family_id,
+                                    family_name=device_coordinator.family_name,
                                     device_id=device_id,
                                     device_info_data=device_info,
                                 )
@@ -146,11 +209,11 @@ async def async_setup_entry(
                         )
                         sensor = create_device_sensor(
                             device_type=device_type,
-                            coordinator=coordinator,
+                            coordinator=device_coordinator,
                             description=sensor_description,
                             entry_id=config_entry.entry_id,
-                            family_id=coordinator.family_id,
-                            family_name=coordinator.family_name,
+                            family_id=device_coordinator.family_id,
+                            family_name=device_coordinator.family_name,
                             device_id=device_id,
                             device_info_data=device_info,
                         )
@@ -187,11 +250,11 @@ async def async_setup_entry(
                                     )
 
                                     sensor = SunlitBatteryModuleSensor(
-                                        coordinator=coordinator,
+                                        coordinator=device_coordinator,
                                         description=sensor_description,
                                         entry_id=config_entry.entry_id,
-                                        family_id=coordinator.family_id,
-                                        family_name=coordinator.family_name,
+                                        family_id=device_coordinator.family_id,
+                                        family_name=device_coordinator.family_name,
                                         device_id=device_id,
                                         device_info_data=device_info,
                                         module_number=module_num,

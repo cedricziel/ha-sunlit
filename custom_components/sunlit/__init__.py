@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api_client import SunlitApiClient
-from .const import CONF_ACCESS_TOKEN, CONF_FAMILIES, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import CONF_ACCESS_TOKEN, CONF_FAMILIES, DOMAIN
+from .coordinators import (
+    SunlitDeviceCoordinator,
+    SunlitFamilyCoordinator,
+    SunlitMpptEnergyCoordinator,
+    SunlitStrategyHistoryCoordinator,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,15 +43,46 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Create coordinators for selected families
     for family_id, family_info in families.items():
-        coordinator = SunlitDataUpdateCoordinator(
+        # Create specialized coordinators
+        family_coordinator = SunlitFamilyCoordinator(
             hass,
             api_client=api_client,
             family_id=str(family_info["id"]),
             family_name=family_info["name"],
         )
+        await family_coordinator.async_config_entry_first_refresh()
 
-        await coordinator.async_config_entry_first_refresh()
-        coordinators[family_id] = coordinator
+        device_coordinator = SunlitDeviceCoordinator(
+            hass,
+            api_client=api_client,
+            family_id=str(family_info["id"]),
+            family_name=family_info["name"],
+        )
+        await device_coordinator.async_config_entry_first_refresh()
+
+        strategy_coordinator = SunlitStrategyHistoryCoordinator(
+            hass,
+            api_client=api_client,
+            family_id=str(family_info["id"]),
+            family_name=family_info["name"],
+        )
+        await strategy_coordinator.async_config_entry_first_refresh()
+
+        mppt_coordinator = SunlitMpptEnergyCoordinator(
+            hass,
+            device_coordinator=device_coordinator,
+            family_id=str(family_info["id"]),
+            family_name=family_info["name"],
+        )
+        await mppt_coordinator.async_config_entry_first_refresh()
+
+        # Store all coordinators
+        coordinators[family_id] = {
+            "family": family_coordinator,
+            "device": device_coordinator,
+            "strategy": strategy_coordinator,
+            "mppt": mppt_coordinator,
+        }
 
     # Check for devices without a spaceId (global/unassigned devices)
     try:
@@ -59,17 +94,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "Found %d unassigned devices (no spaceId), creating global coordinator",
                 len(unassigned_devices),
             )
-            # Create a special coordinator for unassigned devices
-            global_coordinator = SunlitDataUpdateCoordinator(
+            # Create specialized coordinators for global devices
+            global_family_coordinator = SunlitFamilyCoordinator(
                 hass,
                 api_client=api_client,
-                family_id="global",  # Special ID for global devices
+                family_id="global",
                 family_name="Unassigned Devices",
-                is_global=True,  # Flag to indicate this is for unassigned devices
+                is_global=True,
             )
+            await global_family_coordinator.async_config_entry_first_refresh()
 
-            await global_coordinator.async_config_entry_first_refresh()
-            coordinators["global"] = global_coordinator
+            global_device_coordinator = SunlitDeviceCoordinator(
+                hass,
+                api_client=api_client,
+                family_id="global",
+                family_name="Unassigned Devices",
+                is_global=True,
+            )
+            await global_device_coordinator.async_config_entry_first_refresh()
+
+            # Note: No strategy or MPPT coordinators for global devices
+            coordinators["global"] = {
+                "family": global_family_coordinator,
+                "device": global_device_coordinator,
+                "strategy": None,  # Not applicable for global devices
+                "mppt": None,  # Not applicable for global devices
+            }
     except Exception as err:
         _LOGGER.warning("Failed to check for unassigned devices: %s", err)
 
@@ -87,812 +137,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
-
-
-class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
-    """Class to manage fetching data from the REST API."""
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        api_client: SunlitApiClient,
-        family_id: str,
-        family_name: str,
-        is_global: bool = False,
-    ) -> None:
-        """Initialize."""
-        self.api_client = api_client
-        self.family_id = family_id
-        self.family_name = family_name
-        self.is_global = is_global  # Flag for unassigned devices
-        self.devices = {}  # Store device information
-
-        # Track MPPT energy accumulation
-        self.mppt_energy = {}  # Store cumulative energy in kWh
-        self.last_mppt_update = {}  # Store last update time for each MPPT
-        self.last_mppt_power = {}  # Store last power reading for each MPPT
-
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=f"{DOMAIN}_{family_id}",
-            update_interval=DEFAULT_SCAN_INTERVAL,
-        )
-
-    async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch data from REST API."""
-        try:
-            # Initialize variables that might not be set in all code paths
-            charging_box_data = {}
-
-            # For global/unassigned devices, fetch differently
-            if self.is_global:
-                # Fetch all devices and filter for those without spaceId
-                all_devices = await self.api_client.get_device_list()
-                devices = [d for d in all_devices if d.get("spaceId") is None]
-
-                _LOGGER.debug("Found %d unassigned devices", len(devices))
-
-                # No space-specific data for global devices
-                space_index = {}
-                space_soc = {}
-                current_strategy = {}
-                strategy_history = {}
-            else:
-                # Try to fetch comprehensive space data first (more efficient)
-                space_index = {}
-                try:
-                    space_index = await self.api_client.fetch_space_index(
-                        self.family_id
-                    )
-                    _LOGGER.debug(
-                        "Successfully fetched space index data for family %s",
-                        self.family_id,
-                    )
-                except Exception as err:
-                    _LOGGER.debug(
-                        "Could not fetch space index data (will use fallback): %s", err
-                    )
-
-                # Fetch device list for the family (still needed for device discovery)
-                devices = await self.api_client.fetch_device_list(self.family_id)
-
-            # Fetch additional endpoints for non-global coordinators
-            if not self.is_global:
-                space_soc = {}
-                current_strategy = {}
-                strategy_history = {}
-
-                # Always try to fetch SOC data
-                try:
-                    space_soc = await self.api_client.fetch_space_soc(self.family_id)
-                except Exception as err:
-                    _LOGGER.debug("Could not fetch space SOC data: %s", err)
-
-                # Always try to fetch current strategy
-                try:
-                    current_strategy = (
-                        await self.api_client.fetch_space_current_strategy(
-                            self.family_id
-                        )
-                    )
-                except Exception as err:
-                    _LOGGER.debug("Could not fetch current strategy data: %s", err)
-
-                # Always try to fetch strategy history
-                try:
-                    strategy_history = (
-                        await self.api_client.fetch_space_strategy_history(
-                            self.family_id
-                        )
-                    )
-                except Exception as err:
-                    _LOGGER.debug("Could not fetch strategy history data: %s", err)
-
-                # Fetch charging box strategy data
-                try:
-                    charging_box_data = await self.api_client.get_charging_box_strategy(
-                        self.family_id
-                    )
-                    _LOGGER.debug(
-                        "Charging box data for family %s: %s",
-                        self.family_name,
-                        charging_box_data,
-                    )
-                except Exception as err:
-                    _LOGGER.debug("Could not fetch charging box strategy: %s", err)
-                    charging_box_data = {}
-
-            _LOGGER.debug(
-                "Received %d devices for family %s", len(devices), self.family_name
-            )
-
-            # Store device information for device registry
-            self.devices = {str(device["deviceId"]): device for device in devices}
-
-            # Process device list into sensor data
-            # Aggregate data from all devices
-            sensor_data = {
-                "family": (
-                    {} if not self.is_global else None
-                ),  # No family data for global devices
-                "devices": {},  # Individual device data
-            }
-
-            # Only create family aggregates for non-global coordinators
-            if not self.is_global:
-                # Count devices by type and status
-                device_count = len(devices)
-                online_count = sum(1 for d in devices if d.get("status") == "Online")
-                offline_count = sum(1 for d in devices if d.get("status") == "Offline")
-
-                sensor_data["family"]["device_count"] = device_count
-                sensor_data["family"]["online_devices"] = online_count
-                sensor_data["family"]["offline_devices"] = offline_count
-            else:
-                # For global devices, we still need the family dict but minimal data
-                sensor_data["family"] = {
-                    "device_count": len(devices),
-                    "online_devices": sum(
-                        1 for d in devices if d.get("status") == "Online"
-                    ),
-                    "offline_devices": sum(
-                        1 for d in devices if d.get("status") == "Offline"
-                    ),
-                }
-
-            # Aggregate power data
-            total_ac_power = 0
-            total_battery_level = 0
-            battery_count = 0
-            total_input_power = 0
-            total_output_power = 0
-            # Grid export aggregation
-            total_grid_export = 0
-            daily_grid_export = 0
-
-            for device in devices:
-                device_id = str(device["deviceId"])
-                device_data = {}
-
-                # Store common device attributes
-                device_data["status"] = device.get("status", "Unknown")
-                device_data["fault"] = device.get("fault", False)
-                device_data["off"] = device.get("off", False)
-
-                # Process based on device type
-                device_type = device.get("deviceType")
-                device_data["deviceType"] = device_type
-
-                if device_type in ["SHELLY_3EM_METER", "SHELLY_PRO3EM_METER"]:
-                    device_data["total_ac_power"] = device.get("totalAcPower")
-                    device_data["daily_buy_energy"] = device.get("dailyBuyEnergy")
-                    device_data["daily_ret_energy"] = device.get("dailyRetEnergy")
-                    device_data["total_buy_energy"] = device.get("totalBuyEnergy")
-                    device_data["total_ret_energy"] = device.get("totalRetEnergy")
-
-                    if device.get("totalAcPower"):
-                        total_ac_power += device["totalAcPower"]
-
-                    # Aggregate grid export energy
-                    if device.get("totalRetEnergy") is not None:
-                        total_grid_export += device["totalRetEnergy"]
-                    if device.get("dailyRetEnergy") is not None:
-                        daily_grid_export += device["dailyRetEnergy"]
-
-                    # Fetch detailed statistics for online meters
-                    if device.get("status") == "Online":
-                        try:
-                            detailed_stats = (
-                                await self.api_client.fetch_device_statistics(device_id)
-                            )
-
-                            # Override with more accurate values if available
-                            for key in [
-                                "totalAcPower",
-                                "dailyBuyEnergy",
-                                "dailyRetEnergy",
-                                "totalBuyEnergy",
-                                "totalRetEnergy",
-                            ]:
-                                if detailed_stats.get(key) is not None:
-                                    device_data[key.lower()] = detailed_stats[key]
-                                    # Update aggregates with more accurate values
-                                    if key == "totalRetEnergy":
-                                        total_grid_export = detailed_stats[key]
-                                    elif key == "dailyRetEnergy":
-                                        daily_grid_export = detailed_stats[key]
-
-                        except Exception as err:
-                            _LOGGER.warning(
-                                "Failed to fetch meter statistics for %s: %s",
-                                device_id,
-                                err,
-                            )
-
-                elif device_type in ["YUNENG_MICRO_INVERTER", "SOLAR_MICRO_INVERTER"]:
-                    # Handle data in "today" structure or directly
-                    if device.get("today"):
-                        device_data["current_power"] = device["today"].get(
-                            "currentPower"
-                        )
-                        device_data["total_power_generation"] = device["today"].get(
-                            "totalPowerGeneration"
-                        )
-                        if device["today"].get("totalEarnings"):
-                            device_data["daily_earnings"] = device["today"][
-                                "totalEarnings"
-                            ].get("earnings")
-                    else:
-                        # Handle direct fields (from space_index deviceList)
-                        device_data["current_power"] = device.get("currentPower")
-                        device_data["total_power_generation"] = device.get(
-                            "totalPowerGeneration"
-                        )
-                        device_data["daily_earnings"] = device.get("dailyEarnings")
-
-                    # Fetch detailed statistics for online inverters
-                    if device.get("status") == "Online":
-                        try:
-                            detailed_stats = (
-                                await self.api_client.fetch_device_statistics(device_id)
-                            )
-
-                            # Add total yield data
-                            device_data["total_yield"] = detailed_stats.get(
-                                "totalYield"
-                            )
-
-                            # Override current power with more accurate value if available
-                            if detailed_stats.get("currentPower") is not None:
-                                device_data["current_power"] = detailed_stats[
-                                    "currentPower"
-                                ]
-
-                        except Exception as err:
-                            _LOGGER.warning(
-                                "Failed to fetch inverter statistics for %s: %s",
-                                device_id,
-                                err,
-                            )
-
-                elif device_type == "ENERGY_STORAGE_BATTERY":
-                    # Basic battery data (always available)
-                    device_data["battery_level"] = device.get("batteryLevel")
-                    device_data["input_power_total"] = device.get("inputPowerTotal")
-                    device_data["output_power_total"] = device.get("outputPowerTotal")
-
-                    # Try to fetch detailed statistics for online devices
-                    if device.get("status") == "Online":
-                        try:
-                            detailed_stats = (
-                                await self.api_client.fetch_device_statistics(device_id)
-                            )
-
-                            # Debug: Log all keys in detailed_stats for battery
-                            _LOGGER.debug(
-                                "Battery %s detailed_stats keys: %s",
-                                device_id,
-                                list(detailed_stats.keys()),
-                            )
-
-                            # System-wide battery data
-                            device_data["batterySoc"] = detailed_stats.get("batterySoc")
-                            device_data["chargeRemaining"] = detailed_stats.get(
-                                "chargeRemaining"
-                            )
-                            device_data["dischargeRemaining"] = detailed_stats.get(
-                                "dischargeRemaining"
-                            )
-
-                            # Individual battery module SOCs
-                            device_data["battery1Soc"] = detailed_stats.get(
-                                "battery1Soc"
-                            )
-                            device_data["battery2Soc"] = detailed_stats.get(
-                                "battery2Soc"
-                            )
-                            device_data["battery3Soc"] = detailed_stats.get(
-                                "battery3Soc"
-                            )
-
-                            # Main unit MPPT data (simplified fields)
-                            mppt_fields = [
-                                "batteryMppt1InVol",
-                                "batteryMppt1InCur",
-                                "batteryMppt1InPower",
-                                "batteryMppt2InVol",
-                                "batteryMppt2InCur",
-                                "batteryMppt2InPower",
-                            ]
-                            for field in mppt_fields:
-                                device_data[field] = detailed_stats.get(field)
-
-                            # Battery module MPPT data
-                            for module_num in [1, 2, 3]:
-                                # Check if this module has SOC data (indicates it exists)
-                                soc_field = f"battery{module_num}Soc"
-                                module_soc = detailed_stats.get(soc_field)
-
-                                if module_soc is not None:
-                                    _LOGGER.debug(
-                                        "Battery module %d found with SOC: %s%%",
-                                        module_num,
-                                        module_soc,
-                                    )
-
-                                mppt_suffixes = [
-                                    "Mppt1InVol",
-                                    "Mppt1InCur",
-                                    "Mppt1InPower",
-                                ]
-                                module_has_data = False
-                                for suffix in mppt_suffixes:
-                                    field = f"battery{module_num}{suffix}"
-                                    value = detailed_stats.get(field)
-                                    device_data[field] = value
-                                    if value is not None:
-                                        module_has_data = True
-                                        _LOGGER.debug(
-                                            "Battery module %d MPPT data: %s = %s",
-                                            module_num,
-                                            field,
-                                            value,
-                                        )
-
-                                if module_soc is not None and not module_has_data:
-                                    _LOGGER.warning(
-                                        "Battery module %d has SOC (%s%%) but no MPPT data - module may be idle or disconnected",
-                                        module_num,
-                                        module_soc,
-                                    )
-
-                            # Calculate MPPT energy accumulation
-                            import time
-
-                            current_time = time.time()
-
-                            # Main unit MPPT energy calculation
-                            for mppt_num in [1, 2]:
-                                power_key = f"batteryMppt{mppt_num}InPower"
-                                energy_key = f"batteryMppt{mppt_num}Energy"
-
-                                if device_data.get(power_key) is not None:
-                                    power = device_data[power_key]
-
-                                    if energy_key in self.mppt_energy:
-                                        # Calculate time delta in hours
-                                        if energy_key in self.last_mppt_update:
-                                            time_delta_hours = (
-                                                current_time
-                                                - self.last_mppt_update[energy_key]
-                                            ) / 3600
-
-                                            # Use trapezoidal integration for better accuracy
-                                            # Average of current and previous power readings
-                                            avg_power = (
-                                                power
-                                                + self.last_mppt_power.get(
-                                                    energy_key, power
-                                                )
-                                            ) / 2
-
-                                            # Energy in kWh = Power in W * time in hours / 1000
-                                            energy_increment = (
-                                                avg_power * time_delta_hours
-                                            ) / 1000
-                                            self.mppt_energy[energy_key] += (
-                                                energy_increment
-                                            )
-                                    else:
-                                        # Initialize energy accumulator
-                                        self.mppt_energy[energy_key] = 0
-
-                                    self.last_mppt_update[energy_key] = current_time
-                                    self.last_mppt_power[energy_key] = power
-                                    device_data[energy_key] = round(
-                                        self.mppt_energy[energy_key], 3
-                                    )
-
-                            # Battery module MPPT energy calculation
-                            for module_num in [1, 2, 3]:
-                                power_key = f"battery{module_num}Mppt1InPower"
-                                energy_key = f"battery{module_num}Mppt1Energy"
-
-                                if device_data.get(power_key) is not None:
-                                    power = device_data[power_key]
-
-                                    if energy_key in self.mppt_energy:
-                                        if energy_key in self.last_mppt_update:
-                                            time_delta_hours = (
-                                                current_time
-                                                - self.last_mppt_update[energy_key]
-                                            ) / 3600
-                                            avg_power = (
-                                                power
-                                                + self.last_mppt_power.get(
-                                                    energy_key, power
-                                                )
-                                            ) / 2
-                                            energy_increment = (
-                                                avg_power * time_delta_hours
-                                            ) / 1000
-                                            self.mppt_energy[energy_key] += (
-                                                energy_increment
-                                            )
-                                    else:
-                                        self.mppt_energy[energy_key] = 0
-
-                                    self.last_mppt_update[energy_key] = current_time
-                                    self.last_mppt_power[energy_key] = power
-                                    device_data[energy_key] = round(
-                                        self.mppt_energy[energy_key], 3
-                                    )
-
-                            # Update power totals if available from detailed stats
-                            if detailed_stats.get("inputPowerTotal") is not None:
-                                device_data["input_power_total"] = detailed_stats[
-                                    "inputPowerTotal"
-                                ]
-                            if detailed_stats.get("outputPowerTotal") is not None:
-                                device_data["output_power_total"] = detailed_stats[
-                                    "outputPowerTotal"
-                                ]
-
-                        except Exception as err:
-                            _LOGGER.debug(
-                                "Could not fetch detailed statistics for device %s: %s",
-                                device_id,
-                                err,
-                            )
-                            # Continue with basic data only
-
-                    if device.get("batteryLevel") is not None:
-                        total_battery_level += device["batteryLevel"]
-                        battery_count += 1
-                    if device_data.get("input_power_total"):
-                        total_input_power += device_data["input_power_total"]
-                    if device_data.get("output_power_total"):
-                        total_output_power += device_data["output_power_total"]
-
-                sensor_data["devices"][device_id] = device_data
-
-            # Set family aggregate values (only for non-global coordinators)
-            if not self.is_global:
-                sensor_data["family"]["total_ac_power"] = (
-                    total_ac_power if total_ac_power > 0 else None
-                )
-                sensor_data["family"]["average_battery_level"] = (
-                    total_battery_level / battery_count if battery_count > 0 else None
-                )
-                sensor_data["family"]["total_input_power"] = (
-                    total_input_power if total_input_power > 0 else None
-                )
-                sensor_data["family"]["total_output_power"] = (
-                    total_output_power if total_output_power > 0 else None
-                )
-                sensor_data["family"]["has_fault"] = any(
-                    d.get("fault") for d in devices
-                )
-
-            # Calculate total solar energy from all MPPT inputs (only for non-global)
-            if not self.is_global:
-                total_solar_energy = 0
-                total_solar_power = 0
-
-                # Sum energy and power from all devices
-                for device_id, device_data in sensor_data.get("devices", {}).items():
-                    device_type = device_data.get("deviceType")
-
-                    # Add inverter power and energy
-                    if device_type in ["YUNENG_MICRO_INVERTER", "SOLAR_MICRO_INVERTER"]:
-                        if device_data.get("current_power") is not None:
-                            total_solar_power += device_data["current_power"]
-                        if device_data.get("total_power_generation") is not None:
-                            total_solar_energy += device_data["total_power_generation"]
-
-                    # Main unit MPPT energy
-                    for mppt_num in [1, 2]:
-                        energy_key = f"batteryMppt{mppt_num}Energy"
-                        power_key = f"batteryMppt{mppt_num}InPower"
-                        if energy_key in device_data:
-                            total_solar_energy += device_data[energy_key]
-                        if (
-                            power_key in device_data
-                            and device_data[power_key] is not None
-                        ):
-                            total_solar_power += device_data[power_key]
-
-                    # Module MPPT energy
-                    for module_num in [1, 2, 3]:
-                        energy_key = f"battery{module_num}Mppt1Energy"
-                        power_key = f"battery{module_num}Mppt1InPower"
-                        if energy_key in device_data:
-                            total_solar_energy += device_data[energy_key]
-                        if (
-                            power_key in device_data
-                            and device_data[power_key] is not None
-                        ):
-                            total_solar_power += device_data[power_key]
-
-                sensor_data["family"]["total_solar_energy"] = (
-                    round(total_solar_energy, 3) if total_solar_energy > 0 else 0
-                )
-                sensor_data["family"]["total_solar_power"] = (
-                    total_solar_power if total_solar_power > 0 else None
-                )
-
-                # Add grid export energy aggregates
-                sensor_data["family"]["total_grid_export_energy"] = (
-                    round(total_grid_export, 2) if total_grid_export > 0 else 0
-                )
-                sensor_data["family"]["daily_grid_export_energy"] = (
-                    round(daily_grid_export, 2) if daily_grid_export > 0 else 0
-                )
-
-            # Add space_index data if available (override aggregates with more accurate data)
-            if space_index:
-                # Today's metrics
-                if "today" in space_index:
-                    today_data = space_index["today"]
-                    sensor_data["family"]["daily_yield"] = today_data.get("yield")
-                    sensor_data["family"]["daily_earnings"] = today_data.get("earning")
-                    sensor_data["family"]["home_power"] = today_data.get("homePower")
-                    sensor_data["family"]["currency"] = today_data.get(
-                        "currency", "EUR"
-                    )
-
-                # Battery data from space_index (more accurate than aggregates)
-                if "battery" in space_index:
-                    battery_data = space_index["battery"]
-                    if battery_data.get("deviceStatus") != "NotExist":
-                        sensor_data["family"]["average_battery_level"] = (
-                            battery_data.get("batteryLevel")
-                        )
-                        sensor_data["family"]["battery_count"] = battery_data.get(
-                            "batteryCount"
-                        )
-                        sensor_data["family"]["battery_bypass"] = battery_data.get(
-                            "bypass", False
-                        )
-                        sensor_data["family"]["battery_charging_remaining"] = (
-                            battery_data.get("chargingRemaining")
-                        )
-                        sensor_data["family"]["battery_discharging_remaining"] = (
-                            battery_data.get("dischargingRemaining")
-                        )
-
-                        # Update power data with more accurate values
-                        if battery_data.get("inputPower") is not None:
-                            sensor_data["family"]["total_input_power"] = battery_data[
-                                "inputPower"
-                            ]
-                        if battery_data.get("outputPower") is not None:
-                            sensor_data["family"]["total_output_power"] = battery_data[
-                                "outputPower"
-                            ]
-
-                        # Heater status (list of booleans for each battery module)
-                        heater_status = battery_data.get("heaterStatusList", [])
-                        for idx, status in enumerate(heater_status, 1):
-                            sensor_data["family"][f"battery_heater_{idx}"] = status
-
-                # Meter data from space_index
-                if "eleMeter" in space_index:
-                    meter_data = space_index["eleMeter"]
-                    if meter_data.get("deviceStatus") != "NotExist":
-                        sensor_data["family"]["meter_device_status"] = meter_data.get(
-                            "deviceStatus"
-                        )
-                        if meter_data.get("totalAcPower") is not None:
-                            sensor_data["family"]["total_ac_power"] = meter_data[
-                                "totalAcPower"
-                            ]
-
-                # Inverter data from space_index
-                if "inverter" in space_index:
-                    inverter_data = space_index["inverter"]
-                    if inverter_data.get("deviceStatus") != "NotExist":
-                        sensor_data["family"]["inverter_device_status"] = (
-                            inverter_data.get("deviceStatus")
-                        )
-                        sensor_data["family"]["inverter_current_power"] = (
-                            inverter_data.get("currentPower")
-                        )
-
-                # Boost settings
-                if "boostSetting" in space_index:
-                    boost_data = space_index["boostSetting"]
-                    sensor_data["family"]["boost_mode_enabled"] = boost_data.get(
-                        "isOn", False
-                    )
-                    sensor_data["family"]["boost_mode_switching"] = boost_data.get(
-                        "switching", False
-                    )
-
-            # Add space SOC data to family sensors
-            if space_soc:
-                sensor_data["family"]["hw_soc_min"] = space_soc.get(
-                    "hwSbmsLimitedDiscSocMin"
-                )
-                sensor_data["family"]["hw_soc_max"] = space_soc.get(
-                    "hwSbmsLimitedChgSocMax"
-                )
-                sensor_data["family"]["battery_soc_min"] = space_soc.get(
-                    "batteryBmsDiscSocMin"
-                )
-                sensor_data["family"]["battery_soc_max"] = space_soc.get(
-                    "batteryBmsChgSocMax"
-                )
-                sensor_data["family"]["strategy_soc_min"] = space_soc.get(
-                    "strategySocMin"
-                )
-                sensor_data["family"]["strategy_soc_max"] = space_soc.get(
-                    "strategySocMax"
-                )
-
-            # Add current strategy data to family sensors
-            if current_strategy:
-                sensor_data["family"]["battery_strategy"] = current_strategy.get(
-                    "strategy"
-                )
-                sensor_data["family"]["battery_full"] = current_strategy.get(
-                    "batteryFull"
-                )
-                sensor_data["family"]["rated_power"] = current_strategy.get(
-                    "ratedPower"
-                )
-                sensor_data["family"]["max_output_power"] = current_strategy.get(
-                    "maxOutPutPower"
-                )
-                sensor_data["family"]["battery_status"] = current_strategy.get(
-                    "batteryStatus"
-                )
-                sensor_data["family"]["battery_device_status"] = current_strategy.get(
-                    "batteryDeviceStatus"
-                )
-                sensor_data["family"]["inverter_device_status"] = current_strategy.get(
-                    "inverterDeviceStatus"
-                )
-                sensor_data["family"]["meter_device_status"] = current_strategy.get(
-                    "meterDeviceStatus"
-                )
-                sensor_data["family"]["current_soc_min"] = current_strategy.get(
-                    "socMin"
-                )
-                sensor_data["family"]["current_soc_max"] = current_strategy.get(
-                    "socMax"
-                )
-
-            # Add charging box strategy data to family sensors
-            if charging_box_data:
-                # Text sensors (can be None/null)
-                sensor_data["family"]["ev3600_auto_strategy_mode"] = (
-                    charging_box_data.get("ev3600AutoStrategyMode")
-                )
-                sensor_data["family"]["storage_strategy"] = charging_box_data.get(
-                    "storageStrategy"
-                )
-                sensor_data["family"]["normal_charge_box_mode"] = charging_box_data.get(
-                    "normalChargeBoxMode"
-                )
-
-                # List of inverter serial numbers - convert to comma-separated string
-                inverter_sn_list = charging_box_data.get("inverterSn", [])
-                if inverter_sn_list:
-                    sensor_data["family"]["inverter_sn_list"] = ", ".join(
-                        inverter_sn_list
-                    )
-
-                # Binary sensors (boolean values)
-                sensor_data["family"]["ev3600_auto_strategy_exist"] = (
-                    charging_box_data.get("ev3600AutoStrategyExist", False)
-                )
-                sensor_data["family"]["ev3600_auto_strategy_running"] = (
-                    charging_box_data.get("ev3600AutoStrategyRunning", False)
-                )
-                sensor_data["family"]["tariff_strategy_exist"] = charging_box_data.get(
-                    "tariffStrategyExist", False
-                )
-                sensor_data["family"]["enable_local_smart_strategy"] = (
-                    charging_box_data.get("enableLocalSmartStrategy", False)
-                )
-                sensor_data["family"]["ac_couple_enabled"] = charging_box_data.get(
-                    "acCoupleEnabled", False
-                )
-
-                # Boost mode (we already have boost sensors from space_index, this confirms)
-                sensor_data["family"]["charging_box_boost_on"] = charging_box_data.get(
-                    "boostOn", False
-                )
-
-            # Process strategy history data
-            if strategy_history and "content" in strategy_history:
-                history_entries = strategy_history["content"]
-                if history_entries:
-                    # Get most recent entry
-                    latest_entry = history_entries[0]  # Already sorted by date desc
-
-                    # Add sensors for latest strategy change
-                    sensor_data["family"]["last_strategy_change"] = latest_entry.get(
-                        "modifyDate"
-                    )
-                    sensor_data["family"]["last_strategy_type"] = latest_entry.get(
-                        "strategy"
-                    )
-                    sensor_data["family"]["last_strategy_status"] = latest_entry.get(
-                        "status"
-                    )
-
-                    # Count changes in last 24 hours
-                    from datetime import datetime, timedelta
-
-                    now = datetime.now()
-                    day_ago = now - timedelta(days=1)
-                    day_ago_ms = int(day_ago.timestamp() * 1000)
-
-                    changes_today = sum(
-                        1
-                        for entry in history_entries
-                        if entry.get("modifyDate", 0) >= day_ago_ms
-                    )
-                    sensor_data["family"]["strategy_changes_today"] = changes_today
-
-                    # Store last 10 entries in extra attributes
-                    sensor_data["family"]["strategy_history"] = history_entries[:10]
-
-            # Log comprehensive sensor data for debugging
-            _LOGGER.debug(
-                "Processed sensor data for family %s (%s):",
-                self.family_name,
-                self.family_id,
-            )
-            _LOGGER.debug(
-                "  Family-level sensors: %s",
-                {k: v for k, v in sensor_data.items() if not k.startswith("devices")},
-            )
-
-            if "devices" in sensor_data:
-                _LOGGER.debug("  Found %d devices:", len(sensor_data["devices"]))
-                for device_id, device_data in sensor_data["devices"].items():
-                    device_type = device_data.get("deviceType", "Unknown")
-                    status = device_data.get("status", "Unknown")
-                    _LOGGER.debug(
-                        "    Device %s (type: %s, status: %s):",
-                        device_id,
-                        device_type,
-                        status,
-                    )
-
-                    # Log key metrics based on device type
-                    if device_type == "ENERGY_STORAGE_BATTERY":
-                        _LOGGER.debug(
-                            "      Battery SOC: %s%%, Input: %sW, Output: %sW",
-                            device_data.get("batterySoc"),
-                            device_data.get("input_power_total"),
-                            device_data.get("output_power_total"),
-                        )
-                        # Log module SOCs if present
-                        for i in [1, 2, 3]:
-                            soc = device_data.get(f"battery{i}Soc")
-                            if soc is not None:
-                                _LOGGER.debug("      Module %d SOC: %s%%", i, soc)
-                    elif device_type in ["SHELLY_3EM_METER", "SHELLY_PRO3EM_METER"]:
-                        _LOGGER.debug(
-                            "      Total AC Power: %sW",
-                            device_data.get("total_ac_power"),
-                        )
-                    elif device_type in [
-                        "YUNENG_MICRO_INVERTER",
-                        "SOLAR_MICRO_INVERTER",
-                    ]:
-                        _LOGGER.debug(
-                            "      Current Power: %sW", device_data.get("current_power")
-                        )
-
-            return sensor_data
-
-        except Exception as err:
-            raise UpdateFailed(
-                f"Error fetching data for family {self.family_name}: {err}"
-            ) from err
