@@ -26,8 +26,12 @@ async def test_coordinator_update_success(
     """Test successful data update from coordinator."""
     api_client = AsyncMock()
     api_client.fetch_space_index.return_value = space_index_response["content"]
+    api_client.fetch_device_list.return_value = space_index_response["content"].get("deviceList", [])
     api_client.fetch_space_soc.return_value = space_soc_response["content"]
     api_client.fetch_current_strategy.return_value = current_strategy_response[
+        "content"
+    ]
+    api_client.fetch_space_current_strategy.return_value = current_strategy_response[
         "content"
     ]
     api_client.fetch_space_strategy_history.return_value = strategy_history_response[
@@ -51,7 +55,7 @@ async def test_coordinator_update_success(
     )
 
     # Initial update
-    await coordinator.async_config_entry_first_refresh()
+    await coordinator.async_refresh()
 
     assert coordinator.data is not None
     assert "family" in coordinator.data
@@ -89,8 +93,10 @@ async def test_coordinator_update_partial_failure(
     """Test coordinator handles partial API failures gracefully."""
     api_client = AsyncMock()
     api_client.fetch_space_index.return_value = space_index_response["content"]
+    api_client.fetch_device_list.return_value = space_index_response["content"].get("deviceList", [])
     api_client.fetch_space_soc.side_effect = Exception("SOC API failed")
     api_client.fetch_current_strategy.side_effect = Exception("Strategy API failed")
+    api_client.fetch_space_current_strategy.side_effect = Exception("Strategy API failed")
     api_client.fetch_space_strategy_history.side_effect = Exception(
         "History API failed"
     )
@@ -106,7 +112,7 @@ async def test_coordinator_update_partial_failure(
     )
 
     # Should not raise, but continue with partial data
-    await coordinator.async_config_entry_first_refresh()
+    await coordinator.async_refresh()
 
     assert coordinator.data is not None
     assert "family" in coordinator.data
@@ -138,8 +144,10 @@ async def test_coordinator_battery_module_creation(
     ]
 
     api_client.fetch_space_index.return_value = space_index_response["content"]
+    api_client.fetch_device_list.return_value = space_index_response["content"].get("deviceList", [])
     api_client.fetch_space_soc.return_value = {}
     api_client.fetch_current_strategy.return_value = {}
+    api_client.fetch_space_current_strategy.return_value = {}
     api_client.fetch_space_strategy_history.return_value = []
     api_client.fetch_device_statistics.return_value = device_statistics_response[
         "content"
@@ -154,7 +162,7 @@ async def test_coordinator_battery_module_creation(
         "Garage",
     )
 
-    await coordinator.async_config_entry_first_refresh()
+    await coordinator.async_refresh()
 
     # Should have created virtual battery modules
     devices = coordinator.data["devices"]
@@ -195,8 +203,10 @@ async def test_coordinator_solar_energy_aggregation(
     ]
 
     api_client.fetch_space_index.return_value = space_index_response["content"]
+    api_client.fetch_device_list.return_value = space_index_response["content"].get("deviceList", [])
     api_client.fetch_space_soc.return_value = {}
     api_client.fetch_current_strategy.return_value = {}
+    api_client.fetch_space_current_strategy.return_value = {}
     api_client.fetch_space_strategy_history.return_value = []
     api_client.get_charging_box_strategy.return_value = {}
 
@@ -207,7 +217,7 @@ async def test_coordinator_solar_energy_aggregation(
         "Garage",
     )
 
-    await coordinator.async_config_entry_first_refresh()
+    await coordinator.async_refresh()
 
     family_data = coordinator.data["family"]
     assert family_data["total_solar_power"] == 3500  # 1500 + 2000
@@ -222,8 +232,10 @@ async def test_coordinator_update_interval(
     """Test coordinator update interval is correct."""
     api_client = AsyncMock()
     api_client.fetch_space_index.return_value = space_index_response["content"]
+    api_client.fetch_device_list.return_value = space_index_response["content"].get("deviceList", [])
     api_client.fetch_space_soc.return_value = {}
     api_client.fetch_current_strategy.return_value = {}
+    api_client.fetch_space_current_strategy.return_value = {}
     api_client.fetch_space_strategy_history.return_value = []
     api_client.get_charging_box_strategy.return_value = {}
 
@@ -245,7 +257,7 @@ async def test_coordinator_error_handling(
     """Test coordinator error handling when all APIs fail."""
     api_client = AsyncMock()
     api_client.fetch_space_index.side_effect = Exception("Complete API failure")
-    api_client.get_device_list.side_effect = Exception("Fallback also failed")
+    api_client.fetch_device_list.side_effect = Exception("Fallback also failed")
 
     coordinator = SunlitDataUpdateCoordinator(
         hass,
@@ -254,8 +266,8 @@ async def test_coordinator_error_handling(
         "Garage",
     )
 
-    with pytest.raises(UpdateFailed):
-        await coordinator.async_config_entry_first_refresh()
+    await coordinator.async_refresh()
+    assert coordinator.last_update_success is False
 
 
 async def test_coordinator_strategy_history_processing(
@@ -267,8 +279,10 @@ async def test_coordinator_strategy_history_processing(
     """Test strategy history processing."""
     api_client = AsyncMock()
     api_client.fetch_space_index.return_value = space_index_response["content"]
+    api_client.fetch_device_list.return_value = space_index_response["content"].get("deviceList", [])
     api_client.fetch_space_soc.return_value = {}
     api_client.fetch_current_strategy.return_value = {}
+    api_client.fetch_space_current_strategy.return_value = {}
     api_client.fetch_space_strategy_history.return_value = strategy_history_response[
         "content"
     ]
@@ -281,7 +295,7 @@ async def test_coordinator_strategy_history_processing(
         "Garage",
     )
 
-    await coordinator.async_config_entry_first_refresh()
+    await coordinator.async_refresh()
 
     family_data = coordinator.data["family"]
     assert family_data["last_strategy_type"] == "SELF_CONSUMPTION"
@@ -314,8 +328,10 @@ async def test_coordinator_grid_export_tracking(
     ]
 
     api_client.fetch_space_index.return_value = space_index_response["content"]
+    api_client.fetch_device_list.return_value = space_index_response["content"].get("deviceList", [])
     api_client.fetch_space_soc.return_value = {}
     api_client.fetch_current_strategy.return_value = {}
+    api_client.fetch_space_current_strategy.return_value = {}
     api_client.fetch_space_strategy_history.return_value = []
     api_client.get_charging_box_strategy.return_value = {}
 
@@ -326,7 +342,7 @@ async def test_coordinator_grid_export_tracking(
         "Garage",
     )
 
-    await coordinator.async_config_entry_first_refresh()
+    await coordinator.async_refresh()
 
     family_data = coordinator.data["family"]
     assert family_data["daily_grid_export_energy"] == 15.8  # 10.5 + 5.3

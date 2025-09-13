@@ -265,6 +265,7 @@ class SunlitDataUpdateCoordinator(DataUpdateCoordinator):
 
                 # Process based on device type
                 device_type = device.get("deviceType")
+                device_data["deviceType"] = device_type
 
                 if device_type in ["SHELLY_3EM_METER", "SHELLY_PRO3EM_METER"]:
                     device_data["total_ac_power"] = device.get("totalAcPower")

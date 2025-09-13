@@ -30,7 +30,7 @@ def mock_config_entry():
                 {"family_id": "40488", "family_name": "Test"},
             ],
         },
-        unique_id="test_user",
+        unique_id="sunlit",
         entry_id="test_entry_id",
     )
 
@@ -132,6 +132,7 @@ def space_index_response():
                     "deviceId": "meter_001",
                     "deviceName": "Smart Meter",
                     "deviceType": "SHELLY_3EM_METER",
+                    "status": "Online",
                     "total_ac_power": 1500,
                     "daily_buy_energy": 5.2,
                     "daily_ret_energy": 8.7,
@@ -142,6 +143,7 @@ def space_index_response():
                     "deviceId": "inverter_001",
                     "deviceName": "Solar Inverter",
                     "deviceType": "YUNENG_MICRO_INVERTER",
+                    "status": "Online",
                     "current_power": 2500,
                     "total_power_generation": 15678.9,
                     "daily_earnings": 12.50,
@@ -150,6 +152,7 @@ def space_index_response():
                     "deviceId": "battery_001",
                     "deviceName": "Energy Storage",
                     "deviceType": "ENERGY_STORAGE_BATTERY",
+                    "status": "Online",
                     "battery_level": 85,
                     "batterySoc": 85,
                     "input_power_total": 500,

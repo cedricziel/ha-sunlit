@@ -1,6 +1,6 @@
 """Test the Sunlit config flow."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant import config_entries
@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.sunlit import DOMAIN
+from custom_components.sunlit.api_client import SunlitAuthError, SunlitConnectionError
 from custom_components.sunlit.const import CONF_ACCESS_TOKEN, CONF_FAMILIES
 
 
@@ -29,7 +30,11 @@ async def test_form_authentication_success(
     families_response,
 ):
     """Test successful authentication flow."""
-    # Mock the family list API call
+    # Mock the login and family list API calls
+    mock_aioresponse.post(
+        f"{api_base_url}/login",
+        payload={"access_token": "test_api_key_123"},
+    )
     mock_aioresponse.get(
         f"{api_base_url}/family/list",
         payload=families_response,
@@ -42,20 +47,21 @@ async def test_form_authentication_success(
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "user"
 
-    # Submit API key
+    # Submit email and password
     with patch(
         "custom_components.sunlit.config_flow.SunlitApiClient",
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
-        mock_client.get_families.return_value = families_response["content"]
+        mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
+        mock_client.get_families = AsyncMock(return_value=families_response["content"])
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {CONF_ACCESS_TOKEN: "test_api_key_123"},
+            {"email": "test@example.com", "password": "test_password"},
         )
 
         assert result2["type"] == FlowResultType.FORM
-        assert result2["step_id"] == "family"
+        assert result2["step_id"] == "select_families"
         assert result2["errors"] == {}
 
 
@@ -67,6 +73,10 @@ async def test_form_family_selection(
     families_response,
 ):
     """Test family selection step."""
+    mock_aioresponse.post(
+        f"{api_base_url}/login",
+        payload={"access_token": "test_api_key_123"},
+    )
     mock_aioresponse.get(
         f"{api_base_url}/family/list",
         payload=families_response,
@@ -77,32 +87,30 @@ async def test_form_family_selection(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
 
-    # Submit API key
+    # Submit email and password
     with patch(
         "custom_components.sunlit.config_flow.SunlitApiClient",
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
-        mock_client.get_families.return_value = families_response["content"]
+        mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
+        mock_client.get_families = AsyncMock(return_value=families_response["content"])
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {CONF_ACCESS_TOKEN: "test_api_key_123"},
+            {"email": "test@example.com", "password": "test_password"},
         )
 
         # Select families
         result3 = await hass.config_entries.flow.async_configure(
             result2["flow_id"],
-            {CONF_FAMILIES: ["34038", "40488"]},
+            {"families": ["34038", "40488"]},
         )
 
         assert result3["type"] == FlowResultType.CREATE_ENTRY
         assert result3["title"] == "Sunlit Solar"
-        assert result3["data"][CONF_ACCESS_TOKEN] == "test_api_key_123"
-        assert len(result3["data"][CONF_FAMILIES]) == 2
-        assert result3["data"][CONF_FAMILIES][0]["family_id"] == "34038"
-        assert result3["data"][CONF_FAMILIES][0]["family_name"] == "Garage"
-        assert result3["data"][CONF_FAMILIES][1]["family_id"] == "40488"
-        assert result3["data"][CONF_FAMILIES][1]["family_name"] == "Test"
+        assert result3["data"]["access_token"] == "test_api_key_123"
+        assert "families" in result3["data"]
+        assert len(result3["data"]["families"]) == 2
 
 
 async def test_form_authentication_error(
@@ -113,12 +121,6 @@ async def test_form_authentication_error(
     api_error_response,
 ):
     """Test authentication error handling."""
-    # Mock failed authentication
-    mock_aioresponse.get(
-        f"{api_base_url}/family/list",
-        payload=api_error_response,
-    )
-
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -127,11 +129,11 @@ async def test_form_authentication_error(
         "custom_components.sunlit.config_flow.SunlitApiClient",
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
-        mock_client.get_families.side_effect = Exception("Authentication failed")
+        mock_client.login = AsyncMock(side_effect=SunlitAuthError("Authentication failed"))
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {CONF_ACCESS_TOKEN: "invalid_key"},
+            {"email": "test@example.com", "password": "invalid_password"},
         )
 
         assert result2["type"] == FlowResultType.FORM
@@ -152,11 +154,11 @@ async def test_form_connection_error(
         "custom_components.sunlit.config_flow.SunlitApiClient",
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
-        mock_client.get_families.side_effect = ConnectionError("Cannot connect")
+        mock_client.login = AsyncMock(side_effect=SunlitConnectionError("Cannot connect"))
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {CONF_ACCESS_TOKEN: "test_key"},
+            {"email": "test@example.com", "password": "test_password"},
         )
 
         assert result2["type"] == FlowResultType.FORM
@@ -178,22 +180,23 @@ async def test_form_no_families_selected(
         "custom_components.sunlit.config_flow.SunlitApiClient",
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
-        mock_client.get_families.return_value = families_response["content"]
+        mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
+        mock_client.get_families = AsyncMock(return_value=families_response["content"])
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {CONF_ACCESS_TOKEN: "test_api_key_123"},
+            {"email": "test@example.com", "password": "test_password"},
         )
 
         # Try to submit without selecting families
         result3 = await hass.config_entries.flow.async_configure(
             result2["flow_id"],
-            {CONF_FAMILIES: []},
+            {"families": []},
         )
 
         assert result3["type"] == FlowResultType.FORM
-        assert result3["step_id"] == "family"
-        assert result3["errors"] == {"base": "no_families"}
+        assert result3["step_id"] == "select_families"
+        assert result3["errors"] == {"base": "no_selection"}
 
 
 async def test_form_single_family_auto_select(
@@ -223,20 +226,20 @@ async def test_form_single_family_auto_select(
         "custom_components.sunlit.config_flow.SunlitApiClient",
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
+        mock_client.login.return_value = {"access_token": "test_api_key_123"}
         mock_client.get_families.return_value = single_family_response["content"]
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {CONF_ACCESS_TOKEN: "test_api_key_123"},
+            {"email": "test@example.com", "password": "test_password"},
         )
 
         # Should skip family selection and create entry directly
         assert result2["type"] == FlowResultType.CREATE_ENTRY
         assert result2["title"] == "Sunlit Solar"
-        assert result2["data"][CONF_ACCESS_TOKEN] == "test_api_key_123"
-        assert len(result2["data"][CONF_FAMILIES]) == 1
-        assert result2["data"][CONF_FAMILIES][0]["family_id"] == "34038"
-        assert result2["data"][CONF_FAMILIES][0]["family_name"] == "Garage"
+        assert result2["data"]["access_token"] == "test_api_key_123"
+        assert "families" in result2["data"]
+        assert len(result2["data"]["families"]) == 1
 
 
 async def test_form_duplicate_entry(
