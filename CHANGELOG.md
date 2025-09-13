@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/cedricziel/ha-sunlit/compare/v1.0.0...v1.1.0) (2025-09-13)
+
+
+### Features
+
+* add SOC event management system ([#34](https://github.com/cedricziel/ha-sunlit/issues/34)) ([b998d00](https://github.com/cedricziel/ha-sunlit/commit/b998d00d75243d256e325ba4ab2bcdaad9678c09))
+* implement dynamic discovery of battery extension modules ([#31](https://github.com/cedricziel/ha-sunlit/issues/31)) ([a477007](https://github.com/cedricziel/ha-sunlit/commit/a4770079533b3d6997f865dc1b6839ec1ec3da92))
+
+
+### Bug Fixes
+
+* ensure total_solar_power uses only inverter power, not battery output ([#36](https://github.com/cedricziel/ha-sunlit/issues/36)) ([ff5fc82](https://github.com/cedricziel/ha-sunlit/commit/ff5fc8238c5e32e06bdb522c9a6fed462b4408d2))
+* include battery MPPT power in total solar calculation ([#38](https://github.com/cedricziel/ha-sunlit/issues/38)) ([8a96ae1](https://github.com/cedricziel/ha-sunlit/commit/8a96ae1bf5708b5e67cf13aacd075806a526b63e))
+
 ## [1.0.0](https://github.com/cedricziel/ha-sunlit/compare/v0.3.0...v1.0.0) (2025-09-13)
 
 
