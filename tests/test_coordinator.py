@@ -315,6 +315,17 @@ async def test_coordinator_strategy_history_processing(
     assert family_data["last_strategy_status"] == "ACTIVE"
     assert family_data["strategy_changes_today"] == 2
 
+    # Verify last_strategy_change is present and is a valid timestamp
+    assert "last_strategy_change" in family_data
+    timestamp = family_data["last_strategy_change"]
+    assert isinstance(timestamp, (int, float)), f"Expected numeric timestamp, got {type(timestamp)}"
+    # Timestamp should be within last 24 hours (checking it's reasonable)
+    from datetime import datetime
+    now = datetime.now()
+    timestamp_seconds = timestamp / 1000  # Convert from ms to seconds
+    time_diff = now.timestamp() - timestamp_seconds
+    assert 0 < time_diff < 86400, f"Timestamp should be within last 24 hours, but diff is {time_diff} seconds"
+
 
 async def test_coordinator_grid_export_tracking(
     hass: HomeAssistant,

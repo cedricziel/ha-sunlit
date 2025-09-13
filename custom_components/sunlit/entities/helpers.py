@@ -13,8 +13,11 @@ from homeassistant.const import (
 
 def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     """Get the appropriate device class for a sensor."""
-    # Check for status and strategy fields first (they're text, not numeric)
-    if (
+    # Check specific keys first before general pattern matching
+    if key == "last_strategy_change":
+        return SensorDeviceClass.TIMESTAMP
+    # Check for status and strategy fields (they're text, not numeric)
+    elif (
         "status" in key.lower()
         or "strategy" in key.lower()
         or key in ["currency", "battery_count"]
@@ -57,8 +60,6 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
         return SensorDeviceClass.ENERGY
     elif "soc" in key.lower() or "battery" in key.lower() or "level" in key.lower():
         return SensorDeviceClass.BATTERY
-    elif key == "last_strategy_change":
-        return SensorDeviceClass.TIMESTAMP
     elif key == "has_fault":
         return None  # Binary-like sensor but as regular sensor
     return None
