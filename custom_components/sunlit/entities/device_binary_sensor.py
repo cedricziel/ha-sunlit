@@ -9,9 +9,11 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 
-from .. import SunlitDataUpdateCoordinator
 from ..const import DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER, DEVICE_TYPE_METER, DOMAIN
 from .base import normalize_device_type
 
@@ -23,7 +25,7 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     def __init__(
         self,
-        coordinator: SunlitDataUpdateCoordinator,
+        coordinator: DataUpdateCoordinator,
         description: BinarySensorEntityDescription,
         entry_id: str,
         family_id: str,

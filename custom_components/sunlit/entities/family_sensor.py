@@ -7,9 +7,11 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 
-from .. import SunlitDataUpdateCoordinator
 from ..const import DOMAIN
 
 
@@ -20,7 +22,7 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
 
     def __init__(
         self,
-        coordinator: SunlitDataUpdateCoordinator,
+        coordinator: DataUpdateCoordinator,
         description: SensorEntityDescription,
         entry_id: str,
         family_id: str,
@@ -42,8 +44,27 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> Any:
         """Return the state of the sensor."""
-        if self.coordinator.data and "family" in self.coordinator.data:
-            value = self.coordinator.data["family"].get(self.entity_description.key)
+        if self.coordinator.data:
+            # Check in family data first
+            if "family" in self.coordinator.data:
+                value = self.coordinator.data["family"].get(self.entity_description.key)
+            # Then check in strategy data (for strategy coordinator)
+            elif "strategy" in self.coordinator.data:
+                value = self.coordinator.data["strategy"].get(
+                    self.entity_description.key
+                )
+            # Then check in mppt_energy data (for MPPT coordinator)
+            elif "mppt_energy" in self.coordinator.data:
+                value = self.coordinator.data["mppt_energy"].get(
+                    self.entity_description.key
+                )
+            # Then check in aggregates data (for device coordinator)
+            elif "aggregates" in self.coordinator.data:
+                value = self.coordinator.data["aggregates"].get(
+                    self.entity_description.key
+                )
+            else:
+                value = None
 
             # Convert timestamp from milliseconds to datetime for timestamp sensors
             if self.entity_description.key == "last_strategy_change" and value:
@@ -55,10 +76,28 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return self.coordinator.last_update_success and (
-            "family" in (self.coordinator.data or {})
-            and self.entity_description.key in (self.coordinator.data.get("family", {}))
-        )
+        if not self.coordinator.last_update_success or not self.coordinator.data:
+            return False
+
+        # Check if the key exists in any of the data sections
+        if "family" in self.coordinator.data:
+            return self.entity_description.key in self.coordinator.data.get(
+                "family", {}
+            )
+        elif "strategy" in self.coordinator.data:
+            return self.entity_description.key in self.coordinator.data.get(
+                "strategy", {}
+            )
+        elif "mppt_energy" in self.coordinator.data:
+            return self.entity_description.key in self.coordinator.data.get(
+                "mppt_energy", {}
+            )
+        elif "aggregates" in self.coordinator.data:
+            return self.entity_description.key in self.coordinator.data.get(
+                "aggregates", {}
+            )
+
+        return False
 
     @property
     def device_info(self) -> DeviceInfo:

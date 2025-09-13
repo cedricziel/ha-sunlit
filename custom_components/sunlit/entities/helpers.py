@@ -45,8 +45,8 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     # MPPT voltage sensors
     elif "invol" in key.lower() or "voltage" in key.lower():
         return SensorDeviceClass.VOLTAGE
-    # total_power_generation is actually energy despite the name
-    elif key == "total_power_generation":
+    # total_power_generation and total_yield are actually energy despite the name
+    elif key in ["total_power_generation", "total_yield"]:
         return SensorDeviceClass.ENERGY
     # Check power BEFORE current to catch "current_power" correctly
     elif "power" in key.lower():
@@ -70,9 +70,9 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     # Static configuration values don't need state class
     if key in ["rated_power", "max_output_power", "currency", "battery_count"]:
         return None
-    # Special case: total_power_generation is cumulative energy
+    # Special case: total_power_generation and total_yield are cumulative energy
     elif (
-        key == "total_power_generation"
+        key in ["total_power_generation", "total_yield"]
         or "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
         or key == "total_solar_energy"
         or key == "total_grid_export_energy"
@@ -119,7 +119,7 @@ def get_unit_for_sensor(key: str) -> str | None:
         or key == "total_solar_energy"
         or key in ["total_grid_export_energy", "daily_grid_export_energy"]
         or key == "daily_yield"
-        or key == "total_power_generation"
+        or key in ["total_power_generation", "total_yield"]
     ):
         return UnitOfEnergy.KILO_WATT_HOUR
     # Time remaining sensors

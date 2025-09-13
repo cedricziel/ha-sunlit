@@ -7,9 +7,11 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 
-from .. import SunlitDataUpdateCoordinator
 from ..const import DOMAIN
 from .base import normalize_device_type
 
@@ -21,7 +23,7 @@ class SunlitDeviceSensorBase(CoordinatorEntity, SensorEntity, ABC):
 
     def __init__(
         self,
-        coordinator: SunlitDataUpdateCoordinator,
+        coordinator: DataUpdateCoordinator,
         description: SensorEntityDescription,
         entry_id: str,
         family_id: str,

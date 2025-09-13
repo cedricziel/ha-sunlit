@@ -1,0 +1,254 @@
+"""Device-level data coordinator for Sunlit integration."""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from ..api_client import SunlitApiClient
+from ..const import DEFAULT_SCAN_INTERVAL
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class SunlitDeviceCoordinator(DataUpdateCoordinator):
+    """Coordinator for device-level data."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        api_client: SunlitApiClient,
+        family_id: str,
+        family_name: str,
+        is_global: bool = False,
+    ) -> None:
+        """Initialize the device coordinator."""
+        self.api_client = api_client
+        self.family_id = family_id
+        self.family_name = family_name
+        self.is_global = is_global
+        self.devices = {}  # Store device info for registry
+
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"Sunlit Devices {family_name}",
+            update_interval=DEFAULT_SCAN_INTERVAL,  # 30 seconds
+        )
+
+    async def _async_update_data(self) -> dict[str, Any]:
+        """Fetch device-level data from REST API."""
+        try:
+            # Fetch device list
+            if self.is_global:
+                all_devices = await self.api_client.get_device_list()
+                devices = [d for d in all_devices if d.get("spaceId") is None]
+            else:
+                devices = await self.api_client.fetch_device_list(self.family_id)
+
+            _LOGGER.debug(
+                "Received %d devices for family %s", len(devices), self.family_name
+            )
+
+            # Store device information for device registry
+            self.devices = {str(device["deviceId"]): device for device in devices}
+
+            # Process device data
+            device_data = {}
+
+            # Aggregates for family-level metrics
+            total_grid_export = 0
+            daily_grid_export = 0
+            total_solar_power = 0
+            total_solar_energy = 0
+
+            for device in devices:
+                device_id = str(device["deviceId"])
+                data = {}
+
+                # Common attributes
+                data["status"] = device.get("status", "Unknown")
+                data["fault"] = device.get("fault", False)
+                data["off"] = device.get("off", False)
+                data["deviceType"] = device.get("deviceType")
+
+                device_type = device.get("deviceType")
+
+                if device_type in ["SHELLY_3EM_METER", "SHELLY_PRO3EM_METER"]:
+                    await self._process_meter_device(
+                        device, device_id, data, total_grid_export, daily_grid_export
+                    )
+                    # Update aggregates
+                    if device.get("totalRetEnergy") is not None:
+                        total_grid_export += device["totalRetEnergy"]
+                    if device.get("dailyRetEnergy") is not None:
+                        daily_grid_export += device["dailyRetEnergy"]
+
+                elif device_type in ["YUNENG_MICRO_INVERTER", "SOLAR_MICRO_INVERTER"]:
+                    await self._process_inverter_device(
+                        device, device_id, data, total_solar_power, total_solar_energy
+                    )
+                    # Update aggregates
+                    if data.get("current_power") is not None:
+                        total_solar_power += data["current_power"]
+                    if data.get("total_power_generation") is not None:
+                        total_solar_energy += data["total_power_generation"]
+
+                elif device_type == "ENERGY_STORAGE_BATTERY":
+                    await self._process_battery_device(device, device_id, data)
+
+                device_data[device_id] = data
+
+            # Add aggregated metrics
+            result = {
+                "devices": device_data,
+                "aggregates": {
+                    "total_solar_power": total_solar_power
+                    if total_solar_power > 0
+                    else None,
+                    "total_solar_energy": round(total_solar_energy, 3)
+                    if total_solar_energy > 0
+                    else 0,
+                    "total_grid_export_energy": round(total_grid_export, 2)
+                    if total_grid_export > 0
+                    else 0,
+                    "daily_grid_export_energy": round(daily_grid_export, 2)
+                    if daily_grid_export > 0
+                    else 0,
+                },
+            }
+
+            return result
+
+        except Exception as err:
+            raise UpdateFailed(
+                f"Error fetching device data for {self.family_name}: {err}"
+            ) from err
+
+    async def _process_meter_device(
+        self,
+        device: dict,
+        device_id: str,
+        data: dict,
+        total_grid_export: float,
+        daily_grid_export: float,
+    ) -> None:
+        """Process meter device data."""
+        data["total_ac_power"] = device.get("totalAcPower")
+        data["daily_buy_energy"] = device.get("dailyBuyEnergy")
+        data["daily_ret_energy"] = device.get("dailyRetEnergy")
+        data["total_buy_energy"] = device.get("totalBuyEnergy")
+        data["total_ret_energy"] = device.get("totalRetEnergy")
+
+        # Fetch detailed statistics for online meters
+        if device.get("status") == "Online":
+            try:
+                stats = await self.api_client.fetch_device_statistics(device_id)
+                for key in [
+                    "totalAcPower",
+                    "dailyBuyEnergy",
+                    "dailyRetEnergy",
+                    "totalBuyEnergy",
+                    "totalRetEnergy",
+                ]:
+                    if stats.get(key) is not None:
+                        data[key.lower()] = stats[key]
+            except Exception as err:
+                _LOGGER.warning(
+                    "Failed to fetch meter statistics for %s: %s",
+                    device_id,
+                    err,
+                )
+
+    async def _process_inverter_device(
+        self,
+        device: dict,
+        device_id: str,
+        data: dict,
+        total_solar_power: float,
+        total_solar_energy: float,
+    ) -> None:
+        """Process inverter device data."""
+        # Handle data structure variations
+        if device.get("today"):
+            data["current_power"] = device["today"].get("currentPower")
+            data["total_power_generation"] = device["today"].get("totalPowerGeneration")
+            if device["today"].get("totalEarnings"):
+                data["daily_earnings"] = device["today"]["totalEarnings"].get(
+                    "earnings"
+                )
+        else:
+            data["current_power"] = device.get("currentPower")
+            data["total_power_generation"] = device.get("totalPowerGeneration")
+            data["daily_earnings"] = device.get("dailyEarnings")
+
+        # Fetch detailed statistics for online inverters
+        if device.get("status") == "Online":
+            try:
+                stats = await self.api_client.fetch_device_statistics(device_id)
+                data["total_yield"] = stats.get("totalYield")
+                if stats.get("currentPower") is not None:
+                    data["current_power"] = stats["currentPower"]
+            except Exception as err:
+                _LOGGER.warning(
+                    "Failed to fetch inverter statistics for %s: %s",
+                    device_id,
+                    err,
+                )
+
+    async def _process_battery_device(
+        self, device: dict, device_id: str, data: dict
+    ) -> None:
+        """Process battery device data."""
+        data["battery_level"] = device.get("batteryLevel")
+        data["input_power_total"] = device.get("inputPowerTotal")
+        data["output_power_total"] = device.get("outputPowerTotal")
+
+        # Fetch detailed statistics for online batteries
+        if device.get("status") == "Online":
+            try:
+                stats = await self.api_client.fetch_device_statistics(device_id)
+
+                # System-wide battery data
+                data["batterySoc"] = stats.get("batterySoc")
+                data["chargeRemaining"] = stats.get("chargeRemaining")
+                data["dischargeRemaining"] = stats.get("dischargeRemaining")
+
+                # Individual battery module SOCs
+                for i in [1, 2, 3]:
+                    soc_key = f"battery{i}Soc"
+                    data[soc_key] = stats.get(soc_key)
+
+                # MPPT data
+                mppt_fields = [
+                    "batteryMppt1InVol",
+                    "batteryMppt1InCur",
+                    "batteryMppt1InPower",
+                    "batteryMppt2InVol",
+                    "batteryMppt2InCur",
+                    "batteryMppt2InPower",
+                ]
+                for field in mppt_fields:
+                    data[field] = stats.get(field)
+
+                # Battery module MPPT data
+                for module_num in [1, 2, 3]:
+                    for suffix in ["Mppt1InVol", "Mppt1InCur", "Mppt1InPower"]:
+                        field = f"battery{module_num}{suffix}"
+                        data[field] = stats.get(field)
+
+                # Update power totals
+                if stats.get("inputPowerTotal") is not None:
+                    data["input_power_total"] = stats["inputPowerTotal"]
+                if stats.get("outputPowerTotal") is not None:
+                    data["output_power_total"] = stats["outputPowerTotal"]
+
+            except Exception as err:
+                _LOGGER.debug(
+                    "Could not fetch detailed statistics for device %s: %s",
+                    device_id,
+                    err,
+                )
