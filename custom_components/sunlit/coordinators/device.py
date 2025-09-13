@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from ..api_client import SunlitApiClient
 from ..const import DEFAULT_SCAN_INTERVAL
+from ..event_manager import SunlitEventManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
         family_id: str,
         family_name: str,
         is_global: bool = False,
+        event_manager: SunlitEventManager | None = None,
     ) -> None:
         """Initialize the device coordinator."""
         self.api_client = api_client
@@ -31,6 +33,7 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
         self.family_name = family_name
         self.is_global = is_global
         self.devices = {}  # Store device info for registry
+        self.event_manager = event_manager
 
         super().__init__(
             hass,
@@ -250,6 +253,10 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                 if stats.get("outputPowerTotal") is not None:
                     data["output_power_total"] = stats["outputPowerTotal"]
 
+                # Dispatch SOC events if event manager is available
+                if self.event_manager:
+                    self._dispatch_soc_events(device_id, data)
+
             except Exception as err:
                 _LOGGER.debug(
                     "Could not fetch detailed statistics for device %s: %s",
@@ -274,3 +281,48 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
             return 1
 
         return device_data.get("module_count", 1)
+
+    def _dispatch_soc_events(self, device_id: str, data: dict) -> None:
+        """Dispatch SOC events for battery devices."""
+        if not self.event_manager:
+            return
+
+        # System-wide SOC event
+        system_soc = data.get("batterySoc")
+        if system_soc is not None:
+            device_key = f"battery_{device_id}_system"
+            # Get SOC limits from family coordinator if available
+            limits = self._get_soc_limits()
+            self.event_manager.update_soc_state(device_key, system_soc, limits)
+
+        # Individual module SOC events
+        module_count = data.get("module_count", 1)
+        for module_num in range(1, module_count + 1):
+            soc_key = f"battery{module_num}Soc"
+            module_soc = data.get(soc_key)
+            if module_soc is not None:
+                device_key = f"battery_{device_id}_module{module_num}"
+                self.event_manager.update_soc_state(device_key, module_soc)
+
+    def _get_soc_limits(self) -> dict[str, float] | None:
+        """Get SOC limits from hass.data where family coordinator stores them."""
+        # Access family coordinator data through hass.data to get SOC limits
+        try:
+            domain_data = self.hass.data.get("sunlit", {})
+            for entry_data in domain_data.values():
+                if isinstance(entry_data, dict) and self.family_id in entry_data:
+                    family_coordinator = entry_data[self.family_id].get("family")
+                    if family_coordinator and family_coordinator.data:
+                        family_data = family_coordinator.data.get("family", {})
+                        return {
+                            "strategy_min": family_data.get("strategy_soc_min"),
+                            "strategy_max": family_data.get("strategy_soc_max"),
+                            "bms_min": family_data.get("battery_soc_min"),
+                            "bms_max": family_data.get("battery_soc_max"),
+                            "hw_min": family_data.get("hw_soc_min"),
+                            "hw_max": family_data.get("hw_soc_max"),
+                        }
+        except Exception:
+            # Don't break if there are issues accessing family data
+            pass
+        return None
