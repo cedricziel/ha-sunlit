@@ -33,7 +33,7 @@ test: ## Run tests with pytest
 
 test-cov: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
-	@pytest tests/ -v --cov=custom_components.sunlit --cov-report=term-missing --cov-report=xml --cov-report=html --timeout=30
+	@pytest tests/ -v --asyncio-mode=auto --cov=custom_components.sunlit --cov-report=term-missing --cov-report=xml --cov-report=html --timeout=30
 	@echo "✓ Coverage report generated (see htmlcov/index.html)"
 
 setup: ## Install development dependencies
