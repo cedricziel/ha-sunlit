@@ -338,6 +338,71 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /v1.6/space/local/infoV2:
+    post:
+      tags:
+        - Space
+      summary: Get local space information
+      description: |
+        Retrieve comprehensive local information about a space including DTU,
+        inverters, battery, and smart meter device details with local network
+        configuration such as IP addresses and WiFi settings.
+      operationId: getSpaceLocalInfo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  description: The space/family ID
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceLocalInfoResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.7/device/dtu/checkFwVersion:
+    post:
+      tags:
+        - Device
+      summary: Check DTU firmware version
+      description: |
+        Check if a DTU firmware update is available by comparing the current
+        firmware version with the latest available version.
+      operationId: checkDtuFirmwareVersion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - curFirmwareVersion
+              properties:
+                curFirmwareVersion:
+                  type: string
+                  description: Current firmware version of the DTU
+                  example: "Sunlit_1.0.1"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DtuFirmwareCheckResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /device/{deviceId}:
     get:
       tags:
@@ -609,6 +674,39 @@ components:
             content:
               $ref: "#/components/schemas/ChargingBoxStrategyContent"
 
+    SpaceLocalInfoResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/SpaceLocalInfoContent"
+
+    DtuFirmwareCheckResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/DtuFirmwareCheckContent"
+
+    DtuFirmwareCheckContent:
+      type: object
+      description: DTU firmware version check result
+      properties:
+        needUpdate:
+          type: boolean
+          description: Whether a firmware update is available
+          example: false
+        latestFirmwareVersion:
+          type: string
+          description: Latest available firmware version
+          example: "Sunlit_1.0.1"
+        message:
+          type: ["string", "null"]
+          description: Optional message about the firmware update
+          example: null
+
     ChargingBoxStrategyContent:
       type: object
       description: Charging box and inverter strategy configuration
@@ -661,6 +759,110 @@ components:
           type: boolean
           description: Whether AC coupling is enabled for the system
           example: false
+
+    SpaceLocalInfoContent:
+      type: object
+      description: Local space information including device network configuration
+      properties:
+        dtu:
+          $ref: "#/components/schemas/LocalDtuInfo"
+        inverters:
+          type: array
+          items:
+            $ref: "#/components/schemas/LocalInverterInfo"
+          description: List of inverters with local configuration
+        battery:
+          $ref: "#/components/schemas/LocalBatteryInfo"
+        eleMeter:
+          $ref: "#/components/schemas/LocalMeterInfo"
+
+    LocalDtuInfo:
+      type: object
+      description: Data Terminal Unit (DTU) local information
+      properties:
+        id:
+          type: integer
+          description: DTU device ID
+          example: 55410
+        deviceSn:
+          type: string
+          description: DTU serial number
+          example: "199980158868"
+        deviceType:
+          type: string
+          description: DTU device type
+          example: "OPEN_DTU"
+        ip:
+          type: string
+          description: Local IP address of the DTU
+          example: "192.168.178.167"
+        hostName:
+          type: string
+          description: Network hostname of the DTU
+          example: "OpenDTU-1C5D34"
+        ssid:
+          type: string
+          description: WiFi SSID the DTU is connected to
+          example: "WLAN-2TXFBD"
+        createDate:
+          type: integer
+          description: Creation timestamp in milliseconds
+          example: 1742622645000
+
+    LocalInverterInfo:
+      type: object
+      description: Inverter local configuration information
+      properties:
+        id:
+          type: integer
+          description: Inverter device ID
+          example: 76493
+        deviceSn:
+          type: string
+          description: Inverter serial number
+          example: "E17000035549"
+        deviceType:
+          type: string
+          description: Inverter device type
+          example: "YUNENG_MICRO_INVERTER"
+        needEasySwitch:
+          type: boolean
+          description: Whether the inverter supports easy switching functionality
+          example: true
+
+    LocalBatteryInfo:
+      type: object
+      description: Battery system local information
+      properties:
+        id:
+          type: integer
+          description: Battery device ID
+          example: 41714
+        deviceSn:
+          type: string
+          description: Battery serial number
+          example: "dcbdccbffe3d"
+        deviceType:
+          type: string
+          description: Battery device type
+          example: "ENERGY_STORAGE_BATTERY"
+
+    LocalMeterInfo:
+      type: object
+      description: Smart meter local information
+      properties:
+        id:
+          type: integer
+          description: Meter device ID
+          example: 76559
+        deviceSn:
+          type: string
+          description: Meter serial number
+          example: "244CAB41AEF4"
+        deviceType:
+          type: string
+          description: Meter device type
+          example: "SHELLY_3EM_METER"
 
     SpaceIndexResponse:
       allOf:
