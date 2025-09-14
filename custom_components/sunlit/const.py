@@ -175,3 +175,82 @@ FAMILY_SENSORS = {
     "normal_charge_box_mode": "Normal Charge Box Mode",
     "inverter_sn_list": "Inverter Serial Numbers",
 }
+
+# Sensor Group Categories
+# Maps sensors to logical groups for UI organization
+# Note: Sensors can only use DIAGNOSTIC or no category (not CONFIG)
+SENSOR_GROUP_OVERVIEW = "overview"  # Primary sensors (no category)
+SENSOR_GROUP_ENERGY = "energy"  # Primary sensors (no category)
+SENSOR_GROUP_BATTERY = "battery"  # Diagnostic sensors
+SENSOR_GROUP_STRATEGY = "strategy"  # Diagnostic sensors
+SENSOR_GROUP_INFO = "info"  # Diagnostic sensors
+SENSOR_GROUP_STATUS = "status"  # Diagnostic sensors
+SENSOR_GROUP_FINANCIAL = "financial"  # Primary sensors (no category)
+
+# Sensor to Group Mappings
+# These map each sensor key to its logical group
+SENSOR_GROUPS = {
+    # Group 1: System Overview - Real-time operational data
+    "total_solar_power": SENSOR_GROUP_OVERVIEW,
+    "home_power": SENSOR_GROUP_OVERVIEW,
+    "battery_soc": SENSOR_GROUP_OVERVIEW,
+    "batterySoc": SENSOR_GROUP_OVERVIEW,
+    "average_battery_level": SENSOR_GROUP_OVERVIEW,
+    "total_ac_power": SENSOR_GROUP_OVERVIEW,
+    "inverter_current_power": SENSOR_GROUP_OVERVIEW,
+    "online_devices": SENSOR_GROUP_OVERVIEW,
+    # Group 2: Energy Production & Storage - Energy Dashboard compatible
+    "daily_yield": SENSOR_GROUP_ENERGY,
+    "total_solar_energy": SENSOR_GROUP_ENERGY,
+    "total_grid_export_energy": SENSOR_GROUP_ENERGY,
+    "daily_grid_export_energy": SENSOR_GROUP_ENERGY,
+    "total_input_power": SENSOR_GROUP_ENERGY,
+    "total_output_power": SENSOR_GROUP_ENERGY,
+    # MPPT energy sensors (dynamically named)
+    "battery_mppt1_energy": SENSOR_GROUP_ENERGY,
+    "battery_mppt2_energy": SENSOR_GROUP_ENERGY,
+    "module1_mppt_energy": SENSOR_GROUP_ENERGY,
+    "module2_mppt_energy": SENSOR_GROUP_ENERGY,
+    "module3_mppt_energy": SENSOR_GROUP_ENERGY,
+    # Group 3: Battery Management - Battery system monitoring and SOC config
+    "battery_level": SENSOR_GROUP_BATTERY,
+    "battery_charging_remaining": SENSOR_GROUP_BATTERY,
+    "battery_discharging_remaining": SENSOR_GROUP_BATTERY,
+    "chargeRemaining": SENSOR_GROUP_BATTERY,
+    "dischargeRemaining": SENSOR_GROUP_BATTERY,
+    "hw_soc_min": SENSOR_GROUP_BATTERY,
+    "hw_soc_max": SENSOR_GROUP_BATTERY,
+    "battery_soc_min": SENSOR_GROUP_BATTERY,
+    "battery_soc_max": SENSOR_GROUP_BATTERY,
+    "strategy_soc_min": SENSOR_GROUP_BATTERY,
+    "strategy_soc_max": SENSOR_GROUP_BATTERY,
+    "current_soc_min": SENSOR_GROUP_BATTERY,
+    "current_soc_max": SENSOR_GROUP_BATTERY,
+    "battery_capacity": SENSOR_GROUP_BATTERY,
+    # Group 4: System Strategy & Control - Strategy management and automation
+    "battery_strategy": SENSOR_GROUP_STRATEGY,
+    "last_strategy_change": SENSOR_GROUP_STRATEGY,
+    "last_strategy_type": SENSOR_GROUP_STRATEGY,
+    "last_strategy_status": SENSOR_GROUP_STRATEGY,
+    "strategy_changes_today": SENSOR_GROUP_STRATEGY,
+    "ev3600_auto_strategy_mode": SENSOR_GROUP_STRATEGY,
+    "storage_strategy": SENSOR_GROUP_STRATEGY,
+    "normal_charge_box_mode": SENSOR_GROUP_STRATEGY,
+    # Group 5: System Information - Static configuration data
+    "device_count": SENSOR_GROUP_INFO,
+    "battery_count": SENSOR_GROUP_INFO,
+    "rated_power": SENSOR_GROUP_INFO,
+    "max_output_power": SENSOR_GROUP_INFO,
+    "inverter_sn_list": SENSOR_GROUP_INFO,
+    "currency": SENSOR_GROUP_INFO,
+    # Group 6: System Status - Device health and diagnostic sensors
+    "offline_devices": SENSOR_GROUP_STATUS,
+    "battery_status": SENSOR_GROUP_STATUS,
+    "battery_device_status": SENSOR_GROUP_STATUS,
+    "inverter_device_status": SENSOR_GROUP_STATUS,
+    "meter_device_status": SENSOR_GROUP_STATUS,
+    # Group 7: Financial Tracking - Earnings and revenue sensors
+    "daily_earnings": SENSOR_GROUP_FINANCIAL,
+    "total_earnings": SENSOR_GROUP_FINANCIAL,
+    "lifetime_earnings": SENSOR_GROUP_FINANCIAL,
+}
