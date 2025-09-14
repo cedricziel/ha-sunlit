@@ -338,6 +338,346 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /v1.6/space/local/infoV2:
+    post:
+      tags:
+        - Space
+      summary: Get local space information
+      description: |
+        Retrieve comprehensive local information about a space including DTU,
+        inverters, battery, and smart meter device details with local network
+        configuration such as IP addresses and WiFi settings.
+      operationId: getSpaceLocalInfo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  description: The space/family ID
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceLocalInfoResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.7/device/dtu/checkFwVersion:
+    post:
+      tags:
+        - Device
+      summary: Check DTU firmware version
+      description: |
+        Check if a DTU firmware update is available by comparing the current
+        firmware version with the latest available version.
+      operationId: checkDtuFirmwareVersion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - curFirmwareVersion
+              properties:
+                curFirmwareVersion:
+                  type: string
+                  description: Current firmware version of the DTU
+                  example: "Sunlit_1.0.1"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DtuFirmwareCheckResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v2/remoteControl/power:
+    post:
+      tags:
+        - Device
+      summary: Set device power limit
+      description: |
+        Remotely control the maximum output power of a device such as an inverter.
+        This allows dynamic power management and grid compliance.
+      operationId: setDevicePowerLimit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - maxOutputPower
+                - deviceId
+              properties:
+                maxOutputPower:
+                  type: integer
+                  description: Maximum output power limit in watts
+                  example: 800
+                deviceId:
+                  type: integer
+                  description: The device ID to control
+                  example: 76493
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoteControlPowerResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /device/remoteControlRecord/latest:
+    post:
+      tags:
+        - Device
+      summary: Get latest remote control record
+      description: |
+        Retrieve the latest remote control command status for a device.
+        This endpoint is used to check the status of power limit changes,
+        which can be "InProgress" while the command is being processed
+        or "Success" when completed.
+      operationId: getLatestRemoteControlRecord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - deviceId
+              properties:
+                deviceId:
+                  type: integer
+                  description: The device ID to query
+                  example: 76493
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoteControlRecordResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.6/local/mode/deye/localSmart/updateFlag:
+    post:
+      tags:
+        - Space
+      summary: Update local smart mode flag
+      description: |
+        Enable or disable local smart mode for Deye inverters in a space.
+        This controls whether the inverters operate in local smart strategy mode
+        for optimized energy management.
+      operationId: updateLocalSmartModeFlag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - enable
+                - spaceId
+                - inverterSnList
+              properties:
+                enable:
+                  type: boolean
+                  description: Whether to enable local smart mode
+                  example: false
+                spaceId:
+                  type: integer
+                  description: The space/family ID
+                  example: 34038
+                inverterSnList:
+                  type: array
+                  items:
+                    type: string
+                  description: List of inverter serial numbers to apply the setting to
+                  example: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalSmartModeUpdateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.6/tariff/index:
+    post:
+      tags:
+        - Space
+      summary: Get tariff information
+      description: |
+        Retrieve tariff and electricity pricing information for a space,
+        including Rabot Charge integration status and current hourly pricing data
+        with price tags (CHEAP, EXPENSIVE, etc.).
+      operationId: getTariffIndex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  description: The space/family ID
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TariffIndexResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.6/rabot/day/price:
+    post:
+      tags:
+        - Space
+      summary: Get daily electricity prices
+      description: |
+        Retrieve hourly electricity prices for a specific day from Rabot Charge.
+        Returns 24 hours of pricing data with price tags indicating whether
+        each hour is CHEAP or EXPENSIVE relative to the daily average.
+      operationId: getRabotDayPrice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - showTax
+                - spaceId
+                - day
+                - showStrategy
+              properties:
+                showTax:
+                  type: boolean
+                  description: Whether to include tax in the prices
+                  example: true
+                spaceId:
+                  type: integer
+                  description: The space/family ID
+                  example: 34038
+                day:
+                  type: string
+                  format: date
+                  description: The date to get prices for (YYYY-MM-DD format)
+                  example: "2025-09-14"
+                showStrategy:
+                  type: boolean
+                  description: Whether to show strategy information
+                  example: false
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RabotDayPriceResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.6/rabot/state:
+    post:
+      tags:
+        - Space
+      summary: Get Rabot Charge integration state
+      description: |
+        Check the current state of Rabot Charge integration for a space,
+        including onboarding status, authorization, contract status,
+        and whether contract pricing is available.
+      operationId: getRabotState
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  description: The space/family ID
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RabotStateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.6/tariffStrategy/add:
+    post:
+      tags:
+        - Space
+      summary: Add or update tariff strategy
+      description: |
+        Configure tariff-based battery charging strategies for low and high electricity prices.
+        Allows setting different behaviors for when electricity prices are cheap vs expensive,
+        including energy storage mode, smart strategy settings, and SOC limits.
+      operationId: addTariffStrategy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - lowPriceStrategy
+                - highPriceStrategy
+                - enableSwitchNotice
+                - familyId
+              properties:
+                lowPriceStrategy:
+                  $ref: "#/components/schemas/LowPriceStrategy"
+                highPriceStrategy:
+                  $ref: "#/components/schemas/HighPriceStrategy"
+                enableSwitchNotice:
+                  type: boolean
+                  description: Whether to enable notifications when strategy switches
+                  example: true
+                familyId:
+                  type: integer
+                  description: The family/space ID
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TariffStrategyAddResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /device/{deviceId}:
     get:
       tags:
@@ -543,50 +883,169 @@ components:
           description: Array of output power values (288 values for 5-minute intervals over 24 hours)
 
     SpaceSOCResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/SpaceSOCContent"
+
+    SpaceSOCContent:
       type: object
-      description: Space SOC response (different format - no ApiResponse wrapper)
+      description: Space State of Charge (SOC) limits and configuration
       properties:
-        result:
+        hwSupportOnePercentage:
+          type: boolean
+          description: Whether hardware supports 1% SOC granularity
+          example: true
+        hwSbmsLimitedDiscSocMin:
+          type: number
+          description: Hardware SBMS limited discharge minimum SOC
+          example: 1.0
+        hwSbmsLimitedChgSocMax:
+          type: number
+          description: Hardware SBMS limited charge maximum SOC
+          example: 90.0
+        batteryBmsDiscSocMin:
           type: integer
-          description: Result code (1 = success)
+          description: Battery BMS discharge minimum SOC
           example: 1
-        batterySoc:
-          type: number
-          description: Current battery SOC percentage
-          example: 85.5
-        hwSocMin:
-          type: number
-          description: Hardware minimum SOC limit
-          example: 10
-        hwSocMax:
-          type: number
-          description: Hardware maximum SOC limit
-          example: 95
+        batteryBmsChgSocMax:
+          type: integer
+          description: Battery BMS charge maximum SOC
+          example: 90
+        strategySocMax:
+          type: ["integer", "null"]
+          description: Strategy maximum SOC limit
+          example: null
+        strategySocMin:
+          type: ["integer", "null"]
+          description: Strategy minimum SOC limit
+          example: null
+        haDodMinSoc:
+          type: ["integer", "null"]
+          description: Home Assistant depth of discharge minimum SOC
+          example: null
+        evDodMinSoc:
+          type: ["integer", "null"]
+          description: EV depth of discharge minimum SOC
+          example: null
+        chgDodMaxSoc:
+          type: ["integer", "null"]
+          description: Charging depth of discharge maximum SOC
+          example: null
 
     CurrentStrategyResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/CurrentStrategyContent"
+
+    CurrentStrategyContent:
       type: object
-      description: Current strategy response (different format - no ApiResponse wrapper)
+      description: Current battery charging strategy and system status
       properties:
-        result:
-          type: integer
-          description: Result code (1 = success)
-          example: 1
         strategy:
-          type: string
+          type: ["string", "null"]
           description: Current strategy name
-          example: "Time of Use"
+          example: null
         smartStrategyMode:
           type: string
-          description: Smart strategy mode
-          example: "AUTO"
-        socMin:
+          description: Smart strategy mode (balanced, full_speed, etc.)
+          example: "balanced"
+        smartStrategyFullMode:
+          type: string
+          description: Smart strategy full charge mode
+          example: "throttle"
+        batteryFull:
+          type: boolean
+          description: Whether the battery is full
+          example: false
+        latestModifiedStatus:
+          type: string
+          description: Status of the latest modification
+          enum: ["Success", "InProgress", "Failed"]
+          example: "Success"
+        deviceStatus:
+          type: string
+          description: Overall device status
+          example: "Online"
+        ratedPower:
           type: number
-          description: Strategy minimum SOC
-          example: 20
+          description: Rated power in watts
+          example: 800.0
+        maxOutPutPower:
+          type: ["number", "null"]
+          description: Maximum output power in watts
+          example: null
+        maxAllowedPower:
+          type: number
+          description: Maximum allowed power in watts
+          example: 800.0
+        maxAllowedPowerSum:
+          type: number
+          description: Sum of maximum allowed power across all devices
+          example: 800.0
+        batteryStatus:
+          type: string
+          description: Battery operation status
+          example: "Success"
+        batteryDeviceStatus:
+          type: string
+          description: Battery device connection status
+          example: "Online"
+        inverterDeviceStatus:
+          type: string
+          description: Inverter device connection status
+          example: "Online"
+        smartStrategyInverterStatus:
+          type: string
+          description: Smart strategy inverter status
+          example: "Online"
+        meterDeviceStatus:
+          type: string
+          description: Meter device connection status
+          example: "Online"
+        enableStrategyModify:
+          type: boolean
+          description: Whether strategy modification is enabled
+          example: true
         socMax:
-          type: number
-          description: Strategy maximum SOC
+          type: integer
+          description: Strategy maximum SOC percentage
+          example: 100
+        socMin:
+          type: integer
+          description: Strategy minimum SOC percentage
+          example: 10
+        hwSocMax:
+          type: integer
+          description: Hardware maximum SOC percentage
           example: 90
+        hwSocMin:
+          type: integer
+          description: Hardware minimum SOC percentage
+          example: 1
+        deviceTypes:
+          type: array
+          items:
+            type: string
+          description: List of device types in the system
+          example: ["ENERGY_STORAGE_BATTERY", "OPEN_DTU", "YUNENG_MICRO_INVERTER", "SHELLY_3EM_METER"]
+        failInverterSns:
+          type: array
+          items:
+            type: string
+          description: Serial numbers of failed inverters
+          example: []
+        nonMaxAllowedPowerInverterSns:
+          type: array
+          items:
+            type: string
+          description: Serial numbers of inverters not at max allowed power
+          example: []
 
     StrategyHistoryResponse:
       type: object
@@ -608,6 +1067,343 @@ components:
           properties:
             content:
               $ref: "#/components/schemas/ChargingBoxStrategyContent"
+
+    SpaceLocalInfoResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/SpaceLocalInfoContent"
+
+    DtuFirmwareCheckResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/DtuFirmwareCheckContent"
+
+    DtuFirmwareCheckContent:
+      type: object
+      description: DTU firmware version check result
+      properties:
+        needUpdate:
+          type: boolean
+          description: Whether a firmware update is available
+          example: false
+        latestFirmwareVersion:
+          type: string
+          description: Latest available firmware version
+          example: "Sunlit_1.0.1"
+        message:
+          type: ["string", "null"]
+          description: Optional message about the firmware update
+          example: null
+
+    RemoteControlPowerResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: "null"
+              description: No content returned for successful power limit setting
+              example: null
+
+    RemoteControlRecordResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/RemoteControlRecordContent"
+
+    RemoteControlRecordContent:
+      type: object
+      description: Remote control command status and details
+      properties:
+        maxOutputPower:
+          type: number
+          description: The power limit that was set in watts
+          example: 800.0
+        changeTime:
+          type: integer
+          description: Timestamp when the change was initiated (milliseconds)
+          example: 1757834922637
+        status:
+          type: string
+          description: Current status of the remote control command
+          enum: ["InProgress", "Success", "Failed"]
+          example: "Success"
+
+    LocalSmartModeUpdateResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: array
+              description: Empty array returned on successful update
+              items: {}
+              example: []
+
+    TariffIndexResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/TariffIndexContent"
+
+    TariffIndexContent:
+      type: object
+      description: Tariff and pricing information for a space
+      properties:
+        rabotOnboarding:
+          type: ["string", "null"]
+          description: Rabot Charge onboarding status
+          example: null
+        rabotCustomerId:
+          type: ["string", "null"]
+          description: Rabot Charge customer ID
+          example: null
+        rabotHasContract:
+          type: boolean
+          description: Whether the customer has a Rabot Charge contract
+          example: false
+        ev3600NoticeSwitch:
+          type: ["boolean", "null"]
+          description: EV3600 notice switch setting
+          example: null
+        veryExpensiveNoticeSwitch:
+          type: ["boolean", "null"]
+          description: Very expensive price notice switch setting
+          example: null
+        rabotHourPriceDTO:
+          $ref: "#/components/schemas/RabotHourPrice"
+        tariffStrategyDTO:
+          oneOf:
+            - $ref: "#/components/schemas/TariffStrategyDTO"
+            - type: "null"
+          description: Tariff strategy configuration
+        countryCode:
+          type: string
+          description: ISO country code
+          example: "DE"
+        chargeBoxStrategyStatusDTO:
+          type: ["object", "null"]
+          description: Charge box strategy status
+          example: null
+
+    RabotHourPrice:
+      type: object
+      description: Hourly electricity price information from Rabot Charge
+      properties:
+        utcFullTime:
+          type: string
+          description: UTC timestamp for the price period
+          example: "2025-09-14 07:00:00"
+        timestamp:
+          type: string
+          description: Local timestamp for the price period
+          example: "2025-09-14 09:00:00"
+        hour:
+          type: integer
+          description: Hour of the day (0-23)
+          example: 9
+        priceInCentPerKwh:
+          type: number
+          description: Current price in cents per kWh
+          example: 8.78
+        avgPriceInCentPerKwh:
+          type: number
+          description: Average price in cents per kWh for the day
+          example: 7.17
+        highestPriceInCentPerKwh:
+          type: ["number", "null"]
+          description: Highest price in cents per kWh for the day
+          example: 15.33
+        lowestPriceInCentPerKwh:
+          type: ["number", "null"]
+          description: Lowest price in cents per kWh for the day
+          example: 0.0
+        priceTag:
+          type: string
+          description: Price category tag
+          enum: ["VERY_CHEAP", "CHEAP", "NORMAL", "EXPENSIVE", "VERY_EXPENSIVE"]
+          example: "EXPENSIVE"
+        mode:
+          type: ["string", "null"]
+          description: Pricing mode
+          example: null
+
+    RabotDayPriceResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/RabotDayPriceContent"
+
+    RabotDayPriceContent:
+      type: object
+      description: Daily electricity price data from Rabot Charge
+      properties:
+        utcOffset:
+          type: string
+          description: UTC offset for the timestamps
+          example: "UTC+2"
+        prices:
+          type: array
+          description: Array of hourly price data for the day (24 entries)
+          items:
+            $ref: "#/components/schemas/RabotHourPrice"
+        rabotHasContractPrice:
+          type: boolean
+          description: Whether the customer has Rabot contract pricing
+          example: false
+
+    RabotStateResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/RabotStateContent"
+
+    RabotStateContent:
+      type: object
+      description: Rabot Charge integration state information
+      properties:
+        rabotOnboarding:
+          type: boolean
+          description: Whether Rabot Charge onboarding is complete
+          example: false
+        rabotAuthorized:
+          type: boolean
+          description: Whether the user is authorized with Rabot Charge
+          example: false
+        rabotHasContract:
+          type: boolean
+          description: Whether the user has an active Rabot Charge contract
+          example: false
+        rabotHasContractPrice:
+          type: boolean
+          description: Whether contract pricing is available from Rabot Charge
+          example: false
+
+    TariffStrategyAddResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: "null"
+              description: No content returned for successful tariff strategy configuration
+              example: null
+
+    TariffStrategyDTO:
+      type: object
+      description: Active tariff strategy configuration and status
+      properties:
+        strategy:
+          type: string
+          description: Current strategy type
+          enum: ["SmartStrategy", "EnergyStorageOnly", "Manual"]
+          example: "SmartStrategy"
+        socMin:
+          type: integer
+          description: Minimum SOC percentage
+          example: 10
+        socMax:
+          type: integer
+          description: Maximum SOC percentage
+          example: 100
+        defaultExpectInverterOutput:
+          type: number
+          description: Default expected inverter output power in watts
+          example: 0.0
+        smartStrategyMode:
+          type: string
+          description: Smart strategy mode
+          enum: ["balanced", "aggressive", "conservative"]
+          example: "balanced"
+        smartStrategyFullMode:
+          type: string
+          description: Smart strategy full charge mode
+          enum: ["throttle", "full_speed"]
+          example: "throttle"
+        smartStrategyMaxOutputPower:
+          type: ["number", "null"]
+          description: Smart strategy maximum output power
+          example: null
+        batteryStatus:
+          type: string
+          description: Battery status
+          enum: ["Success", "InProgress", "Failed"]
+          example: "Success"
+        failInverterSns:
+          type: array
+          items:
+            type: string
+          description: Serial numbers of failed inverters
+          example: []
+        strategyStatus:
+          type: string
+          description: Current strategy execution status
+          enum: ["RUNNING", "STOPPED", "PENDING"]
+          example: "RUNNING"
+
+    LowPriceStrategy:
+      type: object
+      description: Strategy configuration for low electricity price periods
+      properties:
+        defaultExpectInverterOutput:
+          type: integer
+          description: Expected inverter output power in watts during low price periods
+          example: 800
+        socMin:
+          type: integer
+          description: Minimum SOC percentage during low price periods
+          example: 1
+        strategy:
+          type: string
+          description: Strategy type for low price periods
+          enum: ["EnergyStorageOnly", "SmartStrategy", "Manual"]
+          example: "EnergyStorageOnly"
+        socMax:
+          type: integer
+          description: Maximum SOC percentage during low price periods
+          example: 100
+
+    HighPriceStrategy:
+      type: object
+      description: Strategy configuration for high electricity price periods
+      properties:
+        socMin:
+          type: integer
+          description: Minimum SOC percentage during high price periods
+          example: 10
+        socMax:
+          type: integer
+          description: Maximum SOC percentage during high price periods
+          example: 100
+        strategy:
+          type: string
+          description: Strategy type for high price periods
+          enum: ["EnergyStorageOnly", "SmartStrategy", "Manual"]
+          example: "SmartStrategy"
+        smartStrategyFullMode:
+          type: string
+          description: Smart strategy full charge mode for high price periods
+          enum: ["throttle", "full_speed"]
+          example: "throttle"
+        smartStrategyMode:
+          type: string
+          description: Smart strategy mode for high price periods
+          enum: ["balanced", "aggressive", "conservative"]
+          example: "balanced"
 
     ChargingBoxStrategyContent:
       type: object
@@ -638,7 +1434,7 @@ components:
           description: Normal charge box operating mode (null if not set)
           example: null
         tariffStrategyExist:
-          type: boolean
+          type: ["boolean", "null"]
           description: Whether a tariff-based charging strategy exists
           example: true
         inverterSn:
@@ -661,6 +1457,110 @@ components:
           type: boolean
           description: Whether AC coupling is enabled for the system
           example: false
+
+    SpaceLocalInfoContent:
+      type: object
+      description: Local space information including device network configuration
+      properties:
+        dtu:
+          $ref: "#/components/schemas/LocalDtuInfo"
+        inverters:
+          type: array
+          items:
+            $ref: "#/components/schemas/LocalInverterInfo"
+          description: List of inverters with local configuration
+        battery:
+          $ref: "#/components/schemas/LocalBatteryInfo"
+        eleMeter:
+          $ref: "#/components/schemas/LocalMeterInfo"
+
+    LocalDtuInfo:
+      type: object
+      description: Data Terminal Unit (DTU) local information
+      properties:
+        id:
+          type: integer
+          description: DTU device ID
+          example: 55410
+        deviceSn:
+          type: string
+          description: DTU serial number
+          example: "199980158868"
+        deviceType:
+          type: string
+          description: DTU device type
+          example: "OPEN_DTU"
+        ip:
+          type: string
+          description: Local IP address of the DTU
+          example: "192.168.178.167"
+        hostName:
+          type: string
+          description: Network hostname of the DTU
+          example: "OpenDTU-1C5D34"
+        ssid:
+          type: string
+          description: WiFi SSID the DTU is connected to
+          example: "WLAN-2TXFBD"
+        createDate:
+          type: integer
+          description: Creation timestamp in milliseconds
+          example: 1742622645000
+
+    LocalInverterInfo:
+      type: object
+      description: Inverter local configuration information
+      properties:
+        id:
+          type: integer
+          description: Inverter device ID
+          example: 76493
+        deviceSn:
+          type: string
+          description: Inverter serial number
+          example: "E17000035549"
+        deviceType:
+          type: string
+          description: Inverter device type
+          example: "YUNENG_MICRO_INVERTER"
+        needEasySwitch:
+          type: boolean
+          description: Whether the inverter supports easy switching functionality
+          example: true
+
+    LocalBatteryInfo:
+      type: object
+      description: Battery system local information
+      properties:
+        id:
+          type: integer
+          description: Battery device ID
+          example: 41714
+        deviceSn:
+          type: string
+          description: Battery serial number
+          example: "dcbdccbffe3d"
+        deviceType:
+          type: string
+          description: Battery device type
+          example: "ENERGY_STORAGE_BATTERY"
+
+    LocalMeterInfo:
+      type: object
+      description: Smart meter local information
+      properties:
+        id:
+          type: integer
+          description: Meter device ID
+          example: 76559
+        deviceSn:
+          type: string
+          description: Meter serial number
+          example: "244CAB41AEF4"
+        deviceType:
+          type: string
+          description: Meter device type
+          example: "SHELLY_3EM_METER"
 
     SpaceIndexResponse:
       allOf:
