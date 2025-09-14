@@ -178,13 +178,14 @@ FAMILY_SENSORS = {
 
 # Sensor Group Categories
 # Maps sensors to logical groups for UI organization
-SENSOR_GROUP_OVERVIEW = "overview"
-SENSOR_GROUP_ENERGY = "energy"
-SENSOR_GROUP_BATTERY = "battery"
-SENSOR_GROUP_STRATEGY = "strategy"
-SENSOR_GROUP_INFO = "info"
-SENSOR_GROUP_STATUS = "status"
-SENSOR_GROUP_FINANCIAL = "financial"
+# Note: Sensors can only use DIAGNOSTIC or no category (not CONFIG)
+SENSOR_GROUP_OVERVIEW = "overview"  # Primary sensors (no category)
+SENSOR_GROUP_ENERGY = "energy"  # Primary sensors (no category)
+SENSOR_GROUP_BATTERY = "battery"  # Diagnostic sensors
+SENSOR_GROUP_STRATEGY = "strategy"  # Diagnostic sensors
+SENSOR_GROUP_INFO = "info"  # Diagnostic sensors
+SENSOR_GROUP_STATUS = "status"  # Diagnostic sensors
+SENSOR_GROUP_FINANCIAL = "financial"  # Primary sensors (no category)
 
 # Sensor to Group Mappings
 # These map each sensor key to its logical group

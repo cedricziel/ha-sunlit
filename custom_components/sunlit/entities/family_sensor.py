@@ -54,11 +54,13 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
         """Return the entity category based on sensor group."""
         sensor_group = SENSOR_GROUPS.get(self.entity_description.key)
 
-        if sensor_group in (SENSOR_GROUP_BATTERY, SENSOR_GROUP_STRATEGY):
-            # Battery management and strategy control are configuration
-            return EntityCategory.CONFIG
-        elif sensor_group in (SENSOR_GROUP_INFO, SENSOR_GROUP_STATUS):
-            # System information and status are diagnostic
+        if sensor_group in (
+            SENSOR_GROUP_BATTERY,
+            SENSOR_GROUP_STRATEGY,
+            SENSOR_GROUP_INFO,
+            SENSOR_GROUP_STATUS,
+        ):
+            # All non-primary sensors are diagnostic (sensors cannot use CONFIG category)
             return EntityCategory.DIAGNOSTIC
 
         # Overview, energy, and financial sensors are primary (no category)
