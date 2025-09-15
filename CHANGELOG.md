@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/cedricziel/ha-sunlit/compare/v1.1.0...v1.2.0) (2025-09-15)
+
+
+### Features
+
+* implement sensor groupings with entity categories ([#39](https://github.com/cedricziel/ha-sunlit/issues/39)) ([fd4fdfd](https://github.com/cedricziel/ha-sunlit/commit/fd4fdfdb953330fccf8d52a2775d5d57ffdf4baf))
+
 ## [1.1.0](https://github.com/cedricziel/ha-sunlit/compare/v1.0.0...v1.1.0) (2025-09-13)
 
 
