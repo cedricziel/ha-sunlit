@@ -1,6 +1,6 @@
 # Development and testing dependencies
 pytest
-pytest-asyncio<1.0.0
+pytest-asyncio<2.0.0
 pytest-cov
 pytest-timeout
 aioresponses
