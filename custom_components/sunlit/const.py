@@ -7,7 +7,7 @@ DOMAIN = "sunlit"
 # Integration metadata
 INTEGRATION_NAME = "ha-sunlit"
 GITHUB_URL = "https://github.com/cedricziel/ha-sunlit"
-VERSION = "1.1.0"  # x-release-please-version
+VERSION = "1.2.0"  # x-release-please-version
 
 DEFAULT_NAME = "Sunlit REST Sensor"
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
