@@ -210,6 +210,11 @@ async def async_setup_entry(
                                     state_class=get_state_class_for_sensor(key),
                                     native_unit_of_measurement=get_unit_for_sensor(key),
                                 )
+                                # Pass mppt_coordinator for battery devices
+                                extra_kwargs = {}
+                                if device_type == DEVICE_TYPE_BATTERY:
+                                    extra_kwargs["mppt_coordinator"] = mppt_coordinator
+
                                 sensor = create_device_sensor(
                                     device_type=device_type,
                                     coordinator=device_coordinator,
@@ -219,6 +224,7 @@ async def async_setup_entry(
                                     family_name=device_coordinator.family_name,
                                     device_id=device_id,
                                     device_info_data=device_info,
+                                    **extra_kwargs,
                                 )
                                 # Set icon if available
                                 icon = get_icon_for_sensor(key, device_type)
@@ -231,6 +237,11 @@ async def async_setup_entry(
                             key="status",
                             name="Status",
                         )
+                        # Pass mppt_coordinator for battery devices
+                        extra_kwargs = {}
+                        if device_type == DEVICE_TYPE_BATTERY:
+                            extra_kwargs["mppt_coordinator"] = mppt_coordinator
+
                         sensor = create_device_sensor(
                             device_type=device_type,
                             coordinator=device_coordinator,
@@ -240,6 +251,7 @@ async def async_setup_entry(
                             family_name=device_coordinator.family_name,
                             device_id=device_id,
                             device_info_data=device_info,
+                            **extra_kwargs,
                         )
                         # Set status icon
                         sensor._attr_icon = "mdi:information-outline"
@@ -290,6 +302,7 @@ async def async_setup_entry(
                                         device_id=device_id,
                                         device_info_data=device_info,
                                         module_number=module_num,
+                                        mppt_coordinator=mppt_coordinator,
                                     )
 
                                     # Set icon if available
