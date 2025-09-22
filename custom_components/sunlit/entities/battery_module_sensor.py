@@ -30,6 +30,7 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
         device_id: str,
         device_info_data: dict[str, Any],
         module_number: int,
+        mppt_coordinator: DataUpdateCoordinator | None = None,
     ) -> None:
         """Initialize the battery module sensor."""
         super().__init__(coordinator)
@@ -40,6 +41,7 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
         self._device_id = device_id
         self._device_info_data = device_info_data
         self._module_number = module_number
+        self._mppt_coordinator = mppt_coordinator
 
         # Include module number in unique_id
         device_type = device_info_data.get("deviceType", "Device")
@@ -55,6 +57,18 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
         # Special handling for static battery module capacity
         if self.entity_description.key == "capacity":
             return 2.15  # kWh nominal capacity for B215 module
+
+        # Handle MPPT energy values from MPPT coordinator
+        if (
+            self._mppt_coordinator
+            and "Mppt1Energy" in self.entity_description.key
+            and self._mppt_coordinator.data
+            and "mppt_energy" in self._mppt_coordinator.data
+            and self._device_id in self._mppt_coordinator.data["mppt_energy"]
+        ):
+            return self._mppt_coordinator.data["mppt_energy"][self._device_id].get(
+                self.entity_description.key
+            )
 
         if (
             self.coordinator.data
