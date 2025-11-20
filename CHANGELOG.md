@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/cedricziel/ha-sunlit/compare/v1.3.1...v1.3.2) (2025-11-20)
+
+
+### Bug Fixes
+
+* remove deprecated config_entry assignment in OptionsFlow ([#68](https://github.com/cedricziel/ha-sunlit/issues/68)) ([c71c0fc](https://github.com/cedricziel/ha-sunlit/commit/c71c0fc5f5376a949679570bdff553bf5399cd55))
+
 ## [1.3.1](https://github.com/cedricziel/ha-sunlit/compare/v1.3.0...v1.3.1) (2025-11-20)
 
 
