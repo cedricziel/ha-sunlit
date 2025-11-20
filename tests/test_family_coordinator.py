@@ -160,3 +160,74 @@ async def test_family_coordinator_complete_failure(
     # When all APIs fail, should still return empty family data
     data = await coordinator._async_update_data()
     assert data == {"family": {}}
+
+
+# Tests for Issue #62 - Negative daily value validation
+async def test_family_coordinator_negative_daily_yield_clamped(
+    hass: HomeAssistant,
+    enable_custom_integrations,
+    space_index_with_negative_yield,
+):
+    """Test that negative daily yield values are clamped to 0."""
+    api_client = AsyncMock()
+    api_client.fetch_space_index.return_value = space_index_with_negative_yield
+    api_client.fetch_device_list.return_value = []
+    api_client.fetch_space_soc.return_value = {
+        "hwSbmsLimitedDiscSocMin": 10,
+        "hwSbmsLimitedChgSocMax": 95,
+    }
+    api_client.fetch_space_current_strategy.return_value = {"strategy": "SELF_CONSUMPTION"}
+    api_client.get_charging_box_strategy.return_value = {
+        "ev3600AutoStrategyMode": "AUTO"
+    }
+
+    coordinator = SunlitFamilyCoordinator(
+        hass,
+        api_client,
+        "34038",
+        "Test Family",
+    )
+
+    data = await coordinator._async_update_data()
+    family_data = data["family"]
+
+    # Verify negative daily values were clamped to 0
+    assert family_data["daily_yield"] == 0.0
+    assert family_data["daily_earnings"] == 0.0
+
+    # Verify other values remain correct
+    assert family_data["home_power"] == 1234
+    assert family_data["average_battery_level"] == 75
+
+
+async def test_family_coordinator_positive_daily_values_unchanged(
+    hass: HomeAssistant,
+    enable_custom_integrations,
+    space_index_response,
+):
+    """Test that positive daily values pass through unchanged."""
+    api_client = AsyncMock()
+    api_client.fetch_space_index.return_value = space_index_response
+    api_client.fetch_device_list.return_value = []
+    api_client.fetch_space_soc.return_value = {
+        "hwSbmsLimitedDiscSocMin": 10,
+        "hwSbmsLimitedChgSocMax": 95,
+    }
+    api_client.fetch_space_current_strategy.return_value = {"strategy": "SELF_CONSUMPTION"}
+    api_client.get_charging_box_strategy.return_value = {
+        "ev3600AutoStrategyMode": "AUTO"
+    }
+
+    coordinator = SunlitFamilyCoordinator(
+        hass,
+        api_client,
+        "34038",
+        "Test Family",
+    )
+
+    data = await coordinator._async_update_data()
+    family_data = data["family"]
+
+    # Verify positive values unchanged
+    assert family_data["daily_yield"] == 25.3
+    assert family_data["daily_earnings"] == 5.2

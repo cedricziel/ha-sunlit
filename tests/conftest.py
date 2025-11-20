@@ -342,6 +342,132 @@ def api_error_response():
     return {"code": 1, "message": {"DE": "Authentication failed"}, "content": None}
 
 
+# Fixtures for Issue #62 - DEYE 2000 and Shelly Pro 3EM support with negative value handling
+@pytest.fixture
+def device_list_with_negative_energy():
+    """Device list with negative daily energy values (API midnight reset bug scenario)."""
+    return [
+        {
+            "deviceId": "meter_pro_001",
+            "deviceType": "SHELLY_PRO3EM_METER",  # Shelly Pro 3EM variant
+            "status": "Online",
+            "totalAcPower": 1500,
+            "dailyBuyEnergy": -0.5,  # Negative value - API bug
+            "dailyRetEnergy": -1.2,  # Negative value - API bug
+            "totalBuyEnergy": 1234.5,
+            "totalRetEnergy": 2345.6,
+            "fault": False,
+            "off": False,
+        },
+        {
+            "deviceId": "inverter_deye_001",
+            "deviceType": "SOLAR_MICRO_INVERTER",  # DEYE uses this type
+            "status": "Online",
+            "currentPower": 2000,
+            "today": {
+                "currentPower": 2000,
+                "totalPowerGeneration": -2.3,  # Negative value - midnight reset bug
+                "totalEarnings": {"earnings": 10.5, "currency": "EUR"},
+            },
+            "fault": False,
+            "off": False,
+        },
+    ]
+
+
+@pytest.fixture
+def device_list_with_shelly_pro3em():
+    """Device list with Shelly Pro 3EM meter."""
+    return [
+        {
+            "deviceId": "meter_pro_002",
+            "deviceType": "SHELLY_PRO3EM_METER",  # Pro variant
+            "status": "Online",
+            "totalAcPower": 2400,
+            "dailyBuyEnergy": 8.5,
+            "dailyRetEnergy": 12.7,
+            "totalBuyEnergy": 5678.9,
+            "totalRetEnergy": 6789.0,
+            "fault": False,
+            "off": False,
+        }
+    ]
+
+
+@pytest.fixture
+def device_list_with_deye_inverter():
+    """Device list with DEYE solar micro inverter."""
+    return [
+        {
+            "deviceId": "inverter_deye_002",
+            "deviceType": "SOLAR_MICRO_INVERTER",  # DEYE 2000
+            "status": "Online",
+            "manufacturer": "Deye",
+            "currentPower": 1800,
+            "totalPowerGeneration": 156.7,  # Daily generation (misleading name)
+            "dailyEarnings": 15.2,
+            "fault": False,
+            "off": False,
+        }
+    ]
+
+
+@pytest.fixture
+def device_statistics_negative_energy():
+    """Device statistics response with negative daily energy values."""
+    return {
+        "code": 0,
+        "message": {"DE": "Ok"},
+        "content": {
+            "deviceId": "meter_pro_001",
+            "deviceType": "SHELLY_PRO3EM_METER",
+            "totalAcPower": 1500,
+            "dailyBuyEnergy": -0.3,  # Negative
+            "dailyRetEnergy": -0.8,  # Negative
+            "totalBuyEnergy": 1234.5,
+            "totalRetEnergy": 2345.6,
+        },
+    }
+
+
+@pytest.fixture
+def space_index_with_negative_yield():
+    """Space index response with negative daily yield (API bug scenario)."""
+    return {
+        "code": 0,
+        "message": {"DE": "Ok"},
+        "content": {
+            "today": {
+                "yield": -1.5,  # Negative value - API bug
+                "earning": -0.3,  # Negative value - API bug
+                "homePower": 1234,
+                "currency": "EUR",
+            },
+            "battery": {
+                "deviceStatus": "Online",
+                "batteryLevel": 75,
+                "batteryCount": 1,
+                "bypass": False,
+                "chargingRemaining": 90,
+                "dischargingRemaining": 360,
+                "inputPower": 300,
+                "outputPower": 0,
+                "heaterStatusList": [False],
+            },
+            "eleMeter": {
+                "deviceStatus": "Online",
+                "totalAcPower": 1234,
+            },
+            "inverter": {
+                "deviceStatus": "Online",
+                "currentPower": 1800,
+            },
+            "boostSetting": {
+                "isOn": False,
+                "switching": False,
+            },
+        },
+    }
 
 
 @pytest.fixture

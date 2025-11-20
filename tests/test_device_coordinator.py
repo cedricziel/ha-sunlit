@@ -229,3 +229,125 @@ async def test_device_coordinator_inverter_variations(
     # Inverters are OUTPUT devices, not solar generators, so total_solar_power should be 0
     assert aggregates["total_solar_power"] == 0  # No MPPT inputs = 0W solar
     assert aggregates["total_solar_energy"] == 300  # 100 + 200
+
+
+# Tests for Issue #62 - DEYE 2000 and Shelly Pro 3EM support with negative value handling
+async def test_device_coordinator_negative_meter_energy_clamped(
+    hass: HomeAssistant,
+    enable_custom_integrations,
+    device_list_with_negative_energy,
+):
+    """Test that negative daily energy values from meters are clamped to 0."""
+    api_client = AsyncMock()
+    api_client.fetch_device_list.return_value = device_list_with_negative_energy
+    api_client.fetch_device_statistics.return_value = {
+        "totalAcPower": 1500,
+        "dailyBuyEnergy": -0.3,  # Negative in statistics too
+        "dailyRetEnergy": -0.8,  # Negative in statistics too
+        "totalBuyEnergy": 1234.5,
+        "totalRetEnergy": 2345.6,
+    }
+
+    coordinator = SunlitDeviceCoordinator(
+        hass,
+        api_client,
+        "34038",
+        "Test Family",
+    )
+
+    data = await coordinator._async_update_data()
+    devices = data["devices"]
+
+    # Verify negative values were clamped to 0
+    assert devices["meter_pro_001"]["daily_buy_energy"] == 0.0
+    assert devices["meter_pro_001"]["daily_ret_energy"] == 0.0
+    # Positive totals should be unchanged
+    assert devices["meter_pro_001"]["total_buy_energy"] == 1234.5
+    assert devices["meter_pro_001"]["total_ret_energy"] == 2345.6
+
+
+async def test_device_coordinator_negative_inverter_energy_clamped(
+    hass: HomeAssistant,
+    enable_custom_integrations,
+    device_list_with_negative_energy,
+):
+    """Test that negative daily energy values from inverters are clamped to 0."""
+    api_client = AsyncMock()
+    api_client.fetch_device_list.return_value = device_list_with_negative_energy
+    api_client.fetch_device_statistics.return_value = {"totalYield": 150.5}
+
+    coordinator = SunlitDeviceCoordinator(
+        hass,
+        api_client,
+        "34038",
+        "Test Family",
+    )
+
+    data = await coordinator._async_update_data()
+    devices = data["devices"]
+
+    # Verify negative totalPowerGeneration was clamped to 0
+    assert devices["inverter_deye_001"]["total_power_generation"] == 0.0
+    # Current power should be unchanged
+    assert devices["inverter_deye_001"]["current_power"] == 2000
+
+
+async def test_device_coordinator_shelly_pro3em_processing(
+    hass: HomeAssistant,
+    enable_custom_integrations,
+    device_list_with_shelly_pro3em,
+):
+    """Test that Shelly Pro 3EM meters are processed correctly."""
+    api_client = AsyncMock()
+    api_client.fetch_device_list.return_value = device_list_with_shelly_pro3em
+    api_client.fetch_device_statistics.return_value = {
+        "totalAcPower": 2400,
+        "dailyBuyEnergy": 8.5,
+        "dailyRetEnergy": 12.7,
+        "totalBuyEnergy": 5678.9,
+        "totalRetEnergy": 6789.0,
+    }
+
+    coordinator = SunlitDeviceCoordinator(
+        hass,
+        api_client,
+        "34038",
+        "Test Family",
+    )
+
+    data = await coordinator._async_update_data()
+    devices = data["devices"]
+
+    # Verify Shelly Pro 3EM is processed same as regular 3EM
+    assert "meter_pro_002" in devices
+    assert devices["meter_pro_002"]["daily_buy_energy"] == 8.5
+    assert devices["meter_pro_002"]["daily_ret_energy"] == 12.7
+    assert devices["meter_pro_002"]["total_ac_power"] == 2400
+
+
+async def test_device_coordinator_solar_micro_inverter_processing(
+    hass: HomeAssistant,
+    enable_custom_integrations,
+    device_list_with_deye_inverter,
+):
+    """Test that SOLAR_MICRO_INVERTER (DEYE) is processed correctly."""
+    api_client = AsyncMock()
+    api_client.fetch_device_list.return_value = device_list_with_deye_inverter
+    api_client.fetch_device_statistics.return_value = {"totalYield": 250.3}
+
+    coordinator = SunlitDeviceCoordinator(
+        hass,
+        api_client,
+        "34038",
+        "Test Family",
+    )
+
+    data = await coordinator._async_update_data()
+    devices = data["devices"]
+
+    # Verify DEYE inverter is processed (uses flat structure, not "today" object)
+    assert "inverter_deye_002" in devices
+    assert devices["inverter_deye_002"]["current_power"] == 1800
+    assert devices["inverter_deye_002"]["total_power_generation"] == 156.7
+    assert devices["inverter_deye_002"]["daily_earnings"] == 15.2
+    assert devices["inverter_deye_002"]["total_yield"] == 250.3
