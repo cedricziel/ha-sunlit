@@ -14,7 +14,14 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 
-from ..const import DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER, DEVICE_TYPE_METER, DOMAIN
+from ..const import (
+    DEVICE_TYPE_BATTERY,
+    DEVICE_TYPE_INVERTER,
+    DEVICE_TYPE_INVERTER_SOLAR,
+    DEVICE_TYPE_METER,
+    DEVICE_TYPE_METER_PRO,
+    DOMAIN,
+)
 from .base import normalize_device_type
 
 
@@ -91,7 +98,9 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
         friendly_names = {
             DEVICE_TYPE_BATTERY: "BK215",
             DEVICE_TYPE_INVERTER: "Microinverter",
+            DEVICE_TYPE_INVERTER_SOLAR: "Solar Inverter",
             DEVICE_TYPE_METER: "Smart Meter",
+            DEVICE_TYPE_METER_PRO: "Smart Meter Pro",
         }
 
         friendly_name = friendly_names.get(device_type, device_type)
@@ -101,10 +110,13 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
         if not manufacturer:
             # Fallback mapping if manufacturer not provided
-            if device_type == DEVICE_TYPE_METER:
+            if device_type in (DEVICE_TYPE_METER, DEVICE_TYPE_METER_PRO):
                 manufacturer = "Shelly"
             elif device_type == DEVICE_TYPE_INVERTER:
                 manufacturer = "Yuneng"
+            elif device_type == DEVICE_TYPE_INVERTER_SOLAR:
+                # Generic solar inverter - try to get from device data
+                manufacturer = self._device_info_data.get("manufacturer", "Solar")
             elif device_type == DEVICE_TYPE_BATTERY:
                 manufacturer = "Highpower"
             else:
@@ -114,7 +126,9 @@ class SunlitDeviceBinarySensor(CoordinatorEntity, BinarySensorEntity):
         model_map = {
             DEVICE_TYPE_BATTERY: "BK215",
             DEVICE_TYPE_INVERTER: "Microinverter",
-            DEVICE_TYPE_METER: "Smart Meter",
+            DEVICE_TYPE_INVERTER_SOLAR: "Micro Inverter",
+            DEVICE_TYPE_METER: "3EM Smart Meter",
+            DEVICE_TYPE_METER_PRO: "Pro 3EM Smart Meter",
         }
 
         model_name = model_map.get(device_type, device_type)

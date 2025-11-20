@@ -2036,7 +2036,9 @@ components:
           description: Type of device
           enum:
             - SHELLY_3EM_METER
+            - SHELLY_PRO3EM_METER
             - YUNENG_MICRO_INVERTER
+            - SOLAR_MICRO_INVERTER
             - ENERGY_STORAGE_BATTERY
           example: "ENERGY_STORAGE_BATTERY"
         batteryLevel:

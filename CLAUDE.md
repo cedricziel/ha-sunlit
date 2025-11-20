@@ -198,6 +198,21 @@ Battery modules (B215 extension modules 1-3) are created as separate virtual dev
 - Link to main battery via `via_device`
 - Each module has 2.15 kWh nominal capacity
 
+## Supported Devices
+
+The integration supports the following device types:
+
+### Meters
+- **SHELLY_3EM_METER**: Shelly 3EM Smart Meter
+- **SHELLY_PRO3EM_METER**: Shelly Pro 3EM (3-phase meter)
+
+### Inverters
+- **YUNENG_MICRO_INVERTER**: Yuneng brand micro inverter
+- **SOLAR_MICRO_INVERTER**: Generic solar micro inverter (includes DEYE 2000, Hoymiles, etc.)
+
+### Battery
+- **ENERGY_STORAGE_BATTERY**: BK215 battery system (Highpower)
+
 ## Important Constants
 
 - Update interval: `DEFAULT_SCAN_INTERVAL` (30 seconds)
@@ -208,6 +223,9 @@ Battery modules (B215 extension modules 1-3) are created as separate virtual dev
 
 ## Recent Features
 
+- **Device Type Support**: Added DEYE 2000 inverters and Shelly Pro 3EM meter support
+- **Daily Energy Validation**: Added validation to prevent negative daily energy values at midnight
+- **Enhanced Logging**: Debug logging during midnight window (23:50-00:10) for troubleshooting
 - Refactored coordinator architecture with specialized coordinators
 - Different update intervals based on data volatility (30s, 1min, 5min)
 - Fixed `last_strategy_change` sensor to use TIMESTAMP device class
