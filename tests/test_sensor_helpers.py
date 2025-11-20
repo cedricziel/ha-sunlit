@@ -151,7 +151,6 @@ class TestStateClassForSensor:
         total_increasing = [
             "total_buy_energy",
             "total_ret_energy",
-            "total_power_generation",
             "total_solar_energy",
             "total_grid_export_energy",
         ]
@@ -166,6 +165,7 @@ class TestStateClassForSensor:
             "daily_grid_export_energy",
             "daily_yield",
             "daily_earnings",
+            "total_power_generation",  # Despite the name, this is daily data (resets at midnight)
         ]
         for sensor in total_sensors:
             assert get_state_class_for_sensor(sensor) == SensorStateClass.TOTAL, f"Failed for {sensor}"

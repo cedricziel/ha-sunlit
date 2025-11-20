@@ -1015,9 +1015,20 @@ async def test_inverter_device_sensor_creation(
              unit=UnitOfPower.WATT
          ))
 
+        # total_power_generation is daily data (resets at midnight)
         (assert_sensors(sensors)
          .for_device("inverter_001")
-         .where_key_matches(lambda k: k in ["total_power_generation", "total_yield"])
+         .where_key("total_power_generation")
+         .matches_pattern(
+             device_class=SensorDeviceClass.ENERGY,
+             state_class=SensorStateClass.TOTAL,
+             unit=UnitOfEnergy.KILO_WATT_HOUR
+         ))
+
+        # total_yield is lifetime cumulative data
+        (assert_sensors(sensors)
+         .for_device("inverter_001")
+         .where_key("total_yield")
          .matches_pattern(
              device_class=SensorDeviceClass.ENERGY,
              state_class=SensorStateClass.TOTAL_INCREASING,

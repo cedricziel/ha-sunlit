@@ -70,16 +70,19 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     # Static configuration values don't need state class
     if key in ["rated_power", "max_output_power", "currency", "battery_count"]:
         return None
-    # Special case: total_power_generation and total_yield are cumulative energy
+    # Lifetime cumulative energy sensors (never reset)
     elif (
-        key in ["total_power_generation", "total_yield"]
+        key == "total_yield"
         or "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
         or key == "total_solar_energy"
         or key == "total_grid_export_energy"
     ):
         return SensorStateClass.TOTAL_INCREASING
+    # Daily energy sensors (reset at midnight)
+    # total_power_generation is actually today's daily generation despite the misleading name
     elif (
-        key == "daily_grid_export_energy"
+        key == "total_power_generation"
+        or key == "daily_grid_export_energy"
         or key == "daily_yield"
         or key == "daily_earnings"
     ):
