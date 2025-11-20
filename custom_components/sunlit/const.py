@@ -64,11 +64,18 @@ DEFAULT_OPTIONS = {
 }
 
 # Device Types
-DEVICE_TYPE_METER = "SHELLY_3EM_METER"
-DEVICE_TYPE_METER_PRO = "SHELLY_PRO3EM_METER"  # Shelly Pro 3EM variant
-DEVICE_TYPE_INVERTER = "YUNENG_MICRO_INVERTER"
-DEVICE_TYPE_INVERTER_SOLAR = "SOLAR_MICRO_INVERTER"  # Generic solar micro inverter
-DEVICE_TYPE_BATTERY = "ENERGY_STORAGE_BATTERY"
+# Meters
+DEVICE_TYPE_METER = "SHELLY_3EM_METER"  # Shelly 3EM Smart Meter
+DEVICE_TYPE_METER_PRO = "SHELLY_PRO3EM_METER"  # Shelly Pro 3EM (3-phase meter)
+
+# Inverters
+DEVICE_TYPE_INVERTER = "YUNENG_MICRO_INVERTER"  # Yuneng brand micro inverter
+DEVICE_TYPE_INVERTER_SOLAR = (
+    "SOLAR_MICRO_INVERTER"  # Generic solar micro inverter (includes DEYE 2000)
+)
+
+# Battery
+DEVICE_TYPE_BATTERY = "ENERGY_STORAGE_BATTERY"  # BK215 battery system
 
 # Sensor Types for different devices
 METER_SENSORS = {

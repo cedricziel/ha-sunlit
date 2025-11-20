@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 from typing import Any
 
@@ -38,6 +39,46 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
             name=f"Sunlit Family {family_name}",
             update_interval=DEFAULT_SCAN_INTERVAL,  # 30 seconds
         )
+
+    def _is_midnight_window(self) -> bool:
+        """Check if current time is within midnight window (23:50-00:10)."""
+        now = datetime.now()
+        hour = now.hour
+        minute = now.minute
+        # Between 23:50 and 23:59, or between 00:00 and 00:10
+        return (hour == 23 and minute >= 50) or (hour == 0 and minute <= 10)
+
+    def _validate_daily_value(
+        self, value: float | None, field_name: str
+    ) -> float | None:
+        """Validate daily values to prevent negative values.
+
+        Daily sensors with state_class=TOTAL should reset to 0 at midnight,
+        not go negative. This protects against API bugs that return negative values.
+        """
+        if value is None:
+            return None
+
+        # Enhanced logging around midnight for debugging
+        if self._is_midnight_window():
+            _LOGGER.debug(
+                "Midnight window active - %s in family %s: %s",
+                field_name,
+                self.family_id,
+                value,
+            )
+
+        if value < 0:
+            _LOGGER.warning(
+                "Negative daily value detected for %s in family %s: %s. "
+                "This may indicate an API midnight reset issue. Clamping to 0.",
+                field_name,
+                self.family_id,
+                value,
+            )
+            return 0.0
+
+        return value
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch family-level data from REST API."""
@@ -97,8 +138,13 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
         # Today's metrics
         if "today" in space_index:
             today_data = space_index["today"]
-            family_data["daily_yield"] = today_data.get("yield")
-            family_data["daily_earnings"] = today_data.get("earning")
+            # Validate daily values to prevent negative values
+            family_data["daily_yield"] = self._validate_daily_value(
+                today_data.get("yield"), "daily_yield"
+            )
+            family_data["daily_earnings"] = self._validate_daily_value(
+                today_data.get("earning"), "daily_earnings"
+            )
             family_data["home_power"] = today_data.get("homePower")
             family_data["currency"] = today_data.get("currency", "EUR")
 

@@ -11,7 +11,14 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 
-from ..const import DEVICE_TYPE_BATTERY, DEVICE_TYPE_INVERTER, DEVICE_TYPE_METER, DOMAIN
+from ..const import (
+    DEVICE_TYPE_BATTERY,
+    DEVICE_TYPE_INVERTER,
+    DEVICE_TYPE_INVERTER_SOLAR,
+    DEVICE_TYPE_METER,
+    DEVICE_TYPE_METER_PRO,
+    DOMAIN,
+)
 from .base import normalize_device_type
 
 
@@ -93,8 +100,15 @@ class SunlitDeviceSensor(CoordinatorEntity, SensorEntity):
             if device_type == DEVICE_TYPE_METER:
                 manufacturer = "Shelly"
                 model_name = "3EM Smart Meter"
+            elif device_type == DEVICE_TYPE_METER_PRO:
+                manufacturer = "Shelly"
+                model_name = "Pro 3EM Smart Meter"
             elif device_type == DEVICE_TYPE_INVERTER:
                 manufacturer = "Yuneng"
+                model_name = "Micro Inverter"
+            elif device_type == DEVICE_TYPE_INVERTER_SOLAR:
+                # Generic solar inverter (could be DEYE, Hoymiles, etc.)
+                manufacturer = self._device_info_data.get("manufacturer", "Solar")
                 model_name = "Micro Inverter"
             elif device_type == DEVICE_TYPE_BATTERY:
                 manufacturer = "Highpower"

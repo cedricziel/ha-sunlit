@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 from typing import Any
 
@@ -41,6 +42,46 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
             name=f"Sunlit Devices {family_name}",
             update_interval=DEFAULT_SCAN_INTERVAL,  # 30 seconds
         )
+
+    def _is_midnight_window(self) -> bool:
+        """Check if current time is within midnight window (23:50-00:10)."""
+        now = datetime.now()
+        hour = now.hour
+        minute = now.minute
+        # Between 23:50 and 23:59, or between 00:00 and 00:10
+        return (hour == 23 and minute >= 50) or (hour == 0 and minute <= 10)
+
+    def _validate_daily_energy(
+        self, value: float | None, field_name: str, device_id: str
+    ) -> float | None:
+        """Validate daily energy values to prevent negative values.
+
+        Daily energy sensors with state_class=TOTAL should reset to 0 at midnight,
+        not go negative. This protects against API bugs that return negative values.
+        """
+        if value is None:
+            return None
+
+        # Enhanced logging around midnight for debugging
+        if self._is_midnight_window():
+            _LOGGER.debug(
+                "Midnight window active - %s on device %s: %s kWh",
+                field_name,
+                device_id,
+                value,
+            )
+
+        if value < 0:
+            _LOGGER.warning(
+                "Negative daily energy value detected for %s on device %s: %s kWh. "
+                "This may indicate an API midnight reset issue. Clamping to 0.",
+                field_name,
+                device_id,
+                value,
+            )
+            return 0.0
+
+        return value
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch device-level data from REST API."""
@@ -148,8 +189,13 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
     ) -> None:
         """Process meter device data."""
         data["total_ac_power"] = device.get("totalAcPower")
-        data["daily_buy_energy"] = device.get("dailyBuyEnergy")
-        data["daily_ret_energy"] = device.get("dailyRetEnergy")
+        # Validate daily energy values to prevent negative values
+        data["daily_buy_energy"] = self._validate_daily_energy(
+            device.get("dailyBuyEnergy"), "daily_buy_energy", device_id
+        )
+        data["daily_ret_energy"] = self._validate_daily_energy(
+            device.get("dailyRetEnergy"), "daily_ret_energy", device_id
+        )
         data["total_buy_energy"] = device.get("totalBuyEnergy")
         data["total_ret_energy"] = device.get("totalRetEnergy")
 
@@ -165,7 +211,13 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                     "totalRetEnergy",
                 ]:
                     if stats.get(key) is not None:
-                        data[key.lower()] = stats[key]
+                        # Apply validation to daily energy values
+                        if "daily" in key.lower():
+                            data[key.lower()] = self._validate_daily_energy(
+                                stats[key], key.lower(), device_id
+                            )
+                        else:
+                            data[key.lower()] = stats[key]
             except Exception as err:
                 _LOGGER.warning(
                     "Failed to fetch meter statistics for %s: %s",
@@ -180,14 +232,22 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
         # Handle data structure variations
         if device.get("today"):
             data["current_power"] = device["today"].get("currentPower")
-            data["total_power_generation"] = device["today"].get("totalPowerGeneration")
+            # Note: totalPowerGeneration is actually today's daily generation, not lifetime
+            # Validate to prevent negative values
+            data["total_power_generation"] = self._validate_daily_energy(
+                device["today"].get("totalPowerGeneration"),
+                "total_power_generation",
+                device_id,
+            )
             if device["today"].get("totalEarnings"):
                 data["daily_earnings"] = device["today"]["totalEarnings"].get(
                     "earnings"
                 )
         else:
             data["current_power"] = device.get("currentPower")
-            data["total_power_generation"] = device.get("totalPowerGeneration")
+            data["total_power_generation"] = self._validate_daily_energy(
+                device.get("totalPowerGeneration"), "total_power_generation", device_id
+            )
             data["daily_earnings"] = device.get("dailyEarnings")
 
         # Fetch detailed statistics for online inverters
