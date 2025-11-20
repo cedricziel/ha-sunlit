@@ -170,7 +170,7 @@ async def test_family_coordinator_negative_daily_yield_clamped(
 ):
     """Test that negative daily yield values are clamped to 0."""
     api_client = AsyncMock()
-    api_client.fetch_space_index.return_value = space_index_with_negative_yield
+    api_client.fetch_space_index.return_value = space_index_with_negative_yield["content"]
     api_client.fetch_device_list.return_value = []
     api_client.fetch_space_soc.return_value = {
         "hwSbmsLimitedDiscSocMin": 10,
@@ -207,7 +207,7 @@ async def test_family_coordinator_positive_daily_values_unchanged(
 ):
     """Test that positive daily values pass through unchanged."""
     api_client = AsyncMock()
-    api_client.fetch_space_index.return_value = space_index_response
+    api_client.fetch_space_index.return_value = space_index_response["content"]
     api_client.fetch_device_list.return_value = []
     api_client.fetch_space_soc.return_value = {
         "hwSbmsLimitedDiscSocMin": 10,
