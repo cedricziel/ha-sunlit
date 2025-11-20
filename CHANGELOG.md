@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/cedricziel/ha-sunlit/compare/v1.3.0...v1.3.1) (2025-11-20)
+
+
+### Bug Fixes
+
+* handle None values in space_index data sections ([#66](https://github.com/cedricziel/ha-sunlit/issues/66)) ([ed7e8be](https://github.com/cedricziel/ha-sunlit/commit/ed7e8be61e13ee8067ad515b7f9e152ca5220304))
+
 ## [1.3.0](https://github.com/cedricziel/ha-sunlit/compare/v1.2.0...v1.3.0) (2025-11-20)
 
 
