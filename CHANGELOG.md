@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/cedricziel/ha-sunlit/compare/v1.2.0...v1.3.0) (2025-11-20)
+
+
+### Features
+
+* support deye 2000 and shelly 3em pro ([#64](https://github.com/cedricziel/ha-sunlit/issues/64)) ([ee3c026](https://github.com/cedricziel/ha-sunlit/commit/ee3c02641819eee64bfbfedb5691347efa2b8b7f))
+
 ## [1.2.0](https://github.com/cedricziel/ha-sunlit/compare/v1.1.0...v1.2.0) (2025-09-22)
 
 
