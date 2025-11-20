@@ -136,7 +136,7 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
     async def _process_space_index(self, space_index: dict, family_data: dict) -> None:
         """Process space index data."""
         # Today's metrics
-        if "today" in space_index:
+        if "today" in space_index and space_index["today"] is not None:
             today_data = space_index["today"]
             # Validate daily values to prevent negative values
             family_data["daily_yield"] = self._validate_daily_value(
@@ -149,7 +149,7 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
             family_data["currency"] = today_data.get("currency", "EUR")
 
         # Battery data
-        if "battery" in space_index:
+        if "battery" in space_index and space_index["battery"] is not None:
             battery_data = space_index["battery"]
             if battery_data.get("deviceStatus") != "NotExist":
                 family_data["average_battery_level"] = battery_data.get("batteryLevel")
@@ -170,14 +170,14 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
                     family_data[f"battery_heater_{idx}"] = status
 
         # Meter data
-        if "eleMeter" in space_index:
+        if "eleMeter" in space_index and space_index["eleMeter"] is not None:
             meter_data = space_index["eleMeter"]
             if meter_data.get("deviceStatus") != "NotExist":
                 family_data["meter_device_status"] = meter_data.get("deviceStatus")
                 family_data["total_ac_power"] = meter_data.get("totalAcPower")
 
         # Inverter data
-        if "inverter" in space_index:
+        if "inverter" in space_index and space_index["inverter"] is not None:
             inverter_data = space_index["inverter"]
             if inverter_data.get("deviceStatus") != "NotExist":
                 family_data["inverter_device_status"] = inverter_data.get(
@@ -188,7 +188,7 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
                 )
 
         # Boost settings
-        if "boostSetting" in space_index:
+        if "boostSetting" in space_index and space_index["boostSetting"] is not None:
             boost_data = space_index["boostSetting"]
             family_data["boost_mode_enabled"] = boost_data.get("isOn", False)
             family_data["boost_mode_switching"] = boost_data.get("switching", False)
