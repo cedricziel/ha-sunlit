@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.3](https://github.com/cedricziel/ha-sunlit/compare/v1.3.2...v1.3.3) (2025-11-21)
+
+
+### Bug Fixes
+
+* correct battery module capacity sensor key matching ([#75](https://github.com/cedricziel/ha-sunlit/issues/75)) ([4a2f9ba](https://github.com/cedricziel/ha-sunlit/commit/4a2f9ba375e79c114e5783b74c39f92d69054e24))
+
 ## [1.3.2](https://github.com/cedricziel/ha-sunlit/compare/v1.3.1...v1.3.2) (2025-11-20)
 
 
