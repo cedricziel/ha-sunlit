@@ -55,7 +55,7 @@ class SunlitBatteryModuleSensor(CoordinatorEntity, SensorEntity):
     def native_value(self) -> Any:
         """Return the state of the sensor."""
         # Special handling for static battery module capacity
-        if self.entity_description.key == "capacity":
+        if self.entity_description.key.endswith("capacity"):
             return 2.15  # kWh nominal capacity for B215 module
 
         # Handle MPPT energy values from MPPT coordinator
