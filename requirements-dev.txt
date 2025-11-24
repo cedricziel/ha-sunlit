@@ -7,9 +7,9 @@ aioresponses
 pytest-homeassistant-custom-component
 
 # Linting and formatting
-ruff==0.14.5
+ruff==0.14.6
 black==25.11.0
 isort==7.0.0
 
 # Pre-commit hooks
-pre-commit==4.4.0
+pre-commit==4.5.0
