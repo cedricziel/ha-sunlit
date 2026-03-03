@@ -7,7 +7,7 @@ aioresponses
 pytest-homeassistant-custom-component
 
 # Linting and formatting
-ruff==0.14.13
+ruff==0.15.4
 black==25.11.0
 isort==7.0.0
 
