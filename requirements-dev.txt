@@ -12,4 +12,4 @@ black==26.3.1
 isort==8.0.1
 
 # Pre-commit hooks
-pre-commit==4.5.1
+pre-commit==4.6.0
