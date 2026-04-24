@@ -3,6 +3,6 @@ colorlog==6.10.1
 homeassistant==2026.2.3
 pip>=26.0.1
 xmltodict>=1.0.4
-charset_normalizer>=3.2.0
+charset_normalizer>=3.4.7
 pycountry>=26.2.16
 aiohttp>=3.8.0
