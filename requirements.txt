@@ -1,6 +1,6 @@
 # Home Assistant Core
 colorlog==6.10.1
-homeassistant==2026.2.3
+homeassistant==2026.4.3
 pip>=26.0.1
 xmltodict>=1.0.4
 charset_normalizer>=3.4.7
