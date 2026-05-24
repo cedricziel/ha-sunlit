@@ -37,6 +37,17 @@ async def test_family_coordinator_update_success(
         "aioUpsEnabled": False,
         "deviceModel": "BK_215",
     }
+    api_client.fetch_tariff_index.return_value = {
+        "rabotHasContract": True,
+        "rabotHourPriceDTO": {
+            "priceInCentPerKwh": -0.2,
+            "avgPriceInCentPerKwh": 6.67,
+            "highestPriceInCentPerKwh": 15.32,
+            "lowestPriceInCentPerKwh": -7.59,
+            "priceTag": "CHEAP",
+            "hour": 16,
+        },
+    }
 
     coordinator = SunlitFamilyCoordinator(
         hass,
@@ -78,10 +89,19 @@ async def test_family_coordinator_update_success(
     assert family_data["aio_local_mode_enabled"] is False
     assert family_data["aio_ups_enabled"] is False
 
+    # Check dynamic tariff / pricing
+    assert family_data["rabot_has_contract"] is True
+    assert family_data["electricity_price"] == -0.2
+    assert family_data["electricity_price_avg"] == 6.67
+    assert family_data["electricity_price_high"] == 15.32
+    assert family_data["electricity_price_low"] == -7.59
+    assert family_data["electricity_price_tag"] == "CHEAP"
+
     # Verify API calls
     api_client.fetch_space_index.assert_called_once_with("34038")
     api_client.fetch_space_soc.assert_called_once_with("34038")
     api_client.fetch_space_statistics_static.assert_called_once_with("34038")
+    api_client.fetch_tariff_index.assert_called_once_with("34038")
     api_client.fetch_strategy_device_status.assert_called_once_with("34038")
     api_client.fetch_space_current_strategy.assert_called_once_with("34038")
     api_client.get_charging_box_strategy.assert_called_once_with("34038")
@@ -98,6 +118,7 @@ async def test_family_coordinator_partial_failure(
     api_client.fetch_space_soc.side_effect = Exception("SOC API failed")
     api_client.fetch_space_statistics_static.side_effect = Exception("Stats API failed")
     api_client.fetch_strategy_device_status.side_effect = Exception("Status API failed")
+    api_client.fetch_tariff_index.side_effect = Exception("Tariff API failed")
     api_client.fetch_space_current_strategy.side_effect = Exception("Strategy API failed")
     api_client.get_charging_box_strategy.side_effect = Exception("Charging box API failed")
 
@@ -120,11 +141,12 @@ async def test_family_coordinator_partial_failure(
     assert family_data["average_battery_level"] == 85
     assert family_data["total_ac_power"] == 1500  # From meter data
 
-    # Should not have SOC, strategy, lifetime-stats, or device-status data
+    # Should not have SOC, strategy, lifetime-stats, device-status, or tariff data
     assert "hw_soc_min" not in family_data
     assert "battery_strategy" not in family_data
     assert "lifetime_yield" not in family_data
     assert "battery_local_mode_enabled" not in family_data
+    assert "electricity_price" not in family_data
 
 
 async def test_family_coordinator_complete_failure(
@@ -138,6 +160,7 @@ async def test_family_coordinator_complete_failure(
     api_client.fetch_space_soc.side_effect = Exception("SOC API failed")
     api_client.fetch_space_statistics_static.side_effect = Exception("Stats API failed")
     api_client.fetch_strategy_device_status.side_effect = Exception("Status API failed")
+    api_client.fetch_tariff_index.side_effect = Exception("Tariff API failed")
     api_client.fetch_space_current_strategy.side_effect = Exception("Strategy API failed")
     api_client.get_charging_box_strategy.side_effect = Exception("Charging box API failed")
 

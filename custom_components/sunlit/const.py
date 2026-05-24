@@ -31,6 +31,7 @@ API_SPACE_STATISTICS_STATIC = "/v1.1/space/statistics/static"
 API_CHARGING_BOX_CHECK_STRATEGY = "/v1.6/chargingBox/checkSpaceStrategy"
 API_BATTERY_LOCAL_MODE_CONFIG = "/v1.7/battery/updateLocalModeConfig"
 API_STRATEGY_DEVICE_STATUS = "/v1.7/strategy/device/status"
+API_TARIFF_INDEX = "/v1.6/tariff/index"
 
 # Configuration keys
 CONF_EMAIL = "email"
@@ -173,6 +174,12 @@ FAMILY_SENSORS = {
     # Lifetime totals from space/statistics/static endpoint
     "lifetime_yield": "Lifetime Yield",
     "lifetime_earnings": "Lifetime Earnings",
+    # Dynamic electricity tariff from tariff/index endpoint (Rabot)
+    "electricity_price": "Electricity Price",
+    "electricity_price_avg": "Electricity Price Average",
+    "electricity_price_high": "Electricity Price High",
+    "electricity_price_low": "Electricity Price Low",
+    "electricity_price_tag": "Electricity Price Tag",
     # Total solar production tracking
     "total_solar_energy": "Total Solar Energy",
     "total_solar_power": "Total Solar Power",
@@ -270,4 +277,9 @@ SENSOR_GROUPS = {
     # Group 7: Financial Tracking - Earnings and revenue sensors
     "daily_earnings": SENSOR_GROUP_FINANCIAL,
     "lifetime_earnings": SENSOR_GROUP_FINANCIAL,
+    "electricity_price": SENSOR_GROUP_FINANCIAL,
+    "electricity_price_avg": SENSOR_GROUP_FINANCIAL,
+    "electricity_price_high": SENSOR_GROUP_FINANCIAL,
+    "electricity_price_low": SENSOR_GROUP_FINANCIAL,
+    "electricity_price_tag": SENSOR_GROUP_FINANCIAL,
 }

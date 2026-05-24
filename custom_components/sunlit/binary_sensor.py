@@ -109,6 +109,12 @@ FAMILY_BINARY_SENSORS = {
         "device_class": None,
         "icon": "mdi:power-plug-battery",
     },
+    # Dynamic tariff status from tariff/index endpoint
+    "rabot_has_contract": {
+        "name": "Rabot Contract",
+        "device_class": None,
+        "icon": "mdi:file-document-check",
+    },
 }
 
 DEVICE_BINARY_SENSORS = {

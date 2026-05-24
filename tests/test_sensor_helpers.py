@@ -355,3 +355,30 @@ class TestLifetimeStatsSensors:
         assert get_state_class_for_sensor("lifetime_earnings") == SensorStateClass.TOTAL
         assert get_unit_for_sensor("lifetime_earnings") == "EUR"
         assert get_icon_for_sensor("lifetime_earnings") == "mdi:cash"
+
+
+class TestElectricityPriceSensors:
+    """Test classification of dynamic tariff price sensors (issue #154)."""
+
+    @pytest.mark.parametrize(
+        "key",
+        [
+            "electricity_price",
+            "electricity_price_avg",
+            "electricity_price_high",
+            "electricity_price_low",
+        ],
+    )
+    def test_numeric_price(self, key):
+        """Numeric price sensors are ct/kWh measurements with no device class."""
+        assert get_device_class_for_sensor(key) is None
+        assert get_state_class_for_sensor(key) == SensorStateClass.MEASUREMENT
+        assert get_unit_for_sensor(key) == "ct/kWh"
+        assert get_icon_for_sensor(key) == "mdi:cash-multiple"
+
+    def test_price_tag(self):
+        """The price tag is a plain text sensor."""
+        assert get_device_class_for_sensor("electricity_price_tag") is None
+        assert get_state_class_for_sensor("electricity_price_tag") is None
+        assert get_unit_for_sensor("electricity_price_tag") is None
+        assert get_icon_for_sensor("electricity_price_tag") == "mdi:tag-outline"
