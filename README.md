@@ -1,15 +1,20 @@
-# Sunlit Solar - HomeAssistant Integration
+# SunEnergyXT (previously Sunlit Solar) - HomeAssistant Integration
+
+> ℹ️ **[SunEnergyXT](https://www.sunenergyxt.com/) was previously branded Sunlit / Sunlit Solar.**
+> The hardware (BK215 battery, inverters, meters) and the underlying cloud API are
+> unchanged. This integration works with both the new **SunEnergyXT** and the legacy
+> **Sunlit** / **Sunlit Solar** branding and apps.
 
 > ⚠️ **EXPERIMENTAL INTEGRATION - USE AT YOUR OWN RISK**
 >
-> This is an **unofficial** custom integration for HomeAssistant to monitor Sunlit Solar systems.
-> This integration is not affiliated with, endorsed by, or supported by Sunlit.
+> This is an **unofficial** custom integration for HomeAssistant to monitor SunEnergyXT (previously Sunlit Solar) systems.
+> This integration is not affiliated with, endorsed by, or supported by SunEnergyXT / Sunlit.
 >
 > **No warranty or support is provided. Use of this integration is entirely at your own risk.**
 
 ## Overview
 
-This custom integration connects HomeAssistant to the Sunlit Solar API, enabling real-time monitoring of your solar installation including solar panels, inverters, batteries, and energy meters. It provides comprehensive sensor data for monitoring energy production, consumption, and battery status.
+This custom integration connects HomeAssistant to the SunEnergyXT (previously Sunlit Solar) API, enabling real-time monitoring of your solar installation including solar panels, inverters, batteries, and energy meters. It provides comprehensive sensor data for monitoring energy production, consumption, and battery status.
 
 ### Key Features
 
