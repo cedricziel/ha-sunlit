@@ -1,0 +1,38 @@
+[
+  {
+    "id": 10001,
+    "name": "REDACTED",
+    "address": "REDACTED",
+    "deviceCount": 2,
+    "countryCode": "DE",
+    "price": {
+      "electricPrice": 0.3,
+      "startTimestamp": 1743292800000,
+      "currency": "EUR"
+    },
+    "rabotOnboarding": null,
+    "rabotCustomerId": null,
+    "spaceType": null,
+    "evStrategyEnabled": false,
+    "tarrifStrategyEnabled": false,
+    "remindWhileBoostOn": false
+  },
+  {
+    "id": 10002,
+    "name": "REDACTED",
+    "address": "REDACTED",
+    "deviceCount": 0,
+    "countryCode": "DE",
+    "price": {
+      "electricPrice": 0.28,
+      "startTimestamp": 1741651200000,
+      "currency": "EUR"
+    },
+    "rabotOnboarding": null,
+    "rabotCustomerId": null,
+    "spaceType": null,
+    "evStrategyEnabled": false,
+    "tarrifStrategyEnabled": false,
+    "remindWhileBoostOn": false
+  }
+]

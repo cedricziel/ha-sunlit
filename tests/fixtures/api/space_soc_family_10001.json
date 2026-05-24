@@ -1,0 +1,12 @@
+{
+  "hwSupportOnePercentage": true,
+  "hwSbmsLimitedDiscSocMin": 10.0,
+  "hwSbmsLimitedChgSocMax": 90.0,
+  "batteryBmsDiscSocMin": 10,
+  "batteryBmsChgSocMax": 100,
+  "strategySocMax": null,
+  "strategySocMin": null,
+  "haDodMinSoc": null,
+  "evDodMinSoc": null,
+  "chgDodMaxSoc": null
+}
