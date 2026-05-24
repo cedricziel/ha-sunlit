@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/cedricziel/ha-sunlit/compare/v1.5.1...v1.6.0) (2026-05-24)
+
+
+### Features
+
+* **api:** migrate base URL to api.sunenergyxt.com and refresh API spec ([#153](https://github.com/cedricziel/ha-sunlit/issues/153)) ([4705847](https://github.com/cedricziel/ha-sunlit/commit/47058478395e0fcb7a9224d512fbc79158183488))
+* discover BK215 batteries via zeroconf ([#151](https://github.com/cedricziel/ha-sunlit/issues/151)) ([67de73f](https://github.com/cedricziel/ha-sunlit/commit/67de73fffaf957e807bf1c0c88e72cfa15f1ab3c))
+
 ## [1.5.1](https://github.com/cedricziel/ha-sunlit/compare/v1.5.0...v1.5.1) (2026-05-24)
 
 
