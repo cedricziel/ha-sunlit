@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/cedricziel/ha-sunlit/compare/v1.4.0...v1.4.1) (2026-05-24)
+
+
+### Bug Fixes
+
+* remove unsupported account-wide device listing ([#95](https://github.com/cedricziel/ha-sunlit/issues/95)) ([#141](https://github.com/cedricziel/ha-sunlit/issues/141)) ([c1297eb](https://github.com/cedricziel/ha-sunlit/commit/c1297eb9989d177fb027bab53480e6884c78bb7a))
+
 ## [1.4.0](https://github.com/cedricziel/ha-sunlit/compare/v1.3.3...v1.4.0) (2026-05-24)
 
 
