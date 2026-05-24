@@ -1225,23 +1225,34 @@ components:
               $ref: "#/components/schemas/BatteryStatistics"
 
     BatteryIOPowerResponse:
-      type: object
-      description: Battery I/O power response (different format - no ApiResponse wrapper)
-      properties:
-        result:
-          type: integer
-          description: Result code (1 = success)
-          example: 1
-        inputPower:
-          type: array
-          items:
-            type: number
-          description: Array of input power values (288 values for 5-minute intervals over 24 hours)
-        outputPower:
-          type: array
-          items:
-            type: number
-          description: Array of output power values (288 values for 5-minute intervals over 24 hours)
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              properties:
+                powerList:
+                  type: array
+                  description: >-
+                    Intraday battery input/output power samples (~2-minute
+                    cadence; ~400 entries over a full day). Verified live
+                    2026-05 against api.sunenergyxt.com.
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                        description: Sample time (HH:MM)
+                        example: "00:01"
+                      batteryInputPower:
+                        type: number
+                        description: Battery input (charging) power in watts
+                        example: 0.0
+                      batteryOutputPower:
+                        type: number
+                        description: Battery output (discharging) power in watts
+                        example: 32.0
 
     SpaceSOCResponse:
       allOf:
@@ -1409,17 +1420,50 @@ components:
           example: []
 
     StrategyHistoryResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/PaginatedStrategyHistory"
+
+    PaginatedStrategyHistory:
       type: object
-      description: Strategy history response (different format - no ApiResponse wrapper)
+      description: Paginated strategy change history (Spring Data Page shape)
       properties:
-        result:
-          type: integer
-          description: Result code (1 = success)
-          example: 1
-        history:
+        content:
           type: array
           items:
             $ref: "#/components/schemas/StrategyHistoryEntry"
+          description: Strategy history entries for this page
+        pageable:
+          $ref: "#/components/schemas/Pageable"
+        totalPages:
+          type: integer
+          example: 1
+        totalElements:
+          type: integer
+          example: 1
+        last:
+          type: boolean
+          example: true
+        number:
+          type: integer
+          example: 0
+        sort:
+          $ref: "#/components/schemas/Sort"
+        numberOfElements:
+          type: integer
+          example: 1
+        first:
+          type: boolean
+          example: true
+        size:
+          type: integer
+          example: 20
+        empty:
+          type: boolean
+          example: false
 
     ChargingBoxStrategyResponse:
       allOf:
@@ -2661,31 +2705,88 @@ components:
 
     StrategyHistoryEntry:
       type: object
+      description: A single strategy change history entry
       properties:
+        strategyHistoryId:
+          type: integer
+          example: 1748547
         modifyDate:
           type: integer
-          description: Modification timestamp (milliseconds)
-          example: 1609459200000
+          description: Timestamp of the strategy change (milliseconds)
+          example: 1768812894000
         strategy:
           type: string
-          description: Strategy name
-          example: "Time of Use"
-        status:
-          type: string
-          description: Strategy status
-          example: "SUCCESS"
+          description: Strategy type
+          example: "EnergyStorageOnly"
         smartStrategyMode:
-          type: string
-          description: Smart strategy mode
-          example: "AUTO"
-        socMin:
-          type: number
-          description: Minimum SOC setting
-          example: 20
+          type: ["string", "null"]
+          example: null
+        smartStrategyFullMode:
+          type: ["string", "null"]
+          example: null
+        status:
+          type: ["string", "null"]
+          example: "Success"
+        inverterStatus:
+          type: ["string", "null"]
+          example: "Success"
+        modifiedOutPutPower:
+          type: ["number", "null"]
+          description: Modified inverter output power in watts
+          example: 30.0
+        defaultExpectInverterOutput:
+          type: ["number", "null"]
+          example: 30.0
+        batteryStatus:
+          type: ["string", "null"]
+          example: "Success"
         socMax:
-          type: number
-          description: Maximum SOC setting
-          example: 90
+          type: ["integer", "null"]
+          description: Maximum SOC setting at time of change
+          example: 100
+        socMin:
+          type: ["integer", "null"]
+          description: Minimum SOC setting at time of change
+          example: 97
+        powerPercentage:
+          type: ["integer", "null"]
+          example: 1
+        smartStrategyMaxOutputPower:
+          type: ["number", "null"]
+          example: null
+        periodStrategyList:
+          type: array
+          description: Time-period sub-strategies (shape not yet observed)
+          items:
+            type: object
+          example: []
+        priceTag:
+          type: ["string", "null"]
+          example: null
+        executeTimeStart:
+          type: ["string", "null"]
+          description: Execution window start (HH:MM)
+          example: "09:00"
+        executeTimeEnd:
+          type: ["string", "null"]
+          description: Execution window end (HH:MM)
+          example: "10:00"
+        smartStrategyVersion:
+          type: ["string", "null"]
+          example: null
+        gridChargingEnabled:
+          type: ["boolean", "null"]
+          example: false
+        chargingPower:
+          type: ["number", "null"]
+          example: null
+        acCoupleEnabled:
+          type: ["boolean", "null"]
+          example: null
+        isAio:
+          type: ["boolean", "null"]
+          description: Whether the entry applies to an all-in-one (AIO) device
+          example: false
 
     MpptData:
       type: object
