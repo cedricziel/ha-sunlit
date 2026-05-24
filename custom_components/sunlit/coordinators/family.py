@@ -104,6 +104,9 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
             # Fetch SOC limits
             await self._fetch_soc_limits(family_data)
 
+            # Fetch lifetime yield & earnings totals
+            await self._fetch_lifetime_statistics(family_data)
+
             # Fetch current strategy
             await self._fetch_current_strategy(family_data)
 
@@ -190,6 +193,20 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
                 family_data["strategy_soc_max"] = space_soc.get("strategySocMax")
         except Exception as err:
             _LOGGER.debug("Could not fetch space SOC data: %s", err)
+
+    async def _fetch_lifetime_statistics(self, family_data: dict) -> None:
+        """Fetch lifetime yield and earnings totals."""
+        try:
+            stats = await self.api_client.fetch_space_statistics_static(self.family_id)
+            if stats:
+                family_data["lifetime_yield"] = stats.get("totalYield")
+                earnings = stats.get("totalEarnings") or {}
+                family_data["lifetime_earnings"] = earnings.get("earnings")
+                # Fall back to the lifetime payload's currency if space/index
+                # did not already provide one.
+                family_data.setdefault("currency", earnings.get("currency", "EUR"))
+        except Exception as err:
+            _LOGGER.debug("Could not fetch lifetime statistics: %s", err)
 
     async def _fetch_current_strategy(self, family_data: dict) -> None:
         """Fetch current strategy."""

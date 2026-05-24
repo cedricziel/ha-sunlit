@@ -30,11 +30,11 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
         or "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
         or key == "total_solar_energy"
         or key in ["total_grid_export_energy", "daily_grid_export_energy"]
-        or key == "daily_yield"
+        or key in ["daily_yield", "lifetime_yield"]
     ):
         return SensorDeviceClass.ENERGY
-    # Daily earnings is monetary
-    elif key == "daily_earnings":
+    # Earnings are monetary
+    elif key in ["daily_earnings", "lifetime_earnings"]:
         return SensorDeviceClass.MONETARY
     # Home power
     elif key == "home_power":
@@ -73,14 +73,16 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     # Lifetime cumulative energy sensors (never reset)
     elif (
         key == "total_yield"
+        or key == "lifetime_yield"
         or "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
         or key == "total_solar_energy"
         or key == "total_grid_export_energy"
     ):
         return SensorStateClass.TOTAL_INCREASING
-    # Daily energy sensors (reset at midnight)
-    # total_power_generation is actually today's daily generation despite the misleading name
-    elif (
+    # TOTAL state class: daily counters that reset at midnight, plus
+    # lifetime_earnings (cumulative monetary value, TOTAL per HA convention).
+    # total_power_generation is actually today's daily generation.
+    elif key == "lifetime_earnings" or (
         key == "total_power_generation"
         or key == "daily_grid_export_energy"
         or key == "daily_yield"
@@ -121,7 +123,7 @@ def get_unit_for_sensor(key: str) -> str | None:
         or "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
         or key == "total_solar_energy"
         or key in ["total_grid_export_energy", "daily_grid_export_energy"]
-        or key == "daily_yield"
+        or key in ["daily_yield", "lifetime_yield"]
         or key in ["total_power_generation", "total_yield"]
     ):
         return UnitOfEnergy.KILO_WATT_HOUR
@@ -257,8 +259,8 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     # Earnings
     elif "earnings" in key:
         return "mdi:cash"
-    # Daily yield
-    elif key == "daily_yield":
+    # Yield (daily / lifetime)
+    elif key in ("daily_yield", "lifetime_yield"):
         return "mdi:solar-power-variant"
     # Home power
     elif key == "home_power":
