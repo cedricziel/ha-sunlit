@@ -176,6 +176,45 @@ async def test_family_coordinator_complete_failure(
     assert data == {"family": {}}
 
 
+async def test_family_coordinator_null_heater_status(
+    hass: HomeAssistant,
+    enable_custom_integrations,
+):
+    """A null heaterStatusList must not crash the coordinator (regression).
+
+    The API can return ``"heaterStatusList": null``; iterating it directly
+    raised 'NoneType' object is not iterable and failed the whole family.
+    """
+    api_client = AsyncMock()
+    api_client.fetch_space_index.return_value = {
+        "battery": {
+            "deviceStatus": "Online",
+            "batteryLevel": 80,
+            "heaterStatusList": None,
+        },
+    }
+    # Keep this test focused on _process_space_index; skip the rest.
+    for method in (
+        "fetch_device_list",
+        "fetch_space_soc",
+        "fetch_space_statistics_static",
+        "fetch_strategy_device_status",
+        "fetch_tariff_index",
+        "fetch_space_current_strategy",
+        "get_charging_box_strategy",
+    ):
+        getattr(api_client, method).side_effect = Exception("skip")
+
+    coordinator = SunlitFamilyCoordinator(hass, api_client, "34038", "Test Family")
+
+    # Must not raise UpdateFailed.
+    data = await coordinator._async_update_data()
+
+    family_data = data["family"]
+    assert family_data["average_battery_level"] == 80
+    assert "battery_heater_1" not in family_data
+
+
 # Tests for Issue #62 - Negative daily value validation
 async def test_family_coordinator_negative_daily_yield_clamped(
     hass: HomeAssistant,
