@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/cedricziel/ha-sunlit/compare/v1.7.0...v1.8.0) (2026-05-24)
+
+
+### Features
+
+* **sensors:** add energy self-use & self-sufficiency rates ([#168](https://github.com/cedricziel/ha-sunlit/issues/168)) ([#181](https://github.com/cedricziel/ha-sunlit/issues/181)) ([d2a0012](https://github.com/cedricziel/ha-sunlit/commit/d2a00128527ca5dc21d4c7c39817b8f55fbace3d))
+
+
+### Bug Fixes
+
+* tolerate null heaterStatusList in family coordinator ([#182](https://github.com/cedricziel/ha-sunlit/issues/182)) ([4f0a77e](https://github.com/cedricziel/ha-sunlit/commit/4f0a77eb89654f8f54350e4858a9767419f43414))
+
 ## [1.7.0](https://github.com/cedricziel/ha-sunlit/compare/v1.6.0...v1.7.0) (2026-05-24)
 
 
