@@ -357,6 +357,32 @@ class TestLifetimeStatsSensors:
         assert get_icon_for_sensor("lifetime_earnings") == "mdi:cash"
 
 
+class TestStoredEnergySensors:
+    """Test classification of battery stored-energy sensors (issue #190)."""
+
+    @pytest.mark.parametrize(
+        "key",
+        ["stored_energy", "total_stored_energy", "battery1StoredEnergy"],
+    )
+    def test_stored_energy_classification(self, key):
+        """Stored energy is ENERGY_STORAGE / MEASUREMENT / kWh."""
+        assert (
+            get_device_class_for_sensor(key) == SensorDeviceClass.ENERGY_STORAGE
+        ), f"Failed device_class for {key}"
+        assert (
+            get_state_class_for_sensor(key) == SensorStateClass.MEASUREMENT
+        ), f"Failed state_class for {key}"
+        assert (
+            get_unit_for_sensor(key) == UnitOfEnergy.KILO_WATT_HOUR
+        ), f"Failed unit for {key}"
+
+    def test_stored_energy_not_total_increasing(self):
+        """Regression: stored energy must not be classified as a meter."""
+        assert get_state_class_for_sensor("stored_energy") != (
+            SensorStateClass.TOTAL_INCREASING
+        )
+
+
 class TestElectricityPriceSensors:
     """Test classification of dynamic tariff price sensors (issue #154)."""
 

@@ -103,6 +103,9 @@ async def test_family_coordinator_update_success(
     assert family_data["total_input_power"] == 500
     assert family_data["total_output_power"] == 0
 
+    # Total stored energy (issue #190): avg SOC x batteryCount x 2.15 kWh
+    assert family_data["total_stored_energy"] == round(85 / 100 * 1 * 2.15, 3)
+
     # Check SOC limits
     assert family_data["hw_soc_min"] == 10
     assert family_data["hw_soc_max"] == 95

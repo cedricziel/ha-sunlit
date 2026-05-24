@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from ..api_client import SunlitApiClient
-from ..const import DEFAULT_SCAN_INTERVAL
+from ..const import BATTERY_MODULE_CAPACITY_KWH, DEFAULT_SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -153,6 +153,15 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
             if battery_data.get("deviceStatus") != "NotExist":
                 family_data["average_battery_level"] = battery_data.get("batteryLevel")
                 family_data["battery_count"] = battery_data.get("batteryCount")
+                # Total stored energy (ENERGY_STORAGE) = average SOC x pack
+                # capacity, where batteryCount is the number of 2.15 kWh units
+                # (BK215 head unit + B215 modules).
+                level = battery_data.get("batteryLevel")
+                count = battery_data.get("batteryCount")
+                if level is not None and count:
+                    family_data["total_stored_energy"] = round(
+                        level / 100 * count * BATTERY_MODULE_CAPACITY_KWH, 3
+                    )
                 family_data["battery_bypass"] = battery_data.get("bypass", False)
                 family_data["battery_charging_remaining"] = battery_data.get(
                     "chargingRemaining"

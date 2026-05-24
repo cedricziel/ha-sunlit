@@ -104,6 +104,7 @@ The integration will create devices, sensors, and controls automatically based o
 | `offline_devices`           | Number of offline devices         | count    | 30s    |
 | `total_ac_power`            | Combined AC power from all meters | W        | 30s    |
 | `average_battery_level`     | Average SOC across all batteries  | %        | 30s    |
+| `total_stored_energy`       | Energy stored in the battery pack (SOC × capacity) | kWh | 30s |
 | `total_input_power`         | Total battery charging power      | W        | 30s    |
 | `total_output_power`        | Total battery discharging power   | W        | 30s    |
 | `inverter_current_power`    | Inverter output power             | W        | 30s    |
@@ -183,6 +184,7 @@ The integration will create devices, sensors, and controls automatically based o
 | --------------------- | --------------------------- | ------- |
 | `battery_level`       | Current state of charge     | %       |
 | `batterySoc`          | System battery SOC          | %       |
+| `stored_energy`       | Energy stored in the pack (SOC × capacity, `ENERGY_STORAGE`) | kWh |
 | `input_power_total`   | Current charging power      | W       |
 | `output_power_total`  | Current discharging power   | W       |
 | `chargeRemaining`     | Time until fully charged    | minutes |
@@ -210,6 +212,7 @@ For modular battery systems with B215 extension modules, each additional battery
 | `Mppt1InPower` | Module MPPT power      | W    |
 | `Mppt1Energy`  | Module MPPT total energy | kWh |
 | `capacity`     | Nominal capacity (2.15 kWh) | kWh |
+| `StoredEnergy` | Energy stored in the module (SOC × 2.15 kWh, `ENERGY_STORAGE`) | kWh |
 
 ### Binary Sensors
 

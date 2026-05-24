@@ -24,6 +24,10 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
         or key == "battery_full"
     ):
         return None
+    # Stored energy: current energy in the battery (kWh). Must precede the
+    # generic "energy"/"battery" checks so it is not mis-classified as ENERGY.
+    elif "storedenergy" in key.lower().replace("_", ""):
+        return SensorDeviceClass.ENERGY_STORAGE
     # Battery capacity
     elif (
         "capacity" in key.lower()
@@ -67,6 +71,9 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
 
 def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     """Get the appropriate state class for a sensor."""
+    # Stored energy fluctuates (rises and falls) -> MEASUREMENT, never TOTAL*.
+    if "storedenergy" in key.lower().replace("_", ""):
+        return SensorStateClass.MEASUREMENT
     # Static configuration values don't need state class
     if key in ["rated_power", "max_output_power", "currency", "battery_count"]:
         return None
@@ -123,6 +130,9 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
 
 def get_unit_for_sensor(key: str) -> str | None:
     """Get the appropriate unit for a sensor."""
+    # Stored energy (kWh)
+    if "storedenergy" in key.lower().replace("_", ""):
+        return UnitOfEnergy.KILO_WATT_HOUR
     # Battery capacity
     if (
         "capacity" in key.lower()
@@ -211,6 +221,9 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     # Grid export tracking
     elif key == "total_grid_export_energy" or key == "daily_grid_export_energy":
         return "mdi:transmission-tower-export"
+    # Stored energy (before generic battery icons)
+    elif "storedenergy" in key.lower().replace("_", ""):
+        return "mdi:home-battery"
     # Battery related
     elif "battery_full" in key:
         return "mdi:battery-check"

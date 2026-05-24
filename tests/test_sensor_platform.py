@@ -604,9 +604,22 @@ async def test_battery_device_sensor_creation(
     (assert_sensors(sensors)
      .for_device("battery_001")
      .excluding_modules()
-     .where_key_matches(lambda k: "energy" in k.lower() or k == "battery_capacity")
+     .where_key_matches(
+         lambda k: ("energy" in k.lower() and "stored" not in k.lower())
+         or k == "battery_capacity"
+     )
      .matches_pattern(
          device_class=SensorDeviceClass.ENERGY,
+         unit=UnitOfEnergy.KILO_WATT_HOUR
+     ))
+
+    # Stored energy is ENERGY_STORAGE (the battery level), not ENERGY (issue #190)
+    (assert_sensors(sensors)
+     .for_device("battery_001")
+     .excluding_modules()
+     .where_key("stored_energy")
+     .matches_pattern(
+         device_class=SensorDeviceClass.ENERGY_STORAGE,
          unit=UnitOfEnergy.KILO_WATT_HOUR
      ))
 
@@ -771,6 +784,16 @@ async def test_battery_module_sensor_creation(
                 assert (
                     sensor.entity_description.native_unit_of_measurement
                     == UnitOfPower.WATT
+                )
+            elif "StoredEnergy" in key:
+                # Battery level (issue #190) — ENERGY_STORAGE, not ENERGY.
+                assert (
+                    sensor.entity_description.device_class
+                    == SensorDeviceClass.ENERGY_STORAGE
+                )
+                assert (
+                    sensor.entity_description.native_unit_of_measurement
+                    == UnitOfEnergy.KILO_WATT_HOUR
                 )
             elif "Energy" in key or "capacity" in key:
                 assert (
@@ -1207,6 +1230,16 @@ async def test_battery_module_sensor_creation(
                 assert (
                     sensor.entity_description.native_unit_of_measurement
                     == UnitOfPower.WATT
+                )
+            elif "StoredEnergy" in key:
+                # Battery level (issue #190) — ENERGY_STORAGE, not ENERGY.
+                assert (
+                    sensor.entity_description.device_class
+                    == SensorDeviceClass.ENERGY_STORAGE
+                )
+                assert (
+                    sensor.entity_description.native_unit_of_measurement
+                    == UnitOfEnergy.KILO_WATT_HOUR
                 )
             elif "Energy" in key or "capacity" in key:
                 assert (
