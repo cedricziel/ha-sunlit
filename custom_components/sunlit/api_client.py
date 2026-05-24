@@ -20,6 +20,7 @@ from .const import (
     API_SPACE_CURRENT_STRATEGY,
     API_SPACE_INDEX,
     API_SPACE_SOC,
+    API_SPACE_STATISTICS_DYNAMIC_ENERGY,
     API_SPACE_STATISTICS_STATIC,
     API_SPACE_STRATEGY_HISTORY,
     API_STRATEGY_DEVICE_STATUS,
@@ -572,6 +573,60 @@ class SunlitApiClient:
         except SunlitApiError as err:
             _LOGGER.error(
                 "Failed to fetch lifetime statistics for space %s: %s", space_id, err
+            )
+            raise
+
+    async def fetch_space_statistics_dynamic_energy(
+        self,
+        space_id: str | int,
+        year: int | None = None,
+        month: int | None = None,
+    ) -> dict[str, Any]:
+        """Fetch energy distribution & self-consumption for a space.
+
+        Granularity follows the optional year/month (see openapi.yaml). With
+        no year/month the response is all-time per-year buckets.
+
+        Args:
+            space_id: The space/family ID
+            year: Optional year (selects per-month or, with month, per-day)
+            month: Optional month 1-12 (requires year; yields per-day)
+
+        Returns:
+            Dictionary containing:
+            - totalSelfUseRate, selfSufficiencyRate (0-1 ratios)
+            - totalYield, totalConsumption, totalEnergyFromPv
+            - energyDistributions: per-bucket list
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload: dict[str, Any] = {"spaceId": int(space_id)}
+            if year is not None:
+                payload["year"] = int(year)
+            if month is not None:
+                payload["month"] = int(month)
+            response = await self._make_request(
+                "POST", API_SPACE_STATISTICS_DYNAMIC_ENERGY, json=payload
+            )
+
+            _LOGGER.debug(
+                "Space dynamic energy response for %s: %s", space_id, response
+            )
+
+            if "content" in response:
+                return response["content"]
+
+            return {}
+
+        except SunlitApiError as err:
+            _LOGGER.error(
+                "Failed to fetch energy distribution for space %s: %s",
+                space_id,
+                err,
             )
             raise
 

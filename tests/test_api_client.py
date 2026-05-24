@@ -391,6 +391,38 @@ async def test_fetch_space_statistics_static_success(api_client, mock_session):
 
 
 @pytest.mark.asyncio
+async def test_fetch_space_statistics_dynamic_energy_success(api_client, mock_session):
+    """Test fetching energy distribution / self-consumption rates."""
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "message": {"DE": "Ok"},
+            "content": {
+                "totalYield": 29.435,
+                "totalConsumption": 0,
+                "totalSelfUseRate": 1.0,
+                "selfSufficiencyRate": 0.85,
+                "energyDistributions": [{"key": 1, "yield": 1.231}],
+            },
+        },
+    )
+
+    data = await api_client.fetch_space_statistics_dynamic_energy(34038, year=2026, month=5)
+
+    assert data["totalSelfUseRate"] == 1.0
+    assert data["selfSufficiencyRate"] == 0.85
+
+    mock_session.request.assert_called_once()
+    call_args = mock_session.request.call_args
+    assert call_args[0][0] == "POST"
+    assert "/v1.1/space/statistics/dynamic/energy" in call_args[0][1]
+    assert call_args[1]["json"] == {"spaceId": 34038, "year": 2026, "month": 5}
+    assert call_args[1]["headers"]["Authorization"] == "Bearer test_token"
+
+
+@pytest.mark.asyncio
 async def test_update_battery_local_mode_success(api_client, mock_session):
     """Test enabling/disabling battery local mode (control endpoint)."""
     setup_mock_response(

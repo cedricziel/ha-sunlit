@@ -114,6 +114,8 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
         "electricity_price_avg",
         "electricity_price_high",
         "electricity_price_low",
+        "self_use_rate",
+        "self_sufficiency_rate",
     ]:
         return SensorStateClass.MEASUREMENT
     return None
@@ -160,7 +162,7 @@ def get_unit_for_sensor(key: str) -> str | None:
         return UnitOfEnergy.KILO_WATT_HOUR
     elif (
         "soc" in key.lower() or "battery_level" in key or "average_battery_level" in key
-    ):
+    ) or key in ("self_use_rate", "self_sufficiency_rate"):
         return PERCENTAGE
     elif key in (
         "electricity_price",
@@ -270,6 +272,11 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     # Earnings
     elif "earnings" in key:
         return "mdi:cash"
+    # Self-consumption rates
+    elif key == "self_use_rate":
+        return "mdi:solar-power-variant"
+    elif key == "self_sufficiency_rate":
+        return "mdi:home-percent"
     # Electricity price (dynamic tariff)
     elif key == "electricity_price_tag":
         return "mdi:tag-outline"
