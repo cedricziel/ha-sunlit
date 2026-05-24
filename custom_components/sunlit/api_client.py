@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
 import aiohttp
-import async_timeout
 
 from .const import (
     API_BASE_URL,
@@ -106,7 +106,7 @@ class SunlitApiClient:
         headers = self._build_headers()
 
         try:
-            async with async_timeout.timeout(self._timeout):
+            async with asyncio.timeout(self._timeout):
                 async with self._session.request(
                     method,
                     url,
