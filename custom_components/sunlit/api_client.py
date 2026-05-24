@@ -17,6 +17,7 @@ from .const import (
     API_DEVICE_LIST,
     API_DEVICE_STATISTICS,
     API_FAMILY_LIST,
+    API_NOTIFICATION_LIST,
     API_SPACE_CURRENT_STRATEGY,
     API_SPACE_INDEX,
     API_SPACE_SOC,
@@ -574,6 +575,39 @@ class SunlitApiClient:
             _LOGGER.error(
                 "Failed to fetch lifetime statistics for space %s: %s", space_id, err
             )
+            raise
+
+    async def fetch_notification_list(
+        self, page: int = 0, size: int = 20
+    ) -> dict[str, Any]:
+        """Fetch the paginated notification feed for the account.
+
+        Args:
+            page: Page number (0-based)
+            size: Page size
+
+        Returns:
+            Paginated content dict with a "content" list of notification items
+            ({id, type, title, content, read, deviceSn, deviceType, space, ...}).
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload = {"page": page, "size": size}
+            response = await self._make_request(
+                "POST", API_NOTIFICATION_LIST, json=payload
+            )
+
+            if "content" in response:
+                return response["content"]
+
+            return {}
+
+        except SunlitApiError as err:
+            _LOGGER.error("Failed to fetch notification list: %s", err)
             raise
 
     async def fetch_space_statistics_dynamic_energy(

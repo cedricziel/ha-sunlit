@@ -53,6 +53,32 @@ async def test_family_coordinator_update_success(
         "selfSufficiencyRate": 0.85,
         "totalConsumption": 0,
     }
+    api_client.fetch_notification_list.return_value = {
+        "content": [
+            {
+                "id": 1,
+                "title": "Older",
+                "createDate": 1000,
+                "space": {"id": 34038, "name": "Garage"},
+            },
+            {
+                "id": 2,
+                "title": "Speicher beginnt das Heizen",
+                "content": "Sie müssen nichts tun.",
+                "type": "push",
+                "deviceSn": "dcbdccbffe3d",
+                "read": True,
+                "createDate": 2000,
+                "space": {"id": 34038, "name": "Garage"},
+            },
+            {
+                "id": 3,
+                "title": "Other family",
+                "createDate": 3000,
+                "space": {"id": 99999, "name": "Test"},
+            },
+        ]
+    }
 
     coordinator = SunlitFamilyCoordinator(
         hass,
@@ -106,12 +132,19 @@ async def test_family_coordinator_update_success(
     assert family_data["self_use_rate"] == 100.0
     assert family_data["self_sufficiency_rate"] == 85.0
 
+    # Check latest notification (newest for THIS family; other family excluded)
+    assert family_data["latest_notification"] == "Speicher beginnt das Heizen"
+    detail = family_data["latest_notification_detail"]
+    assert detail["id"] == 2
+    assert detail["device_sn"] == "dcbdccbffe3d"
+
     # Verify API calls
     api_client.fetch_space_index.assert_called_once_with("34038")
     api_client.fetch_space_soc.assert_called_once_with("34038")
     api_client.fetch_space_statistics_static.assert_called_once_with("34038")
     api_client.fetch_tariff_index.assert_called_once_with("34038")
     api_client.fetch_space_statistics_dynamic_energy.assert_called_once()
+    api_client.fetch_notification_list.assert_called_once()
     api_client.fetch_strategy_device_status.assert_called_once_with("34038")
     api_client.fetch_space_current_strategy.assert_called_once_with("34038")
     api_client.get_charging_box_strategy.assert_called_once_with("34038")
@@ -132,6 +165,7 @@ async def test_family_coordinator_partial_failure(
     api_client.fetch_space_statistics_dynamic_energy.side_effect = Exception(
         "Energy API failed"
     )
+    api_client.fetch_notification_list.side_effect = Exception("Notif API failed")
     api_client.fetch_space_current_strategy.side_effect = Exception("Strategy API failed")
     api_client.get_charging_box_strategy.side_effect = Exception("Charging box API failed")
 
@@ -161,6 +195,7 @@ async def test_family_coordinator_partial_failure(
     assert "battery_local_mode_enabled" not in family_data
     assert "electricity_price" not in family_data
     assert "self_use_rate" not in family_data
+    assert "latest_notification" not in family_data
 
 
 async def test_family_coordinator_complete_failure(
@@ -178,6 +213,7 @@ async def test_family_coordinator_complete_failure(
     api_client.fetch_space_statistics_dynamic_energy.side_effect = Exception(
         "Energy API failed"
     )
+    api_client.fetch_notification_list.side_effect = Exception("Notif API failed")
     api_client.fetch_space_current_strategy.side_effect = Exception("Strategy API failed")
     api_client.get_charging_box_strategy.side_effect = Exception("Charging box API failed")
 

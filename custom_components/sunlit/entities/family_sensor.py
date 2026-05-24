@@ -182,4 +182,14 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
                     )
                 attrs["history"] = formatted_history
 
+        # Add notification detail if available
+        if (
+            self.entity_description.key == "latest_notification"
+            and self.coordinator.data
+            and "family" in self.coordinator.data
+        ):
+            detail = self.coordinator.data["family"].get("latest_notification_detail")
+            if detail:
+                attrs.update(detail)
+
         return attrs
