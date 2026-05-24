@@ -15,6 +15,9 @@ from ..event_manager import SunlitEventManager
 
 _LOGGER = logging.getLogger(__name__)
 
+# The Sunlit API exposes up to 7 battery module slots (battery1..battery7).
+MAX_BATTERY_MODULE_SLOTS = 7
+
 
 class SunlitDeviceCoordinator(DataUpdateCoordinator):
     """Coordinator for device-level data."""
@@ -266,27 +269,32 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
         data["input_power_total"] = device.get("inputPowerTotal")
         data["output_power_total"] = device.get("outputPowerTotal")
 
-        # Extract actual battery module count from device configuration
-        # This represents the number of physical battery modules (1-3), not online status
+        # Number of physical B215 extension modules. deviceCount counts the whole
+        # stack INCLUDING the BK215 head unit, so it over-reports by one and used
+        # to spawn a phantom empty module (#73). When online we derive the real
+        # count from the per-slot statistics below; offline we approximate from
+        # deviceCount with the head unit excluded.
         device_count = device.get("deviceCount")
-        if device_count is not None and device_count > 0:
-            # deviceCount represents the number of sub-devices (battery modules)
-            data["module_count"] = device_count
-        else:
-            # Fallback: default to 1 for main battery
-            data["module_count"] = 1
-
-        _LOGGER.debug(
-            "Battery device %s has %d modules (deviceCount: %s)",
-            device_id,
-            data["module_count"],
-            device_count,
-        )
+        fallback_module_count = max(device_count - 1, 0) if device_count else 0
 
         # Fetch detailed statistics for online batteries
         if device.get("status") == "Online":
             try:
                 stats = await self.api_client.fetch_device_statistics(device_id)
+
+                # Real module count: highest battery{N} slot with a populated
+                # DeviceModel. This is the reliable signal — deviceCount includes
+                # the head unit, and a module's SOC can legitimately read 0.
+                module_count = self._count_battery_modules(stats)
+                data["module_count"] = module_count
+
+                _LOGGER.debug(
+                    "Battery device %s has %d module(s) (deviceCount=%s, "
+                    "derived from per-slot statistics)",
+                    device_id,
+                    module_count,
+                    device_count,
+                )
 
                 # System-wide battery data
                 data["batterySoc"] = stats.get("batterySoc")
@@ -294,7 +302,6 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                 data["dischargeRemaining"] = stats.get("dischargeRemaining")
 
                 # Individual battery module SOCs - only for existing modules
-                module_count = data.get("module_count", 1)
                 for i in range(1, module_count + 1):
                     soc_key = f"battery{i}Soc"
                     data[soc_key] = stats.get(soc_key)
@@ -328,11 +335,29 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                     self._dispatch_soc_events(device_id, data)
 
             except Exception as err:
+                # Offline/unreachable: fall back to the deviceCount estimate.
+                data["module_count"] = fallback_module_count
                 _LOGGER.debug(
                     "Could not fetch detailed statistics for device %s: %s",
                     device_id,
                     err,
                 )
+        else:
+            data["module_count"] = fallback_module_count
+
+    def _count_battery_modules(self, stats: dict) -> int:
+        """Count physical B215 extension modules from per-slot statistics.
+
+        A populated ``battery{N}DeviceModel`` marks a real module. ``deviceCount``
+        can't be used (it includes the BK215 head unit, see #73) and SOC can't
+        (a module may legitimately report 0%). Returns the highest populated
+        slot index, i.e. the number of contiguous modules.
+        """
+        count = 0
+        for module_num in range(1, MAX_BATTERY_MODULE_SLOTS + 1):
+            if stats.get(f"battery{module_num}DeviceModel") is not None:
+                count = module_num
+        return count
 
     def get_battery_module_count(self, device_id: str) -> int:
         """Get the number of battery modules for a specific battery device.
