@@ -21,6 +21,7 @@ import voluptuous as vol
 
 from .api_client import SunlitApiClient, SunlitAuthError, SunlitConnectionError
 from .const import (
+    API_BASE_URL,
     CONF_ACCESS_TOKEN,
     CONF_EMAIL,
     CONF_FAMILIES,
@@ -127,7 +128,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=schema,
             errors=errors,
-            description_placeholders={"api_url": "https://api.sunlitsolar.de"},
+            description_placeholders={"api_url": API_BASE_URL},
         )
 
     async def async_step_select_families(

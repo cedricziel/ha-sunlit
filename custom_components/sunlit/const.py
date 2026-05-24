@@ -13,7 +13,10 @@ DEFAULT_NAME = "Sunlit REST Sensor"
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
 
 # API Configuration
-API_BASE_URL = "https://api.sunlitsolar.de/rest"
+# Current backend host used by the SunEnergyXT app (v1.8.1). The legacy
+# api.sunlitsolar.de host still resolves but the app has migrated here; both
+# expose the same /rest API surface (verified 2026-05).
+API_BASE_URL = "https://api.sunenergyxt.com/rest"
 API_USER_LOGIN = "/user/login"
 API_FAMILY_LIST = "/family/list"
 API_DEVICE_DETAILS = "/device/{device_id}"
