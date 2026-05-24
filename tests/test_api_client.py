@@ -425,6 +425,38 @@ async def test_update_battery_local_mode_api_error(api_client, mock_session):
 
 
 @pytest.mark.asyncio
+async def test_fetch_strategy_device_status_success(api_client, mock_session):
+    """Test fetching local-mode / UPS device status."""
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "message": {"DE": "Ok"},
+            "content": {
+                "batteryLocalModeEnabled": True,
+                "aioLocalModeEnabled": False,
+                "aioUpsEnabled": False,
+                "deviceModel": "BK_215",
+            },
+        },
+    )
+
+    data = await api_client.fetch_strategy_device_status(34038)
+
+    assert data["batteryLocalModeEnabled"] is True
+    assert data["aioLocalModeEnabled"] is False
+    assert data["aioUpsEnabled"] is False
+
+    mock_session.request.assert_called_once()
+    call_args = mock_session.request.call_args
+    assert call_args[0][0] == "POST"
+    assert "/v1.7/strategy/device/status" in call_args[0][1]
+    assert call_args[1]["json"] == {"spaceId": 34038}
+    assert call_args[1]["headers"]["Authorization"] == "Bearer test_token"
+
+
+@pytest.mark.asyncio
 async def test_fetch_device_statistics_auth_error(api_client, mock_session):
     """Test authentication error when fetching device statistics."""
     # Setup 401 response

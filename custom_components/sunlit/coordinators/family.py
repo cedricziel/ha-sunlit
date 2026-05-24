@@ -107,6 +107,9 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
             # Fetch lifetime yield & earnings totals
             await self._fetch_lifetime_statistics(family_data)
 
+            # Fetch local-mode / UPS device status
+            await self._fetch_strategy_device_status(family_data)
+
             # Fetch current strategy
             await self._fetch_current_strategy(family_data)
 
@@ -207,6 +210,21 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
                 family_data.setdefault("currency", earnings.get("currency", "EUR"))
         except Exception as err:
             _LOGGER.debug("Could not fetch lifetime statistics: %s", err)
+
+    async def _fetch_strategy_device_status(self, family_data: dict) -> None:
+        """Fetch local-mode / UPS status flags for the strategy device."""
+        try:
+            status = await self.api_client.fetch_strategy_device_status(self.family_id)
+            if status:
+                family_data["battery_local_mode_enabled"] = status.get(
+                    "batteryLocalModeEnabled"
+                )
+                family_data["aio_local_mode_enabled"] = status.get(
+                    "aioLocalModeEnabled"
+                )
+                family_data["aio_ups_enabled"] = status.get("aioUpsEnabled")
+        except Exception as err:
+            _LOGGER.debug("Could not fetch strategy device status: %s", err)
 
     async def _fetch_current_strategy(self, family_data: dict) -> None:
         """Fetch current strategy."""
