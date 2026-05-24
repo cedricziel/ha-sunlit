@@ -167,6 +167,7 @@ FAMILY_SENSORS = {
     # Total solar production tracking
     "total_solar_energy": "Total Solar Energy",
     "total_solar_power": "Total Solar Power",
+    "total_mppt_energy": "Total MPPT Energy",
     "battery_count": "Battery Module Count",
     "battery_charging_remaining": "Charging Time Remaining",
     "battery_discharging_remaining": "Discharging Time Remaining",
