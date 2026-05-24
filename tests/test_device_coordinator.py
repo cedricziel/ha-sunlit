@@ -48,6 +48,10 @@ async def test_device_coordinator_update_success(
         "deviceSn": "dcbdccbffe3d",
         "supportLocalMode": True,
         "localModeEnabled": True,
+        "ssid": "WLAN-2TXFBD",
+        "systemMultiStatus": "Drei Batterien parallel",
+        "otaInProgress": False,
+        "hasValidMeter": False,
     }
 
     coordinator = SunlitDeviceCoordinator(
@@ -90,6 +94,12 @@ async def test_device_coordinator_update_success(
     # Local-mode control state (issue #160)
     assert battery["support_local_mode"] is True
     assert battery["local_mode_enabled"] is True
+
+    # Device-detail diagnostics (issue #159)
+    assert battery["wifi_ssid"] == "WLAN-2TXFBD"
+    assert battery["system_status"] == "Drei Batterien parallel"
+    assert battery["ota_in_progress"] is False
+    assert battery["has_valid_meter"] is False
 
     # Check aggregates
     aggregates = data["aggregates"]

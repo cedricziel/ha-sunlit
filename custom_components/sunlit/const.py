@@ -120,6 +120,9 @@ BATTERY_SENSORS = {
     "batteryMppt2InCur": "MPPT2 Current",
     "batteryMppt2InPower": "MPPT2 Power",
     "batteryMppt2Energy": "MPPT2 Total Energy",
+    # Diagnostics from device details (#159)
+    "wifi_ssid": "WiFi SSID",
+    "system_status": "System Status",
 }
 
 # Battery module specific sensors (will be created for each module 1, 2, 3)

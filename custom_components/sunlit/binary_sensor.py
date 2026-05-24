@@ -129,6 +129,17 @@ DEVICE_BINARY_SENSORS = {
         "icon": "mdi:power",
         "inverted": True,  # When "off" is True, binary sensor should be False
     },
+    # Diagnostics from device details (#159)
+    "ota_in_progress": {
+        "name": "Firmware Update In Progress",
+        "device_class": BinarySensorDeviceClass.UPDATE,
+        "icon": "mdi:cellphone-arrow-down",
+    },
+    "has_valid_meter": {
+        "name": "Valid Meter",
+        "device_class": BinarySensorDeviceClass.CONNECTIVITY,
+        "icon": "mdi:meter-electric",
+    },
 }
 
 
