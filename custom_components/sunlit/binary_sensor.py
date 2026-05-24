@@ -93,6 +93,22 @@ FAMILY_BINARY_SENSORS = {
         "device_class": None,
         "icon": "mdi:lightning-bolt",
     },
+    # Local-mode / UPS status from strategy/device/status endpoint
+    "battery_local_mode_enabled": {
+        "name": "Battery Local Mode",
+        "device_class": None,
+        "icon": "mdi:home-lightning-bolt",
+    },
+    "aio_local_mode_enabled": {
+        "name": "AIO Local Mode",
+        "device_class": None,
+        "icon": "mdi:home-lightning-bolt",
+    },
+    "aio_ups_enabled": {
+        "name": "AIO UPS",
+        "device_class": None,
+        "icon": "mdi:power-plug-battery",
+    },
 }
 
 DEVICE_BINARY_SENSORS = {
