@@ -22,6 +22,7 @@ from .const import (
     API_SPACE_CURRENT_STRATEGY,
     API_SPACE_INDEX,
     API_SPACE_SOC,
+    API_SPACE_STATISTICS_DYNAMIC_EARNING,
     API_SPACE_STATISTICS_DYNAMIC_ENERGY,
     API_SPACE_STATISTICS_STATIC,
     API_SPACE_STRATEGY_HISTORY,
@@ -662,6 +663,70 @@ class SunlitApiClient:
         except SunlitApiError as err:
             _LOGGER.error(
                 "Failed to fetch energy distribution for space %s: %s",
+                space_id,
+                err,
+            )
+            raise
+
+    async def fetch_space_statistics_dynamic_earning(
+        self,
+        space_id: str | int,
+        year: int | None = None,
+        month: int | None = None,
+    ) -> dict[str, Any]:
+        """Fetch generation & earnings for a space, with selectable granularity.
+
+        The granularity follows the optional year/month arguments (see
+        openapi.yaml). The per-bucket ``key`` changes meaning accordingly:
+
+        - no year/month -> per-year buckets (``key`` = year), all-time
+        - year only      -> per-month buckets (``key`` = month 1-12)
+        - year + month   -> per-day buckets (``key`` = day of month 1-31)
+
+        Args:
+            space_id: The space/family ID
+            year: Optional year (selects per-month or, with month, per-day)
+            month: Optional month 1-12 (requires year; yields per-day)
+
+        Returns:
+            Dictionary containing:
+            - totalPowerGeneration: period generation in kWh
+            - totalEarnings: {earnings, currency}
+            - powerEarningsList: per-bucket
+              [{key, totalPowerGeneration, totalEarnings, currency}]
+            - chargingEnergyList: per-bucket [{key, chargingEnergy}]
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload: dict[str, Any] = {"spaceId": int(space_id)}
+            if year is not None:
+                payload["year"] = int(year)
+            if month is not None:
+                payload["month"] = int(month)
+            response = await self._make_request(
+                "POST", API_SPACE_STATISTICS_DYNAMIC_EARNING, json=payload
+            )
+
+            _LOGGER.debug(
+                "Space dynamic earning response for %s (year=%s, month=%s): %s",
+                space_id,
+                year,
+                month,
+                response,
+            )
+
+            if "content" in response:
+                return response["content"]
+
+            return {}
+
+        except SunlitApiError as err:
+            _LOGGER.error(
+                "Failed to fetch earnings for space %s: %s",
                 space_id,
                 err,
             )

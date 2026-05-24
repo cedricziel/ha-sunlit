@@ -423,6 +423,60 @@ async def test_fetch_space_statistics_dynamic_energy_success(api_client, mock_se
 
 
 @pytest.mark.asyncio
+async def test_fetch_space_statistics_dynamic_earning_success(api_client, mock_session):
+    """Test fetching generation & earnings buckets (history backfill source)."""
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "message": {"DE": "Ok"},
+            "content": {
+                "totalPowerGeneration": 12.0,
+                "totalEarnings": {"earnings": 4.0, "currency": "EUR"},
+                "powerEarningsList": [
+                    {
+                        "key": 1,
+                        "totalPowerGeneration": 2.0,
+                        "totalEarnings": 0.6,
+                        "currency": "EUR",
+                    }
+                ],
+                "chargingEnergyList": [{"key": 1, "chargingEnergy": 0}],
+            },
+        },
+    )
+
+    data = await api_client.fetch_space_statistics_dynamic_earning(
+        34038, year=2024, month=1
+    )
+
+    assert data["totalPowerGeneration"] == 12.0
+    assert data["powerEarningsList"][0]["totalEarnings"] == 0.6
+
+    mock_session.request.assert_called_once()
+    call_args = mock_session.request.call_args
+    assert call_args[0][0] == "POST"
+    assert "/v1.1/space/statistics/dynamic/earning" in call_args[0][1]
+    assert call_args[1]["json"] == {"spaceId": 34038, "year": 2024, "month": 1}
+
+
+@pytest.mark.asyncio
+async def test_fetch_space_statistics_dynamic_earning_all_time(api_client, mock_session):
+    """Omitting year/month requests all-time per-year buckets."""
+    setup_mock_response(
+        mock_session,
+        200,
+        {"code": 0, "message": {"DE": "Ok"}, "content": {"powerEarningsList": []}},
+    )
+
+    await api_client.fetch_space_statistics_dynamic_earning(34038)
+
+    call_args = mock_session.request.call_args
+    assert call_args[1]["json"] == {"spaceId": 34038}
+
+
+@pytest.mark.asyncio
 async def test_fetch_notification_list_success(api_client, mock_session):
     """Test fetching the paginated notification feed."""
     setup_mock_response(
