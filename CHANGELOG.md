@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.0](https://github.com/cedricziel/ha-sunlit/compare/v1.8.0...v1.9.0) (2026-05-24)
+
+
+### Features
+
+* **sensors:** add battery stored-energy sensors (ENERGY_STORAGE) ([#190](https://github.com/cedricziel/ha-sunlit/issues/190)) ([#193](https://github.com/cedricziel/ha-sunlit/issues/193)) ([2e4a289](https://github.com/cedricziel/ha-sunlit/commit/2e4a2894e96c7af7e872c930625352d5f6b9b3e6))
+* **sensors:** add latest-notification sensor ([#176](https://github.com/cedricziel/ha-sunlit/issues/176)) ([#186](https://github.com/cedricziel/ha-sunlit/issues/186)) ([77f83ad](https://github.com/cedricziel/ha-sunlit/commit/77f83adb165743a92fc0f10f0e4f27bba95667e6))
+* **sensors:** surface device-detail diagnostics ([#159](https://github.com/cedricziel/ha-sunlit/issues/159)) ([#184](https://github.com/cedricziel/ha-sunlit/issues/184)) ([a12b64a](https://github.com/cedricziel/ha-sunlit/commit/a12b64ac3b8d333f5f5a8ecb888cbc97e7c9f4e4))
+
 ## [1.8.0](https://github.com/cedricziel/ha-sunlit/compare/v1.7.0...v1.8.0) (2026-05-24)
 
 
