@@ -14,7 +14,7 @@ info:
     Requests authenticate with `Authorization: bearer <token>` (lowercase scheme)
     and the app additionally sends `appVersion`, `language`, `phoneModel`, and
     `osVersion` headers; these are not required for the documented data endpoints.
-  version: 1.2.0
+  version: 1.3.0
   contact:
     name: Home Assistant Integration
     url: https://github.com/cedricziel/ha-sunlit
@@ -1003,6 +1003,70 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StrategyMyListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.7/strategy/more:
+    post:
+      tags:
+        - Strategy
+      summary: List available strategy types (catalog)
+      description: |
+        Retrieve the catalog of selectable strategy types for a space, each with
+        its device requirements per hardware setup (e.g. BK_SERIES vs
+        AIO_500_SERIES) and whether it is currently enabled/available.
+      operationId: getStrategyMore
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategyMoreResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.7/strategy/recommend:
+    post:
+      tags:
+        - Strategy
+      summary: Get recommended strategies
+      description: |
+        Retrieve recommended strategies for a space. Empty when there are no
+        recommendations; the recommendation item shape has not yet been observed
+        populated.
+      operationId: getStrategyRecommend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategyRecommendResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -3331,6 +3395,22 @@ components:
                         description: Power in watts
                         example: 97.0
 
+    StrategyType:
+      type: string
+      description: |
+        Battery charging strategy type. Observed in the strategy/more catalog
+        (2026-05); `Manual` also appears in some legacy strategy responses.
+      enum:
+        - SmartStrategy
+        - MultiSpaceSmartStrategy
+        - CustomAdjustments
+        - EnergyStorageOnly
+        - AcCouple
+        - TariffStrategy
+        - EvStrategy
+        - Manual
+      example: "SmartStrategy"
+
     StrategyMyListResponse:
       allOf:
         - $ref: "#/components/schemas/ApiResponse"
@@ -3343,7 +3423,81 @@ components:
                   type: array
                   description: >-
                     User-configured strategies. Empty when no custom strategy is
-                    set; item shape not yet observed.
+                    set; item shape not yet observed (needs a capture with a
+                    configured strategy).
+                  items:
+                    type: object
+                  example: []
+
+    StrategyMoreResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              properties:
+                mores:
+                  type: array
+                  description: Catalog of selectable strategy types
+                  items:
+                    $ref: "#/components/schemas/StrategyCatalogEntry"
+
+    StrategyCatalogEntry:
+      type: object
+      description: A selectable strategy and its device requirements
+      properties:
+        strategyType:
+          $ref: "#/components/schemas/StrategyType"
+        enable:
+          type: boolean
+          description: Whether this strategy is currently available/enabled
+          example: false
+        requiredDevices:
+          type: object
+          description: Required device types for this strategy (booleans)
+          additionalProperties:
+            type: boolean
+          example:
+            MICRO_INVERTER: false
+            ENERGY_STORAGE_BATTERY: true
+            ELE_METER: false
+        requiredDeviceList:
+          type: array
+          description: Per-hardware-setup device requirements
+          items:
+            type: object
+            properties:
+              setupKey:
+                type: string
+                description: Hardware setup identifier
+                example: "BK_SERIES"
+              devices:
+                type: object
+                additionalProperties:
+                  type: boolean
+                example:
+                  ENERGY_STORAGE_BATTERY: true
+        otherSpaces:
+          type: ["array", "null"]
+          example: null
+        otherSpaceDeviceSetups:
+          type: ["array", "null"]
+          example: null
+
+    StrategyRecommendResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              properties:
+                recommendations:
+                  type: array
+                  description: >-
+                    Recommended strategies. Empty in the capture; item shape not
+                    yet observed populated.
                   items:
                     type: object
                   example: []
