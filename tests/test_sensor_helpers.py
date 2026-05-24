@@ -186,12 +186,23 @@ class TestStateClassForSensor:
     """Test get_state_class_for_sensor function."""
 
     def test_total_increasing_sensors(self):
-        """Test sensors with total_increasing state class."""
+        """Energy counters use TOTAL_INCREASING — incl. daily ones.
+
+        Daily energy counters reset at midnight; TOTAL_INCREASING auto-detects
+        the reset (value drops to ~0), so no last_reset attribute is needed and
+        the long-term statistics stay correct across the reset.
+        """
         total_increasing = [
             "total_buy_energy",
             "total_ret_energy",
             "total_solar_energy",
             "total_grid_export_energy",
+            # daily energy counters (previously TOTAL without last_reset)
+            "daily_buy_energy",
+            "daily_ret_energy",
+            "daily_grid_export_energy",
+            "daily_yield",
+            "total_power_generation",  # daily generation despite the name
         ]
         for sensor in total_increasing:
             assert (
@@ -199,14 +210,10 @@ class TestStateClassForSensor:
             ), f"Failed for {sensor}"
 
     def test_total_sensors(self):
-        """Test sensors with total state class (daily counters)."""
+        """Only monetary totals use TOTAL (MONETARY forbids TOTAL_INCREASING)."""
         total_sensors = [
-            "daily_buy_energy",
-            "daily_ret_energy",
-            "daily_grid_export_energy",
-            "daily_yield",
-            "daily_earnings",
-            "total_power_generation",  # Despite the name, this is daily data (resets at midnight)
+            "daily_earnings",  # resets daily -> carries a last_reset (see entity)
+            "lifetime_earnings",
         ]
         for sensor in total_sensors:
             assert get_state_class_for_sensor(sensor) == SensorStateClass.TOTAL, (
@@ -453,6 +460,16 @@ class TestSensorMetadataExtras:
         assert get_options_for_sensor(key) == ["Online", "Offline", "NotExist"]
         assert get_unit_for_sensor(key) is None
         assert get_state_class_for_sensor(key) is None
+
+    def test_is_daily_reset_total(self):
+        """Only the daily MONETARY counter needs a last_reset (TOTAL + resets)."""
+        from custom_components.sunlit.entities.helpers import is_daily_reset_total
+
+        assert is_daily_reset_total("daily_earnings") is True
+        assert is_daily_reset_total("lifetime_earnings") is False  # never resets
+        # Daily ENERGY counters are TOTAL_INCREASING, not TOTAL -> no last_reset.
+        assert is_daily_reset_total("daily_yield") is False
+        assert is_daily_reset_total("daily_grid_export_energy") is False
 
     @pytest.mark.parametrize(
         ("key", "precision"),

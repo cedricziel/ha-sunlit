@@ -113,33 +113,22 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     # Stored energy fluctuates (rises and falls) -> MEASUREMENT, never TOTAL*.
     if "storedenergy" in key.lower().replace("_", ""):
         return SensorStateClass.MEASUREMENT
-    # Lifetime cumulative energy sensors (never reset)
-    if (
-        key == "total_yield"
-        or key == "lifetime_yield"
-        or "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
-        or key == "total_solar_energy"
-        or key == "total_grid_export_energy"
+    # Monetary totals must use TOTAL — MONETARY forbids TOTAL_INCREASING. The
+    # daily-resetting one (daily_earnings) carries a last_reset (see the entity's
+    # last_reset property) so the midnight reset is handled correctly.
+    if key in ("lifetime_earnings", "daily_earnings"):
+        return SensorStateClass.TOTAL
+    # Energy: lifetime totals AND daily counters are modelled as TOTAL_INCREASING.
+    # For the daily counters, TOTAL_INCREASING auto-detects the midnight reset
+    # (the value drops to ~0), so no last_reset attribute is needed and the
+    # long-term statistics stay correct across the reset.
+    if "energy" in key.lower() or key in (
+        "total_yield",
+        "lifetime_yield",
+        "daily_yield",
+        "total_power_generation",
     ):
         return SensorStateClass.TOTAL_INCREASING
-    # TOTAL state class: daily counters that reset at midnight, plus
-    # lifetime_earnings (cumulative monetary value, TOTAL per HA convention).
-    # total_power_generation is actually today's daily generation.
-    if key == "lifetime_earnings" or (
-        key == "total_power_generation"
-        or key == "daily_grid_export_energy"
-        or key == "daily_yield"
-        or key == "daily_earnings"
-    ):
-        return SensorStateClass.TOTAL
-    # Energy sensors need special handling
-    if "energy" in key.lower():
-        if "total" in key.lower():
-            return SensorStateClass.TOTAL_INCREASING
-        elif "daily" in key.lower():
-            return SensorStateClass.TOTAL
-        else:
-            return SensorStateClass.TOTAL_INCREASING
     # Measurement-type device classes opt into long-term statistics. This covers
     # power (incl. rated_power / max_output_power), voltage, current, metered
     # battery SOC, time-remaining (duration) and stored energy.
@@ -358,6 +347,19 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     elif key == "currency":
         return "mdi:currency-eur"
     return None
+
+
+def is_daily_reset_total(key: str) -> bool:
+    """True for TOTAL sensors that reset at local midnight (need last_reset).
+
+    Energy day-counters use TOTAL_INCREASING (auto reset detection); this is for
+    the monetary day-counter (daily_earnings), where MONETARY forbids
+    TOTAL_INCREASING so a last_reset must be supplied instead.
+    """
+    return (
+        "daily" in key.lower()
+        and get_state_class_for_sensor(key) == SensorStateClass.TOTAL
+    )
 
 
 def get_options_for_sensor(key: str) -> list[str] | None:

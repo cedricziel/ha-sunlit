@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
@@ -11,9 +12,11 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
+from homeassistant.util import dt as dt_util
 
 from ..const import DOMAIN
 from .base import normalize_device_type
+from .helpers import is_daily_reset_total
 
 
 class SunlitDeviceSensorBase(CoordinatorEntity, SensorEntity, ABC):
@@ -65,6 +68,13 @@ class SunlitDeviceSensorBase(CoordinatorEntity, SensorEntity, ABC):
             return self.coordinator.data["devices"][self._device_id].get(
                 self.entity_description.key
             )
+        return None
+
+    @property
+    def last_reset(self) -> datetime | None:
+        """Local midnight for daily-resetting TOTAL sensors (e.g. daily_earnings)."""
+        if is_daily_reset_total(self.entity_description.key):
+            return dt_util.start_of_local_day()
         return None
 
     def _get_native_value(self) -> Any:
