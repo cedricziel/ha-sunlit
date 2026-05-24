@@ -14,7 +14,7 @@ info:
     Requests authenticate with `Authorization: bearer <token>` (lowercase scheme)
     and the app additionally sends `appVersion`, `language`, `phoneModel`, and
     `osVersion` headers; these are not required for the documented data endpoints.
-  version: 1.1.0
+  version: 1.2.0
   contact:
     name: Home Assistant Integration
     url: https://github.com/cedricziel/ha-sunlit
@@ -836,10 +836,19 @@ paths:
     post:
       tags:
         - Statistics
-      summary: Get monthly space earnings breakdown
+      summary: Get space generation & earnings (day/month/year granularity)
       description: |
-        Retrieve per-day power generation and earnings for a space over a month,
-        plus per-day charging energy.
+        Retrieve power generation and earnings for a space. The granularity is
+        selected by which of `year`/`month` are supplied, and each bucket's
+        `key` changes meaning accordingly:
+
+        | Request body | bucket `key` | period covered | `total*` |
+        |---|---|---|---|
+        | `{spaceId, year, month}` | day of month (1-31) | that month | month |
+        | `{spaceId, year}` | month of year (1-12) | that year | year |
+        | `{spaceId}` | year (e.g. 2024) | all time | lifetime |
+
+        `chargingEnergyList` mirrors `powerEarningsList` with the same keys.
       operationId: getSpaceStatisticsDynamicEarning
       requestBody:
         required: true
@@ -849,18 +858,21 @@ paths:
               type: object
               required:
                 - spaceId
-                - year
-                - month
               properties:
                 spaceId:
                   type: integer
                   example: 34038
                 year:
                   type: integer
+                  description: >-
+                    Optional. Omit for all-time (per-year buckets); supply alone
+                    for per-month buckets within the year.
                   example: 2026
                 month:
                   type: integer
-                  description: Month (1-12, not zero-padded)
+                  description: >-
+                    Optional (requires `year`). Month 1-12, not zero-padded;
+                    supplying it yields per-day buckets within the month.
                   example: 5
       responses:
         "200":
@@ -869,6 +881,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SpaceStatisticsDynamicEarningResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.1/space/statistics/dynamic/energy:
+    post:
+      tags:
+        - Statistics
+      summary: Get space energy distribution & self-consumption
+      description: |
+        Retrieve an energy distribution for a space — generation (`yield`),
+        consumption, PV-sourced energy, and self-use / self-sufficiency rates.
+        Like `dynamic/earning`, the granularity follows the supplied
+        `year`/`month` (per-day within a month, per-month within a year, or
+        per-year all-time); the captured client only requested the monthly form.
+      operationId: getSpaceStatisticsDynamicEnergy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  example: 34038
+                year:
+                  type: integer
+                  description: Optional; see dynamic/earning for granularity rules.
+                  example: 2026
+                month:
+                  type: integer
+                  description: Optional (requires `year`). Month 1-12, not zero-padded.
+                  example: 5
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceStatisticsDynamicEnergyResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -3155,19 +3209,21 @@ components:
               properties:
                 totalPowerGeneration:
                   type: number
-                  description: Total generation for the month in kWh
+                  description: Total generation for the requested period in kWh
                   example: 29.343
                 totalEarnings:
                   $ref: "#/components/schemas/MonetaryAmount"
                 powerEarningsList:
                   type: array
-                  description: Per-day generation and earnings
+                  description: Per-bucket generation and earnings
                   items:
                     type: object
                     properties:
                       key:
                         type: integer
-                        description: Day of month
+                        description: >-
+                          Bucket key — day of month, month of year, or year,
+                          depending on the request granularity (see endpoint).
                         example: 1
                       totalPowerGeneration:
                         type: number
@@ -3180,17 +3236,77 @@ components:
                         example: "EUR"
                 chargingEnergyList:
                   type: array
-                  description: Per-day charging energy
+                  description: Per-bucket charging energy (same keys as powerEarningsList)
                   items:
                     type: object
                     properties:
                       key:
                         type: integer
-                        description: Day of month
+                        description: Bucket key (see powerEarningsList)
                         example: 1
                       chargingEnergy:
                         type: number
                         example: 0
+
+    SpaceStatisticsDynamicEnergyResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              properties:
+                showDistributionsDetail:
+                  type: boolean
+                  example: false
+                totalYield:
+                  type: number
+                  description: Total generation for the period in kWh
+                  example: 29.435
+                totalConsumption:
+                  type: number
+                  description: Total home consumption for the period in kWh
+                  example: 0
+                totalEnergyFromPv:
+                  type: number
+                  description: Total energy sourced from PV in kWh
+                  example: 29.435
+                totalSelfUseRate:
+                  type: ["number", "null"]
+                  description: Fraction of generated energy self-consumed (0-1)
+                  example: 1.0
+                selfSufficiencyRate:
+                  type: ["number", "null"]
+                  description: Fraction of consumption covered by own generation (0-1)
+                  example: 1.0
+                energyDistributions:
+                  type: array
+                  description: Per-bucket energy distribution (bucket per request granularity)
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: integer
+                        description: >-
+                          Bucket key — day of month, month of year, or year,
+                          depending on the request granularity.
+                        example: 1
+                      yield:
+                        type: number
+                        description: Generation in kWh
+                        example: 1.231
+                      consumption:
+                        type: number
+                        example: 0
+                      energyFromPV:
+                        type: number
+                        example: 0.0
+                      oldEnergyFromPV:
+                        type: number
+                        example: 0
+                      systemEnergy:
+                        type: number
+                        example: 1.231
 
     InstantPowerResponse:
       allOf:
