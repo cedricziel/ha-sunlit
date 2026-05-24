@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/cedricziel/ha-sunlit/compare/v1.4.1...v1.4.2) (2026-05-24)
+
+
+### Bug Fixes
+
+* keep MPPT coordinator polling so MPPT energy accumulates ([#72](https://github.com/cedricziel/ha-sunlit/issues/72)) ([#143](https://github.com/cedricziel/ha-sunlit/issues/143)) ([7eb1909](https://github.com/cedricziel/ha-sunlit/commit/7eb19090a4ae986ac185a95f0cfb0f99b26381a0))
+
 ## [1.4.1](https://github.com/cedricziel/ha-sunlit/compare/v1.4.0...v1.4.1) (2026-05-24)
 
 
