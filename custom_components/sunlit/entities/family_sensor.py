@@ -12,6 +12,7 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
+from homeassistant.util import dt as dt_util
 
 from ..const import (
     DOMAIN,
@@ -21,6 +22,7 @@ from ..const import (
     SENSOR_GROUP_STRATEGY,
     SENSOR_GROUPS,
 )
+from .helpers import is_daily_reset_total
 
 
 class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
@@ -64,6 +66,13 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
             return EntityCategory.DIAGNOSTIC
 
         # Overview, energy, and financial sensors are primary (no category)
+        return None
+
+    @property
+    def last_reset(self) -> datetime | None:
+        """Local midnight for daily-resetting TOTAL sensors (daily_earnings)."""
+        if is_daily_reset_total(self.entity_description.key):
+            return dt_util.start_of_local_day()
         return None
 
     @property

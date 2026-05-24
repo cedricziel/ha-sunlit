@@ -208,6 +208,34 @@ async def test_family_sensor_creation(
         assert battery_sensor.entity_description.native_unit_of_measurement == "%"
 
 
+def test_daily_earnings_exposes_last_reset():
+    """daily_earnings (MONETARY TOTAL) carries a local-midnight last_reset."""
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.sunlit.entities.family_sensor import SunlitFamilySensor
+    from custom_components.sunlit.entities.helpers import build_sensor_description
+
+    coordinator = MagicMock()
+    earnings = SunlitFamilySensor(
+        coordinator,
+        build_sensor_description("daily_earnings", "Daily Earnings"),
+        "entry",
+        "34038",
+        "Garage",
+    )
+    daily_yield = SunlitFamilySensor(
+        coordinator,
+        build_sensor_description("daily_yield", "Daily Yield"),
+        "entry",
+        "34038",
+        "Garage",
+    )
+
+    assert earnings.last_reset == dt_util.start_of_local_day()
+    # Energy day-counters use TOTAL_INCREASING -> no last_reset.
+    assert daily_yield.last_reset is None
+
+
 async def test_device_sensor_creation(
     hass: HomeAssistant,
     enable_custom_integrations,
@@ -244,15 +272,12 @@ async def test_device_sensor_creation(
                 assert (
                     sensor.entity_description.device_class == SensorDeviceClass.ENERGY
                 )
-                if "daily" in key:
-                    assert (
-                        sensor.entity_description.state_class == SensorStateClass.TOTAL
-                    )
-                elif "total" in key:
-                    assert (
-                        sensor.entity_description.state_class
-                        == SensorStateClass.TOTAL_INCREASING
-                    )
+                # Energy counters (daily and total) use TOTAL_INCREASING; daily
+                # ones rely on auto reset detection at midnight.
+                assert (
+                    sensor.entity_description.state_class
+                    == SensorStateClass.TOTAL_INCREASING
+                )
             elif "power" in key:
                 assert sensor.entity_description.device_class == SensorDeviceClass.POWER
                 assert (
@@ -474,7 +499,7 @@ async def test_meter_device_sensor_creation(
             assert_sensors(sensors)
             .for_device("meter_001")
             .where_key_matches(lambda k: "daily" in k and "energy" in k)
-            .has_state_class(SensorStateClass.TOTAL)
+            .has_state_class(SensorStateClass.TOTAL_INCREASING)
         )
 
         (
@@ -1103,14 +1128,15 @@ async def test_inverter_device_sensor_creation(
             )
         )
 
-        # total_power_generation is daily data (resets at midnight)
+        # total_power_generation is daily data (resets at midnight) -> the
+        # TOTAL_INCREASING reset is auto-detected, so no last_reset is required.
         (
             assert_sensors(sensors)
             .for_device("inverter_001")
             .where_key("total_power_generation")
             .matches_pattern(
                 device_class=SensorDeviceClass.ENERGY,
-                state_class=SensorStateClass.TOTAL,
+                state_class=SensorStateClass.TOTAL_INCREASING,
                 unit=UnitOfEnergy.KILO_WATT_HOUR,
             )
         )
