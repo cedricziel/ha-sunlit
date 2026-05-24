@@ -28,7 +28,10 @@ FAMILY_BINARY_SENSORS = {
     },
     "battery_full": {
         "name": "Battery Full",
-        "device_class": BinarySensorDeviceClass.BATTERY,
+        # Not BinarySensorDeviceClass.BATTERY: that class means "low battery"
+        # (on=Low, off=Normal), which would invert and mislabel this "is full"
+        # flag. Leave unclassified so it shows a plain On/Off state.
+        "device_class": None,
         "icon": "mdi:battery-check",
     },
     # New binary sensors from space/index endpoint
