@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/cedricziel/ha-sunlit/compare/v1.5.0...v1.5.1) (2026-05-24)
+
+
+### Bug Fixes
+
+* derive battery module count from per-slot data, not deviceCount ([#73](https://github.com/cedricziel/ha-sunlit/issues/73)) ([#149](https://github.com/cedricziel/ha-sunlit/issues/149)) ([4b01334](https://github.com/cedricziel/ha-sunlit/commit/4b01334b39e7af88a4b3b9fa6845c7fa77b00743))
+
 ## [1.5.0](https://github.com/cedricziel/ha-sunlit/compare/v1.4.2...v1.5.0) (2026-05-24)
 
 
