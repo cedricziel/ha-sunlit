@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/cedricziel/ha-sunlit/compare/v1.3.3...v1.4.0) (2026-05-24)
+
+
+### Features
+
+* support HomeAssistant 2026.5.x on Python 3.14 ([f941b05](https://github.com/cedricziel/ha-sunlit/commit/f941b054767d3cf99160782431e207a6a657c2f1))
+
 ## [1.3.3](https://github.com/cedricziel/ha-sunlit/compare/v1.3.2...v1.3.3) (2026-03-02)
 
 
