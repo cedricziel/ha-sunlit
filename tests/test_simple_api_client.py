@@ -8,6 +8,7 @@ import pytest
 from aioresponses import aioresponses
 
 from custom_components.sunlit.api_client import SunlitApiClient
+from custom_components.sunlit.const import API_BASE_URL
 
 
 @pytest.mark.asyncio
@@ -16,7 +17,7 @@ async def test_get_families():
     with aioresponses() as m:
         # Mock the API response
         m.get(
-            "https://api.sunlitsolar.de/rest/family/list",
+            f"{API_BASE_URL}/family/list",
             payload={
                 "code": 0,
                 "content": [
@@ -43,7 +44,7 @@ async def test_fetch_space_index():
     with aioresponses() as m:
         # Mock the API response
         m.post(
-            "https://api.sunlitsolar.de/rest/v1.5/space/index",
+            f"{API_BASE_URL}/v1.5/space/index",
             payload={
                 "code": 0,
                 "content": {
@@ -71,7 +72,7 @@ async def test_error_handling():
     with aioresponses() as m:
         # Mock an error response
         m.get(
-            "https://api.sunlitsolar.de/rest/family/list",
+            f"{API_BASE_URL}/family/list",
             payload={"code": 1, "message": {"DE": "Error"}, "content": None},
         )
 

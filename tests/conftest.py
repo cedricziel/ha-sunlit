@@ -43,8 +43,10 @@ def mock_config_entry():
 
 @pytest.fixture
 def api_base_url():
-    """Return the API base URL for mocking."""
-    return "https://api.sunlitsolar.de/rest"
+    """Return the API base URL for mocking (tracks const.API_BASE_URL)."""
+    from custom_components.sunlit.const import API_BASE_URL
+
+    return API_BASE_URL
 
 
 # API Response Fixtures

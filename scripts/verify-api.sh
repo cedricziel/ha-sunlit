@@ -11,6 +11,11 @@
 #      (decides whether "aggregate across families" can find unassigned devices)
 #   5. Is the error `message` field a localized dict ({"DE": ...})?
 #
+# It then probes a broad set of read-only endpoints documented in openapi.yaml
+# (account, space, strategy, statistics, device) and reports each one's `code`
+# plus a one-line shape of `content`, so drift between the spec and the live API
+# is easy to spot. Write/control endpoints are listed but never called.
+#
 # Usage:
 #   Auth with credentials (logs in, prints nothing secret):
 #     SUNLIT_EMAIL=you@example.com SUNLIT_PASSWORD=secret ./scripts/verify-api.sh
@@ -18,7 +23,8 @@
 #     SUNLIT_TOKEN=eyJ... ./scripts/verify-api.sh
 #
 # Optional:
-#   SUNLIT_BASE_URL  override API base (default: https://api.sunlitsolar.de/rest)
+#   SUNLIT_BASE_URL  override API base (default: https://api.sunlitsolar.de/rest;
+#                    the SunEnergyXT app v1.8.1 uses https://api.sunenergyxt.com/rest)
 
 set -uo pipefail
 
@@ -76,6 +82,33 @@ http_of() { tail -n1 <<<"$1"; }
 body_of() { sed '$d' <<<"$1"; }
 code_of() { jq -r '.code // "?"' <<<"$1" 2>/dev/null; }
 msg_of()  { jq -rc '.message // ""' <<<"$1" 2>/dev/null; }
+
+# probe METHOD PATH BODY DESC
+# Calls an endpoint and reports code 0 + a one-line `content` shape, or the
+# failing HTTP/code/message. Pass BODY="" for GET / bodyless requests; pass a
+# literal '{}' to send an empty JSON object.
+probe() {
+  local method="$1" path="$2" body="$3" desc="$4"
+  local resp jb http code summary
+  if [[ -n "$body" ]]; then
+    resp=$(request "$method" "$path" "$body")
+  else
+    resp=$(request "$method" "$path")
+  fi
+  jb=$(body_of "$resp"); http=$(http_of "$resp"); code=$(code_of "$jb")
+  [[ -z "$code" ]] && code="?"
+  if [[ "$code" == "0" ]]; then
+    summary=$(jq -rc '
+      .content as $c |
+      if   ($c|type)=="array"  then "array[\($c|length)]"
+      elif ($c|type)=="object" then "{\($c|keys|length) keys: \($c|keys|.[0:6]|join(", "))\(if ($c|keys|length)>6 then ", …" else "" end)}"
+      elif $c==null            then "null"
+      else ($c|tostring) end' <<<"$jb" 2>/dev/null)
+    pass "$desc  [content: ${summary:-?}]"
+  else
+    fail "$desc — HTTP $http, code $code, msg $(msg_of "$jb")"
+  fi
+}
 
 # ---- authenticate ----------------------------------------------------------
 section "Auth"
@@ -185,3 +218,61 @@ else
   echo "    'unassigned devices' feature cannot work via this endpoint →"
   echo "    favor removing it / silencing the bodyless call."
 fi
+
+# ---- broad read-only endpoint coverage (from openapi.yaml) ------------------
+# Probes a representative set of documented read endpoints and prints code +
+# a one-line `content` shape. Uses the first family ($FID) as spaceId/familyId
+# (they share the same numeric id in this API) and the first device for
+# device-scoped calls. WRITE/control endpoints are listed but NOT called.
+section "Spec endpoint coverage (read-only) — space/family $FID"
+
+YEAR=$(date +%Y); MONTH=$(date +%m); DAY=$(date +%d)
+MONTH_INT=$((10#$MONTH)); DAY_INT=$((10#$DAY))   # 10# avoids octal on 08/09
+TODAY="$YEAR-$MONTH-$DAY"
+FIRST_DEVICE_ID=$(jq -r '.content.content[0].deviceId // empty' <<<"${abody:-}" 2>/dev/null)
+sid=$(jq -nc --argjson f "$FID" '{spaceId:$f}')
+fidbody=$(jq -nc --argjson f "$FID" '{familyId:$f}')
+
+note "account / system"
+probe POST /user/info            '{}' "POST /user/info"
+probe POST /v1.5/message/summary '{}' "POST /v1.5/message/summary"
+probe GET  /health/status        ''   "GET  /health/status"
+
+note "space-level"
+probe POST /v1.5/space/index                    "$sid" "POST /v1.5/space/index"
+probe POST /v1.1/space/soc                       "$sid" "POST /v1.1/space/soc"
+probe POST /v1.6/tariff/index                    "$sid" "POST /v1.6/tariff/index"
+probe POST /v1.6/chargingBox/checkSpaceStrategy  "$sid" "POST /v1.6/chargingBox/checkSpaceStrategy"
+probe POST /v1.6/rabot/state                     "$sid" "POST /v1.6/rabot/state"
+probe POST /v1.6/rabot/day/price "$(jq -nc --argjson f "$FID" --arg d "$TODAY" '{showTax:true,spaceId:$f,day:$d,showStrategy:false}')" "POST /v1.6/rabot/day/price"
+probe POST /v1.6/space/local/infoV2              "$sid" "POST /v1.6/space/local/infoV2"
+
+note "strategy"
+probe POST /v1.8/strategy/my/list       "$sid"     "POST /v1.8/strategy/my/list"
+probe POST /v1.7/strategy/device/status "$sid"     "POST /v1.7/strategy/device/status"
+probe POST /v1.1/space/currentStrategy  "$fidbody" "POST /v1.1/space/currentStrategy  (legacy)"
+probe POST /v1.1/space/strategyHistory  "$fidbody" "POST /v1.1/space/strategyHistory  (legacy)"
+
+note "statistics (space-scoped)"
+probe POST /v1.1/space/statistics/static          "$sid" "POST /v1.1/space/statistics/static"
+probe POST /v1.1/space/statistics/dynamic/power    "$(jq -nc --argjson f "$FID" --argjson y "$YEAR" --argjson m "$MONTH_INT" --argjson d "$DAY_INT" '{spaceId:$f,year:$y,month:$m,day:$d}')" "POST /v1.1/space/statistics/dynamic/power"
+probe POST /v1.1/space/statistics/dynamic/earning  "$(jq -nc --argjson f "$FID" --argjson y "$YEAR" --argjson m "$MONTH_INT" '{spaceId:$f,year:$y,month:$m}')" "POST /v1.1/space/statistics/dynamic/earning"
+
+note "device-scoped"
+if [[ -n "$FIRST_DEVICE_ID" ]]; then
+  note "using deviceId=$FIRST_DEVICE_ID"
+  probe GET  "/device/$FIRST_DEVICE_ID"      ''  "GET  /device/{deviceId}"
+  probe POST /v1.1/statistics/static/device  "$(jq -nc --argjson d "$FIRST_DEVICE_ID" '{deviceId:$d}')" "POST /v1.1/statistics/static/device"
+  probe POST /statistics/instantPower        "$(jq -nc --argjson d "$FIRST_DEVICE_ID" --arg y "$YEAR" --arg m "$MONTH" --arg da "$DAY" '{deviceId:$d,year:$y,month:$m,day:$da}')" "POST /statistics/instantPower"
+  probe POST /v1.3/statistics/instantPower/batteryIO "$(jq -nc --argjson d "$FIRST_DEVICE_ID" --arg y "$YEAR" --arg m "$MONTH" --arg da "$DAY" '{deviceId:$d,year:$y,month:$m,day:$da}')" "POST /v1.3/statistics/instantPower/batteryIO"
+else
+  note "no devices in family $FID — skipping device-scoped probes"
+fi
+
+section "Write/control endpoints (NOT called — reference only)"
+note "POST /v1.7/battery/updateLocalModeConfig          {enable, deviceSn}"
+note "POST /v2/remoteControl/power                      {deviceId, maxOutputPower}"
+note "POST /device/remoteControlRecord/latest           {deviceId}"
+note "POST /v1.6/tariffStrategy/add                     {familyId, lowPriceStrategy, highPriceStrategy, …}"
+note "POST /v1.6/local/mode/deye/localSmart/updateFlag  {spaceId, enable, inverterSnList}"
+note "POST /v1.7/device/dtu/checkFwVersion              {curFirmwareVersion}"
