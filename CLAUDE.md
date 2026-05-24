@@ -242,7 +242,7 @@ The integration supports the following device types:
 
 - Update interval: `DEFAULT_SCAN_INTERVAL` (30 seconds)
 - Domain: `sunlit`
-- Supported platforms: `[Platform.SENSOR, Platform.BINARY_SENSOR]`
+- Supported platforms: `[Platform.SENSOR, Platform.BINARY_SENSOR, Platform.SWITCH]`
 - Version: `VERSION` in `const.py` (managed by release-please)
 - GitHub URL: `GITHUB_URL` in `const.py`
 

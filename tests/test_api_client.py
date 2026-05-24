@@ -391,6 +391,40 @@ async def test_fetch_space_statistics_static_success(api_client, mock_session):
 
 
 @pytest.mark.asyncio
+async def test_update_battery_local_mode_success(api_client, mock_session):
+    """Test enabling/disabling battery local mode (control endpoint)."""
+    setup_mock_response(
+        mock_session,
+        200,
+        {"code": 0, "message": {"DE": "Ok"}, "content": None},
+    )
+
+    result = await api_client.update_battery_local_mode("dcbdccbffe3d", False)
+
+    assert result["code"] == 0
+
+    mock_session.request.assert_called_once()
+    call_args = mock_session.request.call_args
+    assert call_args[0][0] == "POST"
+    assert "/v1.7/battery/updateLocalModeConfig" in call_args[0][1]
+    assert call_args[1]["json"] == {"enable": False, "deviceSn": "dcbdccbffe3d"}
+    assert call_args[1]["headers"]["Authorization"] == "Bearer test_token"
+
+
+@pytest.mark.asyncio
+async def test_update_battery_local_mode_api_error(api_client, mock_session):
+    """Test that an API-level error toggling local mode raises."""
+    setup_mock_response(
+        mock_session,
+        200,
+        {"code": 1, "message": {"DE": "Fehler"}, "content": None},
+    )
+
+    with pytest.raises(SunlitApiError):
+        await api_client.update_battery_local_mode("dcbdccbffe3d", True)
+
+
+@pytest.mark.asyncio
 async def test_fetch_device_statistics_auth_error(api_client, mock_session):
     """Test authentication error when fetching device statistics."""
     # Setup 401 response
