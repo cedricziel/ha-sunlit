@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.2](https://github.com/cedricziel/ha-sunlit/compare/v1.9.1...v1.9.2) (2026-05-24)
+
+
+### Bug Fixes
+
+* **binary_sensor:** drop BATTERY device class from battery_full ([#197](https://github.com/cedricziel/ha-sunlit/issues/197)) ([b0f1e1f](https://github.com/cedricziel/ha-sunlit/commit/b0f1e1fdc053d06c6e3f269085e97537494c2ef1))
+
 ## [1.9.1](https://github.com/cedricziel/ha-sunlit/compare/v1.9.0...v1.9.1) (2026-05-24)
 
 
