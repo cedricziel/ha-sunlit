@@ -12,6 +12,9 @@ VERSION = "1.8.0"  # x-release-please-version
 DEFAULT_NAME = "Sunlit REST Sensor"
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
 
+# Nominal capacity of one battery unit (BK215 head unit and each B215 module)
+BATTERY_MODULE_CAPACITY_KWH = 2.15
+
 # API Configuration
 # Current backend host used by the SunEnergyXT app (v1.8.1). The legacy
 # api.sunlitsolar.de host still resolves but the app has migrated here; both
@@ -112,6 +115,7 @@ BATTERY_SENSORS = {
     "input_power_total": "Total Input Power",
     "output_power_total": "Total Output Power",
     "battery_capacity": "Nominal Capacity",  # Static 2.15 kWh per unit
+    "stored_energy": "Stored Energy",  # SOC x total pack capacity (ENERGY_STORAGE)
     # Main unit MPPT sensors (head unit's solar inputs)
     "batteryMppt1InVol": "MPPT1 Voltage",
     "batteryMppt1InCur": "MPPT1 Current",
@@ -136,6 +140,7 @@ BATTERY_MODULE_SENSORS = {
     "Mppt1InPower": "MPPT Power",
     "Mppt1Energy": "MPPT Total Energy",
     "capacity": "Nominal Capacity",  # Static 2.15 kWh per module
+    "StoredEnergy": "Stored Energy",  # module SOC x 2.15 kWh (ENERGY_STORAGE)
 }
 
 # Family aggregate sensors
@@ -145,6 +150,7 @@ FAMILY_SENSORS = {
     "offline_devices": "Offline Devices",
     "total_ac_power": "Total AC Power",
     "average_battery_level": "Average Battery Level",
+    "total_stored_energy": "Total Stored Energy",  # avg SOC x pack capacity
     "total_input_power": "Total Input Power",
     "total_output_power": "Total Output Power",
     # has_fault moved to binary_sensor
@@ -230,6 +236,7 @@ SENSOR_GROUPS = {
     "battery_soc": SENSOR_GROUP_OVERVIEW,
     "batterySoc": SENSOR_GROUP_OVERVIEW,
     "average_battery_level": SENSOR_GROUP_OVERVIEW,
+    "total_stored_energy": SENSOR_GROUP_OVERVIEW,
     "total_ac_power": SENSOR_GROUP_OVERVIEW,
     "inverter_current_power": SENSOR_GROUP_OVERVIEW,
     "online_devices": SENSOR_GROUP_OVERVIEW,

@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from ..api_client import SunlitApiClient
-from ..const import DEFAULT_SCAN_INTERVAL
+from ..const import BATTERY_MODULE_CAPACITY_KWH, DEFAULT_SCAN_INTERVAL
 from ..event_manager import SunlitEventManager
 
 _LOGGER = logging.getLogger(__name__)
@@ -305,6 +305,20 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
                 for i in range(1, module_count + 1):
                     soc_key = f"battery{i}Soc"
                     data[soc_key] = stats.get(soc_key)
+
+                # Stored energy (ENERGY_STORAGE) = SOC x nominal capacity. The
+                # system SOC covers the whole pack: the BK215 head unit plus the
+                # `module_count` B215 extension modules, each rated 2.15 kWh.
+                system_soc = data.get("batterySoc")
+                if system_soc is not None:
+                    pack_capacity = (1 + module_count) * BATTERY_MODULE_CAPACITY_KWH
+                    data["stored_energy"] = round(system_soc / 100 * pack_capacity, 3)
+                for i in range(1, module_count + 1):
+                    module_soc = data.get(f"battery{i}Soc")
+                    if module_soc is not None:
+                        data[f"battery{i}StoredEnergy"] = round(
+                            module_soc / 100 * BATTERY_MODULE_CAPACITY_KWH, 3
+                        )
 
                 # MPPT data
                 mppt_fields = [
