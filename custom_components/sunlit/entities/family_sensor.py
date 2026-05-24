@@ -72,6 +72,11 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
         if self.coordinator.data:
             value = None
 
+            # MPPT coordinator exposes the family rollup at the top level
+            # (its "mppt_energy" section is keyed by device id, not sensor key).
+            if self.entity_description.key == "total_mppt_energy":
+                return self.coordinator.data.get("total_mppt_energy")
+
             # Check the appropriate section based on coordinator type
             # Device coordinator uses aggregates
             if "aggregates" in self.coordinator.data:
@@ -107,6 +112,8 @@ class SunlitFamilySensor(CoordinatorEntity, SensorEntity):
 
         # Check if the key exists in the appropriate data section
         # Match the order used in native_value for consistency
+        if self.entity_description.key == "total_mppt_energy":
+            return "total_mppt_energy" in self.coordinator.data
         if "aggregates" in self.coordinator.data:
             return self.entity_description.key in self.coordinator.data.get(
                 "aggregates", {}

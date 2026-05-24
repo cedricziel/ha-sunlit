@@ -104,13 +104,17 @@ async def async_setup_entry(
                 ):
                     family_data.update(strategy_coordinator.data["strategy"])
 
-                # Add MPPT energy data if available
+                # Add the family-level MPPT energy total if available.
+                # (mppt_coordinator.data["mppt_energy"] is keyed by device id and
+                # feeds the per-device/module sensors, not family sensors.)
                 if (
                     mppt_coordinator
                     and mppt_coordinator.data
-                    and "mppt_energy" in mppt_coordinator.data
+                    and "total_mppt_energy" in mppt_coordinator.data
                 ):
-                    family_data.update(mppt_coordinator.data["mppt_energy"])
+                    family_data["total_mppt_energy"] = mppt_coordinator.data[
+                        "total_mppt_energy"
+                    ]
 
                 # Add device aggregates if available
                 if (
@@ -142,7 +146,7 @@ async def async_setup_entry(
                                 if strategy_coordinator
                                 else family_coordinator
                             )
-                        elif key.startswith("mppt") and "energy" in key:
+                        elif "mppt" in key and "energy" in key:
                             coord = (
                                 mppt_coordinator
                                 if mppt_coordinator
