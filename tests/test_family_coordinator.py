@@ -48,6 +48,11 @@ async def test_family_coordinator_update_success(
             "hour": 16,
         },
     }
+    api_client.fetch_space_statistics_dynamic_energy.return_value = {
+        "totalSelfUseRate": 1.0,
+        "selfSufficiencyRate": 0.85,
+        "totalConsumption": 0,
+    }
 
     coordinator = SunlitFamilyCoordinator(
         hass,
@@ -97,11 +102,16 @@ async def test_family_coordinator_update_success(
     assert family_data["electricity_price_low"] == -7.59
     assert family_data["electricity_price_tag"] == "CHEAP"
 
+    # Check energy self-consumption rates (ratios × 100)
+    assert family_data["self_use_rate"] == 100.0
+    assert family_data["self_sufficiency_rate"] == 85.0
+
     # Verify API calls
     api_client.fetch_space_index.assert_called_once_with("34038")
     api_client.fetch_space_soc.assert_called_once_with("34038")
     api_client.fetch_space_statistics_static.assert_called_once_with("34038")
     api_client.fetch_tariff_index.assert_called_once_with("34038")
+    api_client.fetch_space_statistics_dynamic_energy.assert_called_once()
     api_client.fetch_strategy_device_status.assert_called_once_with("34038")
     api_client.fetch_space_current_strategy.assert_called_once_with("34038")
     api_client.get_charging_box_strategy.assert_called_once_with("34038")
@@ -119,6 +129,9 @@ async def test_family_coordinator_partial_failure(
     api_client.fetch_space_statistics_static.side_effect = Exception("Stats API failed")
     api_client.fetch_strategy_device_status.side_effect = Exception("Status API failed")
     api_client.fetch_tariff_index.side_effect = Exception("Tariff API failed")
+    api_client.fetch_space_statistics_dynamic_energy.side_effect = Exception(
+        "Energy API failed"
+    )
     api_client.fetch_space_current_strategy.side_effect = Exception("Strategy API failed")
     api_client.get_charging_box_strategy.side_effect = Exception("Charging box API failed")
 
@@ -147,6 +160,7 @@ async def test_family_coordinator_partial_failure(
     assert "lifetime_yield" not in family_data
     assert "battery_local_mode_enabled" not in family_data
     assert "electricity_price" not in family_data
+    assert "self_use_rate" not in family_data
 
 
 async def test_family_coordinator_complete_failure(
@@ -161,6 +175,9 @@ async def test_family_coordinator_complete_failure(
     api_client.fetch_space_statistics_static.side_effect = Exception("Stats API failed")
     api_client.fetch_strategy_device_status.side_effect = Exception("Status API failed")
     api_client.fetch_tariff_index.side_effect = Exception("Tariff API failed")
+    api_client.fetch_space_statistics_dynamic_energy.side_effect = Exception(
+        "Energy API failed"
+    )
     api_client.fetch_space_current_strategy.side_effect = Exception("Strategy API failed")
     api_client.get_charging_box_strategy.side_effect = Exception("Charging box API failed")
 

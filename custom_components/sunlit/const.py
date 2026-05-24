@@ -32,6 +32,7 @@ API_CHARGING_BOX_CHECK_STRATEGY = "/v1.6/chargingBox/checkSpaceStrategy"
 API_BATTERY_LOCAL_MODE_CONFIG = "/v1.7/battery/updateLocalModeConfig"
 API_STRATEGY_DEVICE_STATUS = "/v1.7/strategy/device/status"
 API_TARIFF_INDEX = "/v1.6/tariff/index"
+API_SPACE_STATISTICS_DYNAMIC_ENERGY = "/v1.1/space/statistics/dynamic/energy"
 
 # Configuration keys
 CONF_EMAIL = "email"
@@ -180,6 +181,9 @@ FAMILY_SENSORS = {
     "electricity_price_high": "Electricity Price High",
     "electricity_price_low": "Electricity Price Low",
     "electricity_price_tag": "Electricity Price Tag",
+    # Energy self-consumption from statistics/dynamic/energy endpoint
+    "self_use_rate": "Self-Use Rate",
+    "self_sufficiency_rate": "Self-Sufficiency Rate",
     # Total solar production tracking
     "total_solar_energy": "Total Solar Energy",
     "total_solar_power": "Total Solar Power",
@@ -226,6 +230,8 @@ SENSOR_GROUPS = {
     # Group 2: Energy Production & Storage - Energy Dashboard compatible
     "daily_yield": SENSOR_GROUP_ENERGY,
     "lifetime_yield": SENSOR_GROUP_ENERGY,
+    "self_use_rate": SENSOR_GROUP_ENERGY,
+    "self_sufficiency_rate": SENSOR_GROUP_ENERGY,
     "total_solar_energy": SENSOR_GROUP_ENERGY,
     "total_grid_export_energy": SENSOR_GROUP_ENERGY,
     "daily_grid_export_energy": SENSOR_GROUP_ENERGY,

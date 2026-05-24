@@ -382,3 +382,15 @@ class TestElectricityPriceSensors:
         assert get_state_class_for_sensor("electricity_price_tag") is None
         assert get_unit_for_sensor("electricity_price_tag") is None
         assert get_icon_for_sensor("electricity_price_tag") == "mdi:tag-outline"
+
+
+class TestSelfConsumptionSensors:
+    """Test classification of energy self-consumption sensors (issue #168)."""
+
+    @pytest.mark.parametrize("key", ["self_use_rate", "self_sufficiency_rate"])
+    def test_rates(self, key):
+        """Self-use / self-sufficiency are % measurements, no device class."""
+        assert get_device_class_for_sensor(key) is None
+        assert get_state_class_for_sensor(key) == SensorStateClass.MEASUREMENT
+        assert get_unit_for_sensor(key) == PERCENTAGE
+        assert get_icon_for_sensor(key) is not None

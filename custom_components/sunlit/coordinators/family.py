@@ -113,6 +113,9 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
             # Fetch dynamic electricity tariff / pricing
             await self._fetch_tariff(family_data)
 
+            # Fetch energy self-consumption rates
+            await self._fetch_energy_distribution(family_data)
+
             # Fetch current strategy
             await self._fetch_current_strategy(family_data)
 
@@ -254,6 +257,30 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
                     family_data["electricity_price_tag"] = price.get("priceTag")
         except Exception as err:
             _LOGGER.debug("Could not fetch tariff index: %s", err)
+
+    async def _fetch_energy_distribution(self, family_data: dict) -> None:
+        """Fetch energy self-use / self-sufficiency rates for the current month.
+
+        These ratios are not derivable from the cumulative sensors (they need
+        consumption data), unlike period generation/earnings totals which HA's
+        statistics engine derives itself (see issue #169).
+        """
+        try:
+            now = datetime.now()
+            energy = await self.api_client.fetch_space_statistics_dynamic_energy(
+                self.family_id, year=now.year, month=now.month
+            )
+            if energy:
+                self_use = energy.get("totalSelfUseRate")
+                if self_use is not None:
+                    family_data["self_use_rate"] = round(self_use * 100, 1)
+                self_sufficiency = energy.get("selfSufficiencyRate")
+                if self_sufficiency is not None:
+                    family_data["self_sufficiency_rate"] = round(
+                        self_sufficiency * 100, 1
+                    )
+        except Exception as err:
+            _LOGGER.debug("Could not fetch energy distribution: %s", err)
 
     async def _fetch_current_strategy(self, family_data: dict) -> None:
         """Fetch current strategy."""
