@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/cedricziel/ha-sunlit/compare/v1.4.2...v1.5.0) (2026-05-24)
+
+
+### Features
+
+* add family-level Total MPPT Energy sensor ([#148](https://github.com/cedricziel/ha-sunlit/issues/148)) ([d6334f3](https://github.com/cedricziel/ha-sunlit/commit/d6334f3d1cb73e0c544a85fd93d4f2e72ef7eb21))
+
+
+### Bug Fixes
+
+* persist MPPT energy accumulators across restarts ([#146](https://github.com/cedricziel/ha-sunlit/issues/146)) ([85daf56](https://github.com/cedricziel/ha-sunlit/commit/85daf56101d0008f518eca40cd5c2fc796297698))
+
 ## [1.4.2](https://github.com/cedricziel/ha-sunlit/compare/v1.4.1...v1.4.2) (2026-05-24)
 
 
