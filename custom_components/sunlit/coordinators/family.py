@@ -160,8 +160,10 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
                 family_data["total_input_power"] = battery_data.get("inputPower")
                 family_data["total_output_power"] = battery_data.get("outputPower")
 
-                # Heater status
-                heater_status = battery_data.get("heaterStatusList", [])
+                # Heater status. Use `or []` (not a .get default): the API can
+                # return "heaterStatusList": null, which would otherwise yield
+                # None and break iteration (UpdateFailed for the whole family).
+                heater_status = battery_data.get("heaterStatusList") or []
                 for idx, status in enumerate(heater_status, 1):
                     family_data[f"battery_heater_{idx}"] = status
 
