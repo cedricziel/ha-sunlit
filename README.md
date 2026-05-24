@@ -12,6 +12,8 @@
 >
 > **No warranty or support is provided. Use of this integration is entirely at your own risk.**
 
+[![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=cedricziel&repository=ha-sunlit&category=integration)
+
 ## Overview
 
 This custom integration connects HomeAssistant to the SunEnergyXT (previously Sunlit Solar) API, enabling real-time monitoring of your solar installation including solar panels, inverters, batteries, and energy meters. It provides comprehensive sensor data for monitoring energy production, consumption, and battery status.
@@ -22,14 +24,19 @@ This custom integration connects HomeAssistant to the SunEnergyXT (previously Su
 - 🏠 **Family/Space Aggregation** - Combined metrics across all devices
 - 🔌 **Device-Specific Sensors** - Individual monitoring for each component
 - 🔋 **Battery Management** - SOC limits, strategies, and status tracking
-- ⚡ **Energy Dashboard Ready** - Compatible with HA Energy Dashboard
+- 🎛️ **Control** - Switch entities (e.g. battery local mode)
+- ⚡ **Energy Dashboard Ready** - Lifetime yield sensor for the Energy Dashboard
+- 💶 **Dynamic Tariff** - Rabot hourly electricity price + price tag
+- 🌱 **Self-Consumption** - Self-use and self-sufficiency rates
+- 🔔 **Notifications** - Latest notification surfaced as a sensor
 - 🚨 **Fault Detection** - Binary sensors for system health monitoring
 - 📈 **Strategy History** - Track battery charging strategy changes
+- 🔎 **Zeroconf Discovery** - BK215 batteries are auto-discovered on the network
 
 ## Requirements
 
 - HomeAssistant 2025.1.0 or newer
-- Sunlit Solar Bearer API key (obtain from your Sunlit Solar account)
+- A SunEnergyXT / Sunlit account (email + password) — the same credentials you use in the app
 - Active internet connection for API access
 
 ## Installation
@@ -67,20 +74,24 @@ custom_components/
     ├── binary_sensor.py
     ├── config_flow.py
     ├── const.py
+    ├── coordinators/      # specialized DataUpdateCoordinators
+    ├── entities/          # entity classes & helpers
+    ├── event_manager.py
     ├── manifest.json
     ├── sensor.py
+    ├── switch.py
     └── strings.json
 ```
 
 ## Configuration
 
 1. Navigate to **Settings** → **Devices & Services**
-2. Click **Add Integration** and search for "Sunlit"
-3. Enter your API key when prompted
+2. Click **Add Integration** and search for "Sunlit" (or accept the auto-discovered BK215 prompt)
+3. Enter your **email and password** when prompted
 4. Select the families/spaces you want to monitor
 5. Click **Submit**
 
-The integration will create devices and sensors automatically based on your Sunlit Solar system configuration.
+The integration will create devices, sensors, and controls automatically based on your system configuration.
 
 ## Available Sensors
 
@@ -95,28 +106,57 @@ The integration will create devices and sensors automatically based on your Sunl
 | `average_battery_level`     | Average SOC across all batteries  | %        | 30s    |
 | `total_input_power`         | Total battery charging power      | W        | 30s    |
 | `total_output_power`        | Total battery discharging power   | W        | 30s    |
-| `battery_strategy`          | Current battery charging strategy | text     | 30s    |
-| `battery_status`            | Overall battery system status     | text     | 30s    |
-| `rated_power`               | System rated power capacity       | W        | 30s    |
-| `max_output_power`          | Maximum output power limit        | W        | 30s    |
-| `hw_soc_min`                | Hardware minimum SOC limit        | %        | 30s    |
-| `hw_soc_max`                | Hardware maximum SOC limit        | %        | 30s    |
-| `strategy_soc_min`          | Strategy minimum SOC              | %        | 30s    |
-| `strategy_soc_max`          | Strategy maximum SOC              | %        | 30s    |
-| `last_strategy_change`      | Timestamp of last strategy change | datetime | 30s    |
-| `strategy_changes_today`    | Number of strategy changes in 24h | count    | 30s    |
+| `inverter_current_power`    | Inverter output power             | W        | 30s    |
+| `battery_count`             | Number of battery modules         | count    | 30s    |
+| `battery_charging_remaining`| Time until fully charged          | minutes  | 30s    |
+| `battery_discharging_remaining` | Time until fully discharged   | minutes  | 30s    |
+| **Energy** |||
+| `daily_yield`               | Today's energy yield              | kWh      | 30s    |
+| `lifetime_yield`            | Lifetime energy yield (Energy Dashboard source) | kWh | 30s |
 | `total_solar_energy`        | Total solar energy production     | kWh      | 30s    |
 | `total_solar_power`         | Total solar power production      | W        | 30s    |
+| `total_mppt_energy`         | Total MPPT energy (integrated)    | kWh      | 1 min  |
 | `daily_grid_export_energy`  | Daily energy exported to grid     | kWh      | 30s    |
 | `total_grid_export_energy`  | Total energy exported to grid     | kWh      | 30s    |
+| `home_power`                | Current home consumption          | W        | 30s    |
+| `self_use_rate`             | Share of generation self-consumed | %        | 30s    |
+| `self_sufficiency_rate`     | Share of consumption self-supplied| %        | 30s    |
+| **Financial** |||
+| `daily_earnings`            | Earnings today                    | currency | 30s    |
+| `lifetime_earnings`         | Lifetime earnings                 | currency | 30s    |
+| `currency`                  | Account currency                  | text     | 30s    |
+| `electricity_price`         | Current dynamic tariff price      | ct/kWh   | 30s    |
+| `electricity_price_avg`     | Today's average price             | ct/kWh   | 30s    |
+| `electricity_price_high`    | Today's highest price             | ct/kWh   | 30s    |
+| `electricity_price_low`     | Today's lowest price              | ct/kWh   | 30s    |
+| `electricity_price_tag`     | Price tag (VERY_CHEAP…VERY_EXPENSIVE) | text | 30s    |
+| **SOC limits** |||
+| `hw_soc_min` / `hw_soc_max` | Hardware min/max SOC limit        | %        | 30s    |
+| `battery_soc_min` / `battery_soc_max` | BMS min/max SOC limit   | %        | 30s    |
+| `strategy_soc_min` / `strategy_soc_max` | Strategy min/max SOC  | %        | 30s    |
+| `current_soc_min` / `current_soc_max` | Current min/max SOC     | %        | 30s    |
+| `rated_power`               | System rated power capacity       | W        | 30s    |
+| `max_output_power`          | Maximum output power limit        | W        | 30s    |
+| **Strategy & status** |||
+| `battery_strategy`          | Current battery charging strategy | text     | 30s    |
+| `battery_status`            | Overall battery system status     | text     | 30s    |
+| `battery_device_status`     | Battery device status             | text     | 30s    |
+| `inverter_device_status`    | Inverter device status            | text     | 30s    |
+| `meter_device_status`       | Meter device status               | text     | 30s    |
+| `last_strategy_change`      | Timestamp of last strategy change | datetime | 5 min  |
+| `last_strategy_type`        | Last strategy type                | text     | 5 min  |
+| `last_strategy_status`      | Last strategy status              | text     | 5 min  |
+| `strategy_changes_today`    | Number of strategy changes in 24h | count    | 5 min  |
 | `ev3600_auto_strategy_mode` | EV3600 inverter strategy mode     | text     | 30s    |
 | `storage_strategy`          | Storage strategy configuration    | text     | 30s    |
 | `normal_charge_box_mode`    | Normal charge box mode            | text     | 30s    |
 | `inverter_sn_list`          | Inverter serial numbers list      | text     | 30s    |
+| **Info** |||
+| `latest_notification`       | Latest notification title (full text in attributes) | text | 30s |
 
 ### Device-Specific Sensors
 
-#### Smart Meter (SHELLY_3EM_METER)
+#### Smart Meter (`SHELLY_3EM_METER`, `SHELLY_PRO3EM_METER`)
 
 | Sensor             | Description           | Unit |
 | ------------------ | --------------------- | ---- |
@@ -126,13 +166,14 @@ The integration will create devices and sensors automatically based on your Sunl
 | `total_buy_energy` | Total energy imported | kWh  |
 | `total_ret_energy` | Total energy exported | kWh  |
 
-#### Inverter (YUNENG_MICRO_INVERTER)
+#### Inverter (`YUNENG_MICRO_INVERTER`, `SOLAR_MICRO_INVERTER` — incl. DEYE, Hoymiles)
 
-| Sensor                   | Description              | Unit |
-| ------------------------ | ------------------------ | ---- |
-| `current_power`          | Current power production | W    |
-| `total_power_generation` | Total energy produced    | kWh  |
-| `daily_earnings`         | Earnings today           | €    |
+| Sensor                   | Description                  | Unit |
+| ------------------------ | ---------------------------- | ---- |
+| `current_power`          | Current power production     | W    |
+| `total_power_generation` | Today's energy produced      | kWh  |
+| `total_yield`            | Lifetime energy produced     | kWh  |
+| `daily_earnings`         | Earnings today               | €    |
 
 #### Battery (ENERGY_STORAGE_BATTERY)
 
@@ -149,13 +190,17 @@ The integration will create devices and sensors automatically based on your Sunl
 | `batteryMppt1InVol`   | Main unit MPPT1 voltage     | V       |
 | `batteryMppt1InCur`   | Main unit MPPT1 current     | A       |
 | `batteryMppt1InPower` | Main unit MPPT1 power       | W       |
+| `batteryMppt1Energy`  | Main unit MPPT1 total energy| kWh     |
 | `batteryMppt2InVol`   | Main unit MPPT2 voltage     | V       |
 | `batteryMppt2InCur`   | Main unit MPPT2 current     | A       |
 | `batteryMppt2InPower` | Main unit MPPT2 power       | W       |
+| `batteryMppt2Energy`  | Main unit MPPT2 total energy| kWh     |
+| `wifi_ssid`           | WiFi network the battery is on | text |
+| `system_status`       | System topology (e.g. "Drei Batterien parallel") | text |
 
 ##### Battery Module Sensors (Virtual Devices)
 
-For modular battery systems with B215 extension modules, each additional battery module (1-3) appears as a separate virtual device with:
+For modular battery systems with B215 extension modules, each additional battery module (**up to 7**) appears as a separate virtual device with:
 
 | Sensor         | Description            | Unit |
 | -------------- | ---------------------- | ---- |
@@ -163,6 +208,8 @@ For modular battery systems with B215 extension modules, each additional battery
 | `Mppt1InVol`   | Module MPPT voltage    | V    |
 | `Mppt1InCur`   | Module MPPT current    | A    |
 | `Mppt1InPower` | Module MPPT power      | W    |
+| `Mppt1Energy`  | Module MPPT total energy | kWh |
+| `capacity`     | Nominal capacity (2.15 kWh) | kWh |
 
 ### Binary Sensors
 
@@ -184,13 +231,29 @@ For modular battery systems with B215 extension modules, each additional battery
 | `enable_local_smart_strategy`  | Local smart strategy enabled    | None         |
 | `ac_couple_enabled`            | AC coupling enabled             | None         |
 | `charging_box_boost_on`        | Charging box boost active       | None         |
+| `battery_local_mode_enabled`   | Battery local mode enabled      | None         |
+| `aio_local_mode_enabled`       | All-in-one local mode enabled   | None         |
+| `aio_ups_enabled`              | All-in-one UPS mode enabled     | None         |
+| `rabot_has_contract`           | Rabot dynamic-tariff contract   | None         |
 
 #### Device Level Binary Sensors
 
-| Sensor  | Description          | Device Class |
-| ------- | -------------------- | ------------ |
-| `fault` | Device has fault     | problem      |
-| `power` | Device is powered on | power        |
+| Sensor             | Description                   | Device Class |
+| ------------------ | ----------------------------- | ------------ |
+| `fault`            | Device has fault              | problem      |
+| `power`            | Device is powered on          | power        |
+| `ota_in_progress`  | Firmware update in progress (battery) | update |
+| `has_valid_meter`  | A valid meter is attached (battery)   | connectivity |
+
+### Switches
+
+| Switch        | Description                          | Device  |
+| ------------- | ------------------------------------ | ------- |
+| `local_mode`  | Toggle battery local mode (cloud)    | Battery |
+
+> Local mode lets the battery operate from on-device logic. Toggling it calls the
+> cloud control endpoint; see [`docs/local-protocol.md`](docs/local-protocol.md)
+> for the (not-yet-implemented) direct local-TCP channel.
 
 ## Energy Dashboard Integration
 
@@ -200,7 +263,13 @@ To integrate with HomeAssistant's Energy Dashboard:
 
 1. Go to **Settings** → **Dashboards** → **Energy**
 2. Under **Solar Panels**, click **Add Solar Production**
-3. Select sensor: `sensor.inverter_[ID]_total_power_generation`
+3. Select the family **Lifetime Yield** sensor (`sensor.sunlit_[family]_lifetime_yield`) —
+   it is a cumulative `total_increasing` kWh sensor, so HA derives daily/monthly/yearly
+   automatically (no Riemann-sum helper needed for solar).
+
+> Tip: for per-period figures (this month, this year) use a HA **Statistics** card or a
+> **`utility_meter`** helper on `lifetime_yield` — the integration deliberately does not
+> ship separate month/year total sensors.
 
 ### Grid Consumption
 
@@ -258,12 +327,12 @@ The integration creates a hierarchical device structure:
 
 2. **Physical Devices** - Actual hardware components
 
-   - Smart meters (SHELLY_3EM_METER)
-   - Inverters (YUNENG_MICRO_INVERTER)
-   - Battery units (ENERGY_STORAGE_BATTERY)
+   - Smart meters (`SHELLY_3EM_METER`, `SHELLY_PRO3EM_METER`)
+   - Inverters (`YUNENG_MICRO_INVERTER`, `SOLAR_MICRO_INVERTER`)
+   - Battery units (`ENERGY_STORAGE_BATTERY`)
 
 3. **Virtual Devices** - Logical representations for better organization
-   - Battery modules (1-3) for modular battery systems
+   - Battery modules (up to 7) for modular battery systems
    - Each module appears as a separate device linked to the main battery unit
    - Prevents sensor overload on single devices (30+ sensors)
 
@@ -272,16 +341,17 @@ The integration creates a hierarchical device structure:
 For battery systems with expansion modules:
 
 - **Main Unit (BK215)**: Contains system-wide sensors and dual MPPT inputs
-- **B215 Module 1-3**: Additional battery packs (2.15 kWh each) with individual MPPT solar inputs
+- **B215 Modules (up to 7)**: Additional battery packs (2.15 kWh each) with individual MPPT solar inputs
 - Each module tracks its own SOC and solar production independently
 - Virtual devices ensure clean organization in HomeAssistant UI
 
 ## Known Limitations
 
-- **No Dynamic Device Discovery**: New devices added to your Sunlit system require a HomeAssistant restart to appear
-- **No Historical Data**: The integration cannot backfill historical data from before it was installed
+- **New devices need a restart**: New devices added to your account after setup require a HomeAssistant restart to appear (zeroconf only triggers initial onboarding)
+- **No Historical Data**: The integration does not backfill history from before it was installed
 - **API Rate Limits**: The 30-second update interval is fixed to avoid API rate limiting
-- **Read-Only**: All sensors are read-only; device control is not supported
+- **Cloud-polling**: Control and telemetry go through the cloud API. A direct local-TCP channel is documented in [`docs/local-protocol.md`](docs/local-protocol.md) but not yet implemented
+- **Limited control**: Only battery local mode is exposed as a control today (more planned)
 
 ## Troubleshooting
 
