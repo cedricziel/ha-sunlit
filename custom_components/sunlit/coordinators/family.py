@@ -24,13 +24,11 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
         api_client: SunlitApiClient,
         family_id: str,
         family_name: str,
-        is_global: bool = False,
     ) -> None:
         """Initialize the family coordinator."""
         self.api_client = api_client
         self.family_id = family_id
         self.family_name = family_name
-        self.is_global = is_global
         self.devices = {}  # Empty for compatibility with legacy code
 
         super().__init__(
@@ -84,20 +82,6 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
         """Fetch family-level data from REST API."""
         try:
             family_data = {}
-
-            if self.is_global:
-                # For global/unassigned devices, minimal family data
-                all_devices = await self.api_client.get_device_list()
-                devices = [d for d in all_devices if d.get("spaceId") is None]
-
-                family_data["device_count"] = len(devices)
-                family_data["online_devices"] = sum(
-                    1 for d in devices if d.get("status") == "Online"
-                )
-                family_data["offline_devices"] = sum(
-                    1 for d in devices if d.get("status") == "Offline"
-                )
-                return {"family": family_data}
 
             # Fetch space index for comprehensive family data
             space_index = {}

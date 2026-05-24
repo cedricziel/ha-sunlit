@@ -11,6 +11,7 @@ from custom_components.sunlit.api_client import (
     SunlitApiError,
     SunlitAuthError,
     SunlitConnectionError,
+    _format_api_message,
 )
 
 
@@ -133,6 +134,67 @@ async def test_fetch_families_api_error(api_client, mock_session):
         await api_client.fetch_families()
 
     assert "API error: Something went wrong" in str(exc_info.value)
+
+
+def test_format_api_message_plain_string():
+    """A plain string message is returned unchanged."""
+    assert _format_api_message("Something went wrong") == "Something went wrong"
+
+
+def test_format_api_message_localized_dict_prefers_english():
+    """When multiple languages are present, English is preferred."""
+    assert (
+        _format_api_message({"DE": "Fehler", "EN": "Error"}) == "Error"
+    )
+
+
+def test_format_api_message_localized_dict_german_only():
+    """A German-only localized message (issue #95) is rendered as its text.
+
+    Regression for #95: the API returns ``{"DE": "..."}`` and we must log the
+    readable string, not the raw dict.
+    """
+    msg = {
+        "DE": "Fehler: Ungültige sonstige Parameter. Wenn dieser Fehler "
+        "weiterhin besteht, wenden Sie sich bitte an unseren Kundensupport."
+    }
+    rendered = _format_api_message(msg)
+    assert rendered.startswith("Fehler: Ungültige sonstige Parameter")
+    assert "{" not in rendered  # not the raw dict
+
+
+def test_format_api_message_unknown_language_falls_back_to_value():
+    """Unknown language keys fall back to the first available value."""
+    assert _format_api_message({"fr": "Erreur"}) == "Erreur"
+
+
+@pytest.mark.asyncio
+async def test_api_error_renders_localized_message(api_client, mock_session):
+    """Regression for #95: a localized error dict surfaces as readable text.
+
+    The Sunlit API returns ``code != 0`` with a localized ``message`` dict.
+    The raised SunlitApiError must contain the human-readable string rather
+    than the raw ``{'DE': ...}`` repr.
+    """
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 400000,
+            "message": {
+                "DE": "Fehler: Ungültige sonstige Parameter. Wenn dieser "
+                "Fehler weiterhin besteht, wenden Sie sich bitte an unseren "
+                "Kundensupport."
+            },
+        },
+    )
+
+    with pytest.raises(SunlitApiError) as exc_info:
+        await api_client.fetch_device_list(34038)
+
+    err = str(exc_info.value)
+    assert "Ungültige sonstige Parameter" in err
+    assert "{'DE'" not in err  # raw dict repr must not leak into the message
 
 
 @pytest.mark.asyncio

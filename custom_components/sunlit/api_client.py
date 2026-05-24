@@ -38,6 +38,23 @@ class SunlitConnectionError(SunlitApiError):
     """Exception for connection errors."""
 
 
+def _format_api_message(message: Any) -> str:
+    """Render an API error message into a readable string.
+
+    The Sunlit API returns localized error messages as a dict keyed by
+    language code, e.g. ``{"DE": "Fehler: ..."}``. Logging that raw makes
+    error lines hard to read, so pick a single human-readable string,
+    preferring English when available.
+    """
+    if isinstance(message, dict):
+        for lang in ("EN", "en", "DE", "de"):
+            if message.get(lang):
+                return str(message[lang])
+        # Unknown language keys: fall back to the first value, then the dict.
+        return str(next(iter(message.values()), message))
+    return str(message)
+
+
 class SunlitApiClient:
     """Client for interacting with the Sunlit Solar API."""
 
@@ -126,7 +143,9 @@ class SunlitApiClient:
 
                     # Check for API-level errors
                     if isinstance(data, dict) and data.get("code") != 0:
-                        message = data.get("message", "Unknown error")
+                        message = _format_api_message(
+                            data.get("message", "Unknown error")
+                        )
                         raise SunlitApiError(f"API error: {message}")
 
                     # Log full response for debugging
@@ -632,32 +651,6 @@ class SunlitApiClient:
             _LOGGER.error(
                 "Failed to fetch strategy history for family %s: %s", family_id, err
             )
-            raise
-
-    async def get_device_list(self) -> list[dict[str, Any]]:
-        """Fetch all devices without filtering by space.
-
-        Returns:
-            List of all devices in the account
-
-        Raises:
-            SunlitAuthError: Authentication failed
-            SunlitConnectionError: Connection failed
-            SunlitApiError: API returned an error
-        """
-        try:
-            response = await self._make_request("POST", API_DEVICE_LIST)
-
-            # Extract devices from paginated response
-            if "content" in response and "content" in response["content"]:
-                devices = response["content"]["content"]
-                _LOGGER.debug("Fetched %d total devices", len(devices))
-                return devices
-
-            return []
-
-        except SunlitApiError as err:
-            _LOGGER.error("Failed to fetch all devices: %s", err)
             raise
 
     async def fetch_space_index(self, space_id: str | int) -> dict[str, Any]:

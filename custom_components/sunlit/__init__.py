@@ -152,56 +152,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "mppt": mppt_coordinator,
         }
 
-    # Check for devices without a spaceId (global/unassigned devices)
-    try:
-        all_devices = await api_client.get_device_list()
-        unassigned_devices = [d for d in all_devices if d.get("spaceId") is None]
-
-        if unassigned_devices:
-            _LOGGER.info(
-                "Found %d unassigned devices (no spaceId), creating global coordinator",
-                len(unassigned_devices),
-            )
-            # Create specialized coordinators for global devices
-            global_family_coordinator = SunlitFamilyCoordinator(
-                hass,
-                api_client=api_client,
-                family_id="global",
-                family_name="Unassigned Devices",
-                is_global=True,
-            )
-            await global_family_coordinator.async_config_entry_first_refresh()
-
-            # Create event manager for global devices if enabled
-            global_event_manager = None
-            if soc_events_enabled:
-                global_event_manager = SunlitEventManager(
-                    hass,
-                    family_id="global",
-                    config_options=soc_event_options,
-                )
-                event_managers["global"] = global_event_manager
-
-            global_device_coordinator = SunlitDeviceCoordinator(
-                hass,
-                api_client=api_client,
-                family_id="global",
-                family_name="Unassigned Devices",
-                is_global=True,
-                event_manager=global_event_manager,
-            )
-            await global_device_coordinator.async_config_entry_first_refresh()
-
-            # Note: No strategy or MPPT coordinators for global devices
-            coordinators["global"] = {
-                "family": global_family_coordinator,
-                "device": global_device_coordinator,
-                "strategy": None,  # Not applicable for global devices
-                "mppt": None,  # Not applicable for global devices
-            }
-    except Exception as err:
-        _LOGGER.warning("Failed to check for unassigned devices: %s", err)
-
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinators": coordinators,

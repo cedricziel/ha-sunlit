@@ -25,14 +25,12 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
         api_client: SunlitApiClient,
         family_id: str,
         family_name: str,
-        is_global: bool = False,
         event_manager: SunlitEventManager | None = None,
     ) -> None:
         """Initialize the device coordinator."""
         self.api_client = api_client
         self.family_id = family_id
         self.family_name = family_name
-        self.is_global = is_global
         self.devices = {}  # Store device info for registry
         self.event_manager = event_manager
 
@@ -87,11 +85,7 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
         """Fetch device-level data from REST API."""
         try:
             # Fetch device list
-            if self.is_global:
-                all_devices = await self.api_client.get_device_list()
-                devices = [d for d in all_devices if d.get("spaceId") is None]
-            else:
-                devices = await self.api_client.fetch_device_list(self.family_id)
+            devices = await self.api_client.fetch_device_list(self.family_id)
 
             _LOGGER.debug(
                 "Received %d devices for family %s", len(devices), self.family_name
