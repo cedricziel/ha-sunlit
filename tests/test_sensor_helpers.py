@@ -331,3 +331,27 @@ class TestIconForSensor:
         assert get_icon_for_sensor("batteryMppt1InVol") == "mdi:sine-wave"
         assert get_icon_for_sensor("batteryMppt1InCur") == "mdi:current-dc"
         assert get_icon_for_sensor("batteryMppt1InPower") == "mdi:solar-power-variant"
+
+
+class TestLifetimeStatsSensors:
+    """Test classification of lifetime yield & earnings sensors (issue #155)."""
+
+    def test_lifetime_yield(self):
+        """lifetime_yield is a cumulative energy sensor in kWh."""
+        assert get_device_class_for_sensor("lifetime_yield") == SensorDeviceClass.ENERGY
+        assert (
+            get_state_class_for_sensor("lifetime_yield")
+            == SensorStateClass.TOTAL_INCREASING
+        )
+        assert get_unit_for_sensor("lifetime_yield") == UnitOfEnergy.KILO_WATT_HOUR
+        assert get_icon_for_sensor("lifetime_yield") == "mdi:solar-power-variant"
+
+    def test_lifetime_earnings(self):
+        """lifetime_earnings is a cumulative monetary sensor."""
+        assert (
+            get_device_class_for_sensor("lifetime_earnings")
+            == SensorDeviceClass.MONETARY
+        )
+        assert get_state_class_for_sensor("lifetime_earnings") == SensorStateClass.TOTAL
+        assert get_unit_for_sensor("lifetime_earnings") == "EUR"
+        assert get_icon_for_sensor("lifetime_earnings") == "mdi:cash"

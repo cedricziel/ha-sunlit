@@ -27,6 +27,10 @@ async def test_family_coordinator_update_success(
     api_client.get_charging_box_strategy.return_value = charging_box_strategy_response[
         "content"
     ]
+    api_client.fetch_space_statistics_static.return_value = {
+        "totalYield": 1547.04,
+        "totalEarnings": {"earnings": 473.38, "currency": "EUR"},
+    }
 
     coordinator = SunlitFamilyCoordinator(
         hass,
@@ -59,9 +63,14 @@ async def test_family_coordinator_update_success(
     assert family_data["battery_strategy"] == "SELF_CONSUMPTION"
     assert family_data["battery_full"] == False
 
+    # Check lifetime statistics
+    assert family_data["lifetime_yield"] == 1547.04
+    assert family_data["lifetime_earnings"] == 473.38
+
     # Verify API calls
     api_client.fetch_space_index.assert_called_once_with("34038")
     api_client.fetch_space_soc.assert_called_once_with("34038")
+    api_client.fetch_space_statistics_static.assert_called_once_with("34038")
     api_client.fetch_space_current_strategy.assert_called_once_with("34038")
     api_client.get_charging_box_strategy.assert_called_once_with("34038")
 
@@ -75,6 +84,7 @@ async def test_family_coordinator_partial_failure(
     api_client = AsyncMock()
     api_client.fetch_space_index.return_value = space_index_response["content"]
     api_client.fetch_space_soc.side_effect = Exception("SOC API failed")
+    api_client.fetch_space_statistics_static.side_effect = Exception("Stats API failed")
     api_client.fetch_space_current_strategy.side_effect = Exception("Strategy API failed")
     api_client.get_charging_box_strategy.side_effect = Exception("Charging box API failed")
 
@@ -97,9 +107,10 @@ async def test_family_coordinator_partial_failure(
     assert family_data["average_battery_level"] == 85
     assert family_data["total_ac_power"] == 1500  # From meter data
 
-    # Should not have SOC or strategy data
+    # Should not have SOC, strategy, or lifetime-stats data
     assert "hw_soc_min" not in family_data
     assert "battery_strategy" not in family_data
+    assert "lifetime_yield" not in family_data
 
 
 async def test_family_coordinator_complete_failure(
@@ -111,6 +122,7 @@ async def test_family_coordinator_complete_failure(
     api_client.fetch_space_index.side_effect = Exception("Complete API failure")
     api_client.fetch_device_list.side_effect = Exception("Device list API failed")
     api_client.fetch_space_soc.side_effect = Exception("SOC API failed")
+    api_client.fetch_space_statistics_static.side_effect = Exception("Stats API failed")
     api_client.fetch_space_current_strategy.side_effect = Exception("Strategy API failed")
     api_client.get_charging_box_strategy.side_effect = Exception("Charging box API failed")
 

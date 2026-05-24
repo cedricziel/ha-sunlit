@@ -359,6 +359,38 @@ async def test_fetch_device_statistics_success(api_client, mock_session):
 
 
 @pytest.mark.asyncio
+async def test_fetch_space_statistics_static_success(api_client, mock_session):
+    """Test successful fetching of lifetime yield and earnings."""
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "message": {"DE": "Ok"},
+            "content": {
+                "spaceId": 34038,
+                "totalYield": 1547.04,
+                "totalEarnings": {"earnings": 473.38, "currency": "EUR"},
+            },
+        },
+    )
+
+    data = await api_client.fetch_space_statistics_static(34038)
+
+    assert data["totalYield"] == 1547.04
+    assert data["totalEarnings"]["earnings"] == 473.38
+    assert data["totalEarnings"]["currency"] == "EUR"
+
+    # Verify request was made correctly (POST with spaceId payload)
+    mock_session.request.assert_called_once()
+    call_args = mock_session.request.call_args
+    assert call_args[0][0] == "POST"
+    assert "/v1.1/space/statistics/static" in call_args[0][1]
+    assert call_args[1]["json"] == {"spaceId": 34038}
+    assert call_args[1]["headers"]["Authorization"] == "Bearer test_token"
+
+
+@pytest.mark.asyncio
 async def test_fetch_device_statistics_auth_error(api_client, mock_session):
     """Test authentication error when fetching device statistics."""
     # Setup 401 response

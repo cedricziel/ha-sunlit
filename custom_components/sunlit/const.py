@@ -27,6 +27,7 @@ API_SPACE_SOC = "/v1.1/space/soc"
 API_SPACE_CURRENT_STRATEGY = "/v1.1/space/currentStrategy"
 API_SPACE_STRATEGY_HISTORY = "/v1.1/space/strategyHistory"
 API_SPACE_INDEX = "/v1.5/space/index"
+API_SPACE_STATISTICS_STATIC = "/v1.1/space/statistics/static"
 API_CHARGING_BOX_CHECK_STRATEGY = "/v1.6/chargingBox/checkSpaceStrategy"
 
 # Configuration keys
@@ -167,6 +168,9 @@ FAMILY_SENSORS = {
     "daily_earnings": "Daily Earnings",
     "home_power": "Home Power",
     "currency": "Currency",
+    # Lifetime totals from space/statistics/static endpoint
+    "lifetime_yield": "Lifetime Yield",
+    "lifetime_earnings": "Lifetime Earnings",
     # Total solar production tracking
     "total_solar_energy": "Total Solar Energy",
     "total_solar_power": "Total Solar Power",
@@ -212,6 +216,7 @@ SENSOR_GROUPS = {
     "online_devices": SENSOR_GROUP_OVERVIEW,
     # Group 2: Energy Production & Storage - Energy Dashboard compatible
     "daily_yield": SENSOR_GROUP_ENERGY,
+    "lifetime_yield": SENSOR_GROUP_ENERGY,
     "total_solar_energy": SENSOR_GROUP_ENERGY,
     "total_grid_export_energy": SENSOR_GROUP_ENERGY,
     "daily_grid_export_energy": SENSOR_GROUP_ENERGY,
@@ -262,6 +267,5 @@ SENSOR_GROUPS = {
     "meter_device_status": SENSOR_GROUP_STATUS,
     # Group 7: Financial Tracking - Earnings and revenue sensors
     "daily_earnings": SENSOR_GROUP_FINANCIAL,
-    "total_earnings": SENSOR_GROUP_FINANCIAL,
     "lifetime_earnings": SENSOR_GROUP_FINANCIAL,
 }

@@ -19,6 +19,7 @@ from .const import (
     API_SPACE_CURRENT_STRATEGY,
     API_SPACE_INDEX,
     API_SPACE_SOC,
+    API_SPACE_STATISTICS_STATIC,
     API_SPACE_STRATEGY_HISTORY,
     API_USER_LOGIN,
 )
@@ -529,6 +530,45 @@ class SunlitApiClient:
         except SunlitApiError as err:
             _LOGGER.error(
                 "Failed to fetch SOC configuration for space %s: %s", space_id, err
+            )
+            raise
+
+    async def fetch_space_statistics_static(
+        self, space_id: str | int
+    ) -> dict[str, Any]:
+        """Fetch lifetime yield and earnings totals for a space/family.
+
+        Args:
+            space_id: The space/family ID to fetch lifetime statistics for
+
+        Returns:
+            Dictionary containing cumulative totals:
+            - totalYield: Lifetime energy yield in kWh
+            - totalEarnings: {earnings, currency}
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload = {"spaceId": int(space_id)}
+            response = await self._make_request(
+                "POST", API_SPACE_STATISTICS_STATIC, json=payload
+            )
+
+            _LOGGER.debug(
+                "Space static statistics response for %s: %s", space_id, response
+            )
+
+            if "content" in response:
+                return response["content"]
+
+            return {}
+
+        except SunlitApiError as err:
+            _LOGGER.error(
+                "Failed to fetch lifetime statistics for space %s: %s", space_id, err
             )
             raise
 
