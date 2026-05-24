@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.event import async_track_time_change
 
 from .api_client import SunlitApiClient
 from .const import (
@@ -34,7 +36,10 @@ from .coordinators import (
 )
 from .event_manager import SunlitEventManager
 from .local.manager import LocalChannelManager
-from .statistics import async_import_family_history
+from .statistics import (
+    async_import_family_history,
+    async_record_family_live_statistics,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -216,10 +221,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _async_register_services(hass)
 
+    # The lifetime_yield / lifetime_earnings sensors have no state_class — the
+    # integration owns their long-term statistics. Append the live cumulative
+    # value hourly (historical periods come from the `sunlit.import_history`
+    # service), and seed one point right after setup so the entities are
+    # immediately selectable in the Energy Dashboard.
+    @callback
+    def _record_live_statistics() -> None:
+        entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+        if not entry_data:
+            return
+        for family in entry_data["coordinators"].values():
+            async_record_family_live_statistics(hass, family["family"])
+
+    @callback
+    def _record_hourly_statistics(now: datetime) -> None:
+        _record_live_statistics()
+
+    entry.async_on_unload(
+        async_track_time_change(hass, _record_hourly_statistics, minute=0, second=0)
+    )
+
     # Add update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_update_options))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Seed an initial statistics point now that the entities exist.
+    _record_live_statistics()
 
     return True
 

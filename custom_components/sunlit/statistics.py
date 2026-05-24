@@ -1,27 +1,42 @@
-"""Historical long-term statistics backfill for Sunlit.
+"""Long-term statistics for Sunlit: historical backfill + ongoing import.
 
 Home Assistant only keeps statistics from the moment a sensor starts recording.
 The cloud already holds years of generation & earnings history, exposed by the
 ``/v1.1/space/statistics/dynamic/earning`` endpoint at year/month/day
-granularity. This module walks that history and injects it into HA's long-term
-statistics as *external* statistics (``sunlit:<space>_…``) so it shows up in the
-Energy Dashboard and Statistics cards without creating any entities.
+granularity.
 
-The import is idempotent: external statistics are keyed by ``start`` time, so
-re-running simply overwrites the same daily buckets.
+Rather than create a parallel ``sunlit:`` external series, this module imports
+the history **onto the integration's own entities** — ``lifetime_yield`` and
+``lifetime_earnings`` — so pre-install history appears on the exact sensors the
+user already has, as one continuous series in the Energy Dashboard and
+Statistics cards.
+
+Because those two sensors therefore opt **out** of the recorder's automatic
+statistics (no ``state_class`` — see ``entities/helpers.py``), this module owns
+their whole statistics series: a one-shot historical backfill
+(:func:`async_import_family_history`) plus an hourly point of the live cumulative
+value (:func:`async_record_family_live_statistics`) to keep it current.
+
+The cloud reports the *true lifetime cumulative*, so every imported ``sum`` is an
+absolute cumulative value; re-running is idempotent (buckets are keyed by start,
+and the historical backfill clears the series first).
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 import logging
 from typing import Any
 
+from homeassistant.components.recorder import DOMAIN as RECORDER_DOMAIN, get_instance
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
-from homeassistant.components.recorder.statistics import async_add_external_statistics
+from homeassistant.components.recorder.statistics import async_import_statistics
+from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.const import UnitOfEnergy
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from .api_client import SunlitApiClient
@@ -30,7 +45,6 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 # ``mean_type`` (Home Assistant 2025.5+) replaced the deprecated ``has_mean``.
-# Stay compatible with the integration's documented minimum HA version.
 try:
     from homeassistant.components.recorder.models import StatisticMeanType
 
@@ -49,6 +63,28 @@ class DailyEarning:
     generation_kwh: float
     earnings: float
     currency: str
+
+
+@dataclass(frozen=True)
+class _Series:
+    """A statistics series owned by the integration for a family sensor."""
+
+    key: str  # sensor key, e.g. "lifetime_yield"
+    unit_class: str | None
+    unit: str | None  # None -> resolved to the account currency
+    value: Callable[[DailyEarning], float]
+
+
+def _series_specs(currency: str) -> list[_Series]:
+    return [
+        _Series(
+            "lifetime_yield",
+            "energy",
+            UnitOfEnergy.KILO_WATT_HOUR,
+            lambda item: item.generation_kwh,
+        ),
+        _Series("lifetime_earnings", None, currency, lambda item: item.earnings),
+    ]
 
 
 def _as_float(value: Any) -> float:
@@ -72,6 +108,33 @@ def _has_data(bucket: dict[str, Any]) -> bool:
     return (
         _as_float(bucket.get("totalPowerGeneration")) != 0.0
         or _as_float(bucket.get("totalEarnings")) != 0.0
+    )
+
+
+def resolve_statistic_id(
+    hass: HomeAssistant, family_name: str, family_id: str | int, key: str
+) -> str | None:
+    """Resolve the live entity_id for a family sensor (its statistic_id).
+
+    Users can rename entity_ids, so we look it up from the registry by the
+    integration's stable unique_id rather than assuming the slug.
+    """
+    unique_id = f"sunlit_{family_name.lower().replace(' ', '_')}_{family_id}_{key}"
+    return er.async_get(hass).async_get_entity_id(SENSOR_DOMAIN, DOMAIN, unique_id)
+
+
+def _metadata(
+    statistic_id: str, unit_class: str | None, unit: str | None
+) -> StatisticMetaData:
+    """Build entity-statistics metadata (source must be the recorder domain)."""
+    return StatisticMetaData(
+        **_MEAN_META,
+        has_sum=True,
+        name=None,  # entity statistics: HA uses the entity's own friendly name
+        source=RECORDER_DOMAIN,
+        statistic_id=statistic_id,
+        unit_class=unit_class,
+        unit_of_measurement=unit,
     )
 
 
@@ -134,70 +197,50 @@ async def async_collect_earning_history(
     return daily
 
 
-def build_external_statistics(
-    space_id: str | int,
-    family_name: str,
+def build_series_statistics(
+    statistic_id: str,
+    series: _Series,
     daily: list[DailyEarning],
-    currency: str,
-) -> list[tuple[StatisticMetaData, list[StatisticData]]]:
-    """Turn daily buckets into (metadata, cumulative statistics) pairs.
+) -> tuple[StatisticMetaData, list[StatisticData]]:
+    """Build (metadata, cumulative statistics) for one series.
 
-    Both series are cumulative sums (``has_sum``); the Energy Dashboard derives
-    each period's value from the difference of consecutive ``sum`` values.
+    Values are cumulative sums (``has_sum``); the Energy Dashboard derives each
+    period from the difference of consecutive ``sum`` values.
     """
-    energy_meta = StatisticMetaData(
-        **_MEAN_META,
-        has_sum=True,
-        name=f"{family_name} Lifetime Yield (imported history)",
-        source=DOMAIN,
-        statistic_id=f"{DOMAIN}:{space_id}_lifetime_yield",
-        unit_class="energy",
-        unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-    )
-    earnings_meta = StatisticMetaData(
-        **_MEAN_META,
-        has_sum=True,
-        name=f"{family_name} Lifetime Earnings (imported history)",
-        source=DOMAIN,
-        statistic_id=f"{DOMAIN}:{space_id}_lifetime_earnings",
-        unit_class=None,
-        unit_of_measurement=currency,
-    )
-
-    energy_stats: list[StatisticData] = []
-    earnings_stats: list[StatisticData] = []
-    running_energy = 0.0
-    running_earnings = 0.0
+    metadata = _metadata(statistic_id, series.unit_class, series.unit)
+    stats: list[StatisticData] = []
+    running = 0.0
     for item in sorted(daily, key=lambda entry: entry.date):
-        start = dt_util.start_of_local_day(item.date)
-        running_energy += item.generation_kwh
-        running_earnings += item.earnings
-        energy_stats.append(
-            StatisticData(start=start, state=item.generation_kwh, sum=running_energy)
+        value = series.value(item)
+        running += value
+        stats.append(
+            StatisticData(
+                start=dt_util.start_of_local_day(item.date),
+                state=value,
+                sum=running,
+            )
         )
-        earnings_stats.append(
-            StatisticData(start=start, state=item.earnings, sum=running_earnings)
-        )
-
-    return [(energy_meta, energy_stats), (earnings_meta, earnings_stats)]
+    return metadata, stats
 
 
 async def async_import_family_history(
     hass: HomeAssistant,
     api: SunlitApiClient,
-    space_id: str | int,
+    family_id: str | int,
     family_name: str,
 ) -> int:
-    """Backfill historical generation & earnings statistics for one space.
+    """Backfill historical statistics onto the family's lifetime entities.
 
-    Returns the number of days imported.
+    Clears each entity's existing (recorder-compiled) statistics first so the
+    imported absolute-cumulative series is internally consistent, then imports
+    the full history. Returns the number of days imported.
     """
     today = dt_util.now().date()
-    daily = await async_collect_earning_history(api, space_id, today)
+    daily = await async_collect_earning_history(api, family_id, today)
     if not daily:
         _LOGGER.warning(
             "No historical earning data returned for space %s (%s)",
-            space_id,
+            family_id,
             family_name,
         )
         return 0
@@ -206,16 +249,59 @@ async def async_import_family_history(
         (item.currency for item in reversed(daily) if item.currency),
         _DEFAULT_CURRENCY,
     )
-    for metadata, statistics in build_external_statistics(
-        space_id, family_name, daily, currency
-    ):
-        if statistics:
-            async_add_external_statistics(hass, metadata, statistics)
+    recorder = get_instance(hass)
+    imported = 0
+    for series in _series_specs(currency):
+        statistic_id = resolve_statistic_id(hass, family_name, family_id, series.key)
+        if not statistic_id:
+            _LOGGER.warning(
+                "Cannot backfill %s for space %s: entity not found",
+                series.key,
+                family_id,
+            )
+            continue
+        # Replace any recorder-compiled stats so the absolute-cumulative series
+        # we import is not interleaved with relative-sum buckets.
+        recorder.async_clear_statistics([statistic_id])
+        metadata, statistics = build_series_statistics(statistic_id, series, daily)
+        async_import_statistics(hass, metadata, statistics)
+        imported = max(imported, len(statistics))
 
     _LOGGER.info(
         "Imported %s day(s) of historical statistics for space %s (%s)",
-        len(daily),
-        space_id,
+        imported,
+        family_id,
         family_name,
     )
-    return len(daily)
+    return imported
+
+
+@callback
+def async_record_family_live_statistics(
+    hass: HomeAssistant, family_coordinator: Any
+) -> None:
+    """Append the current hour's cumulative point for the lifetime entities.
+
+    Called hourly. Because these sensors have no ``state_class``, the recorder
+    no longer compiles their statistics, so this keeps the integration-owned
+    series current using the already-polled live cumulative values.
+    """
+    data = family_coordinator.data or {}
+    family_id = family_coordinator.family_id
+    family_name = family_coordinator.family_name
+    currency = data.get("currency") or _DEFAULT_CURRENCY
+    hour = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
+
+    for series in _series_specs(currency):
+        value = data.get(series.key)
+        if not isinstance(value, (int, float)):
+            continue
+        statistic_id = resolve_statistic_id(hass, family_name, family_id, series.key)
+        if not statistic_id:
+            continue
+        metadata = _metadata(statistic_id, series.unit_class, series.unit)
+        async_import_statistics(
+            hass,
+            metadata,
+            [StatisticData(start=hour, state=float(value), sum=float(value))],
+        )
