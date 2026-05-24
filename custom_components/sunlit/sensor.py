@@ -26,10 +26,8 @@ from .entities.battery_module_sensor import SunlitBatteryModuleSensor
 from .entities.battery_sensor import SunlitBatterySensor
 from .entities.family_sensor import SunlitFamilySensor
 from .entities.helpers import (
-    get_device_class_for_sensor,
+    build_sensor_description,
     get_icon_for_sensor,
-    get_state_class_for_sensor,
-    get_unit_for_sensor,
 )
 from .entities.inverter_sensor import SunlitInverterSensor
 from .entities.meter_sensor import SunlitMeterSensor
@@ -126,12 +124,8 @@ async def async_setup_entry(
 
                 for key in family_data:
                     if key in FAMILY_SENSORS and key not in skip_fields:
-                        sensor_description = SensorEntityDescription(
-                            key=key,
-                            name=FAMILY_SENSORS[key],
-                            device_class=get_device_class_for_sensor(key),
-                            state_class=get_state_class_for_sensor(key),
-                            native_unit_of_measurement=get_unit_for_sensor(key),
+                        sensor_description = build_sensor_description(
+                            key, FAMILY_SENSORS[key]
                         )
                         # Use appropriate coordinator based on data source
                         if key in [
@@ -207,13 +201,7 @@ async def async_setup_entry(
                         skip_device_fields = {"fault", "off"}
                         for key, name in sensor_map.items():
                             if key not in skip_device_fields:
-                                sensor_description = SensorEntityDescription(
-                                    key=key,
-                                    name=name,
-                                    device_class=get_device_class_for_sensor(key),
-                                    state_class=get_state_class_for_sensor(key),
-                                    native_unit_of_measurement=get_unit_for_sensor(key),
-                                )
+                                sensor_description = build_sensor_description(key, name)
                                 # Pass mppt_coordinator for battery devices
                                 extra_kwargs = {}
                                 if device_type == DEVICE_TYPE_BATTERY:
@@ -283,18 +271,8 @@ async def async_setup_entry(
                                 ) in BATTERY_MODULE_SENSORS.items():
                                     sensor_key = f"battery{module_num}{suffix}"
 
-                                    sensor_description = SensorEntityDescription(
-                                        key=sensor_key,
-                                        name=friendly_name,
-                                        device_class=get_device_class_for_sensor(
-                                            sensor_key
-                                        ),
-                                        state_class=get_state_class_for_sensor(
-                                            sensor_key
-                                        ),
-                                        native_unit_of_measurement=get_unit_for_sensor(
-                                            sensor_key
-                                        ),
+                                    sensor_description = build_sensor_description(
+                                        sensor_key, friendly_name
                                     )
 
                                     sensor = SunlitBatteryModuleSensor(
