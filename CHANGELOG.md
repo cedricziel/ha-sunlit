@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.7.0](https://github.com/cedricziel/ha-sunlit/compare/v1.6.0...v1.7.0) (2026-05-24)
+
+
+### Features
+
+* **binary_sensor:** add local-mode / UPS status sensors ([#157](https://github.com/cedricziel/ha-sunlit/issues/157)) ([#170](https://github.com/cedricziel/ha-sunlit/issues/170)) ([fbfa18b](https://github.com/cedricziel/ha-sunlit/commit/fbfa18b627029a4337970881e579ea4555b1537a))
+* **sensors:** add dynamic electricity tariff price sensors ([#154](https://github.com/cedricziel/ha-sunlit/issues/154)) ([#172](https://github.com/cedricziel/ha-sunlit/issues/172)) ([1879582](https://github.com/cedricziel/ha-sunlit/commit/1879582685cf46380872459ce819d6034950a13f))
+* **sensors:** add lifetime yield & earnings ([#155](https://github.com/cedricziel/ha-sunlit/issues/155)) ([#164](https://github.com/cedricziel/ha-sunlit/issues/164)) ([4bef4b4](https://github.com/cedricziel/ha-sunlit/commit/4bef4b40479e0737ad26499c3a22b490281732ac))
+* **switch:** add battery local-mode control switch ([#160](https://github.com/cedricziel/ha-sunlit/issues/160)) ([#166](https://github.com/cedricziel/ha-sunlit/issues/166)) ([7c85604](https://github.com/cedricziel/ha-sunlit/commit/7c8560432e1aafc39121c7f7d2dd030a553117f8))
+
 ## [1.6.0](https://github.com/cedricziel/ha-sunlit/compare/v1.5.1...v1.6.0) (2026-05-24)
 
 
