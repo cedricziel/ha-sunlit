@@ -37,6 +37,23 @@ class SunlitBatterySensor(SunlitDeviceSensorBase):
         )
         self._mppt_coordinator = mppt_coordinator
 
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to the MPPT coordinator in addition to the device coordinator.
+
+        The MPPT energy values come from a separate MPPT coordinator, which
+        HomeAssistant only schedules for periodic refresh while it has at least
+        one listener. Without this subscription the MPPT coordinator would
+        refresh once at startup (all energy = 0) and never again, freezing
+        MPPT Total Energy at 0 (issue #72).
+        """
+        await super().async_added_to_hass()
+        if self._mppt_coordinator is not None:
+            self.async_on_remove(
+                self._mppt_coordinator.async_add_listener(
+                    self._handle_coordinator_update
+                )
+            )
+
     def _get_native_value(self) -> Any:
         """Handle special battery-specific values."""
         # Special handling for static battery capacity
