@@ -23,6 +23,7 @@ from .const import (
     API_SPACE_STATISTICS_STATIC,
     API_SPACE_STRATEGY_HISTORY,
     API_STRATEGY_DEVICE_STATUS,
+    API_TARIFF_INDEX,
     API_USER_LOGIN,
 )
 
@@ -599,6 +600,42 @@ class SunlitApiClient:
         return await self._make_request(
             "POST", API_BATTERY_LOCAL_MODE_CONFIG, json=payload
         )
+
+    async def fetch_tariff_index(self, space_id: str | int) -> dict[str, Any]:
+        """Fetch dynamic electricity tariff/pricing for a space.
+
+        Args:
+            space_id: The space/family ID
+
+        Returns:
+            Dictionary containing:
+            - rabotHasContract: Whether a Rabot dynamic-tariff contract exists
+            - rabotHourPriceDTO: Current hourly price block (may be null) with
+              priceInCentPerKwh, avgPriceInCentPerKwh, highestPriceInCentPerKwh,
+              lowestPriceInCentPerKwh, priceTag, hour, timestamp
+            - countryCode
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload = {"spaceId": int(space_id)}
+            response = await self._make_request("POST", API_TARIFF_INDEX, json=payload)
+
+            _LOGGER.debug("Tariff index response for %s: %s", space_id, response)
+
+            if "content" in response:
+                return response["content"]
+
+            return {}
+
+        except SunlitApiError as err:
+            _LOGGER.error(
+                "Failed to fetch tariff index for space %s: %s", space_id, err
+            )
+            raise
 
     async def fetch_strategy_device_status(self, space_id: str | int) -> dict[str, Any]:
         """Fetch local-mode / UPS status for the strategy-capable device.

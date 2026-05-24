@@ -110,6 +110,9 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
             # Fetch local-mode / UPS device status
             await self._fetch_strategy_device_status(family_data)
 
+            # Fetch dynamic electricity tariff / pricing
+            await self._fetch_tariff(family_data)
+
             # Fetch current strategy
             await self._fetch_current_strategy(family_data)
 
@@ -225,6 +228,32 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
                 family_data["aio_ups_enabled"] = status.get("aioUpsEnabled")
         except Exception as err:
             _LOGGER.debug("Could not fetch strategy device status: %s", err)
+
+    async def _fetch_tariff(self, family_data: dict) -> None:
+        """Fetch dynamic electricity tariff and current price block."""
+        try:
+            tariff = await self.api_client.fetch_tariff_index(self.family_id)
+            if tariff:
+                family_data["rabot_has_contract"] = tariff.get(
+                    "rabotHasContract", False
+                )
+                # rabotHourPriceDTO is null when no dynamic tariff is configured;
+                # only emit price sensors when a price block is present.
+                price = tariff.get("rabotHourPriceDTO")
+                if price:
+                    family_data["electricity_price"] = price.get("priceInCentPerKwh")
+                    family_data["electricity_price_avg"] = price.get(
+                        "avgPriceInCentPerKwh"
+                    )
+                    family_data["electricity_price_high"] = price.get(
+                        "highestPriceInCentPerKwh"
+                    )
+                    family_data["electricity_price_low"] = price.get(
+                        "lowestPriceInCentPerKwh"
+                    )
+                    family_data["electricity_price_tag"] = price.get("priceTag")
+        except Exception as err:
+            _LOGGER.debug("Could not fetch tariff index: %s", err)
 
     async def _fetch_current_strategy(self, family_data: dict) -> None:
         """Fetch current strategy."""
