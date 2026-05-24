@@ -9,25 +9,47 @@ info:
 
     **Note:** This is a reverse-engineered specification based on observed API behavior.
     The actual API is proprietary to Sunlit Solar GmbH.
-  version: 1.0.0
+
+    **Backend host:** The SunEnergyXT app (v1.8.1) now calls `api.sunenergyxt.com`.
+    Requests authenticate with `Authorization: bearer <token>` (lowercase scheme)
+    and the app additionally sends `appVersion`, `language`, `phoneModel`, and
+    `osVersion` headers; these are not required for the documented data endpoints.
+  version: 1.1.0
   contact:
     name: Home Assistant Integration
     url: https://github.com/cedricziel/ha-sunlit
 
 servers:
+  - url: https://api.sunenergyxt.com/rest
+    description: >-
+      Production server. Current backend host used by the SunEnergyXT mobile
+      app (observed in app v1.8.1, May 2026). Shares the same /rest API surface
+      as the legacy host below.
   - url: https://api.sunlitsolar.de/rest
-    description: Production server
+    description: >-
+      Legacy production host still referenced by older integration builds
+      (custom_components/sunlit/const.py::API_BASE_URL).
 
 security:
   - bearerAuth: []
 
 tags:
+  - name: Authentication
+    description: Login and account authentication
   - name: Family
     description: Family/Space management operations
   - name: Device
     description: Device information and statistics
   - name: Space
     description: Space-level operations (SOC, strategies)
+  - name: Statistics
+    description: Energy, power, and earnings statistics
+  - name: Strategy
+    description: Battery charging strategies and local mode configuration
+  - name: User
+    description: User account information
+  - name: System
+    description: Backend health and app lifecycle endpoints
 
 paths:
   /family/list:
@@ -686,7 +708,11 @@ paths:
       tags:
         - Device
       summary: Get device details
-      description: Retrieve detailed information about a specific device (currently unused in integration)
+      description: |
+        Retrieve detailed information about a specific device, including
+        firmware/hardware versions, BMS/SBMS SOC limits, local-mode flags, and
+        the device's local network address (ip/port). Returns the standard
+        `{code, message, content}` envelope.
       operationId: getDeviceDetails
       parameters:
         - name: deviceId
@@ -706,6 +732,338 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           description: Device not found
+
+  /user/info:
+    post:
+      tags:
+        - User
+      summary: Get current user info
+      description: Retrieve the authenticated user's account profile.
+      operationId: getUserInfo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Empty object
+              example: {}
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfoResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.1/space/statistics/static:
+    post:
+      tags:
+        - Statistics
+      summary: Get lifetime space statistics
+      description: Retrieve cumulative yield and earnings for a space.
+      operationId: getSpaceStatisticsStatic
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  description: The space/family ID
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceStatisticsStaticResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.1/space/statistics/dynamic/power:
+    post:
+      tags:
+        - Statistics
+      summary: Get intraday space power curve
+      description: |
+        Retrieve the power generation curve for a space on a given day. Returns
+        a list of timestamped power samples (roughly every 2 minutes).
+      operationId: getSpaceStatisticsDynamicPower
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+                - year
+                - month
+                - day
+              properties:
+                spaceId:
+                  type: integer
+                  example: 34038
+                year:
+                  type: integer
+                  example: 2026
+                month:
+                  type: integer
+                  description: Month (1-12, not zero-padded)
+                  example: 5
+                day:
+                  type: integer
+                  example: 24
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceStatisticsDynamicPowerResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.1/space/statistics/dynamic/earning:
+    post:
+      tags:
+        - Statistics
+      summary: Get monthly space earnings breakdown
+      description: |
+        Retrieve per-day power generation and earnings for a space over a month,
+        plus per-day charging energy.
+      operationId: getSpaceStatisticsDynamicEarning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+                - year
+                - month
+              properties:
+                spaceId:
+                  type: integer
+                  example: 34038
+                year:
+                  type: integer
+                  example: 2026
+                month:
+                  type: integer
+                  description: Month (1-12, not zero-padded)
+                  example: 5
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceStatisticsDynamicEarningResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /statistics/instantPower:
+    post:
+      tags:
+        - Statistics
+      summary: Get intraday device power curve
+      description: |
+        Retrieve the instantaneous power curve for a single device on a given
+        day. Distinct from `/v1.3/statistics/instantPower/batteryIO`: this
+        endpoint is unversioned, takes a `deviceId`, and returns the standard
+        envelope with a `powerList` of `{key, power}` samples.
+      operationId: getInstantPower
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - deviceId
+                - year
+                - month
+                - day
+              properties:
+                deviceId:
+                  type: integer
+                  example: 41714
+                year:
+                  type: string
+                  description: Year (YYYY)
+                  example: "2026"
+                month:
+                  type: string
+                  description: Month (MM, zero-padded)
+                  example: "05"
+                day:
+                  type: string
+                  description: Day (DD, zero-padded)
+                  example: "24"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstantPowerResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.8/strategy/my/list:
+    post:
+      tags:
+        - Strategy
+      summary: List configured strategies
+      description: |
+        Retrieve the user-configured charging strategies for a space. Replaces
+        the older `/v1.1/space/currentStrategy` + `/v1.1/space/strategyHistory`
+        pair in newer app versions.
+      operationId: getStrategyMyList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategyMyListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.7/strategy/device/status:
+    post:
+      tags:
+        - Strategy
+      summary: Get device strategy/local-mode status
+      description: |
+        Retrieve the local-mode and UPS-mode status for the strategy-capable
+        device(s) in a space.
+      operationId: getStrategyDeviceStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+              properties:
+                spaceId:
+                  type: integer
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategyDeviceStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.7/battery/updateLocalModeConfig:
+    post:
+      tags:
+        - Strategy
+      summary: Enable/disable battery local mode
+      description: |
+        Toggle local mode for a battery. Local mode lets the battery operate
+        from on-device logic (see `/device/{deviceId}` ip/port) rather than
+        cloud strategy. Returns `content: null` on success.
+      operationId: updateBatteryLocalModeConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - enable
+                - deviceSn
+              properties:
+                enable:
+                  type: boolean
+                  description: Whether to enable local mode
+                  example: false
+                deviceSn:
+                  type: string
+                  description: Battery serial number
+                  example: "dcbdccbffe3d"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatteryLocalModeUpdateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.5/message/summary:
+    post:
+      tags:
+        - System
+      summary: Get notification/message counts
+      description: Retrieve unread message, fault, and notification counts.
+      operationId: getMessageSummary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Empty object
+              example: {}
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageSummaryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /health/status:
+    get:
+      tags:
+        - System
+      summary: Backend health status
+      description: |
+        Diagnostic backend health probe. Reports the status of dependent
+        services (RabbitMQ, Redis, disk). Not account-scoped data.
+      operationId: getHealthStatus
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
 components:
   securitySchemes:
@@ -1750,6 +2108,10 @@ components:
           type: integer
           description: Last update timestamp
           example: 1757165899155
+        deviceModel:
+          type: ["string", "null"]
+          description: Battery model identifier
+          example: "BK_215"
 
     ChargingBoxStatus:
       type: object
@@ -1812,7 +2174,7 @@ components:
 
     EVChargerStatus:
       type: object
-      description: EV charger status
+      description: EV charger status (spaceChargePileDTO)
       properties:
         deviceSns:
           type: array
@@ -1824,6 +2186,19 @@ components:
           type: string
           description: Device type
           example: "STAR_CHARGE_EVSE"
+        deviceStatus:
+          type: string
+          enum: [Online, Offline, NotExist]
+          description: Device status
+          example: "NotExist"
+        fault:
+          type: boolean
+          description: Fault status
+          example: false
+        evseStatus:
+          type: ["string", "null"]
+          description: EVSE charging status
+          example: null
 
     LoginRequest:
       type: object
@@ -1889,30 +2264,168 @@ components:
                   type: ["string", "null"]
                   description: User profile picture URL
                   example: null
-          deviceStatus:
-            type: string
-            enum: [Online, Offline, NotExist]
-            description: Device status
-            example: "NotExist"
-          fault:
-            type: boolean
-            description: Fault status
-            example: false
-          evseStatus:
-            type: ["string", "null"]
-            description: EVSE status
-            example: null
 
     DeviceDetailsResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/DeviceDetailContent"
+
+    DeviceDetailContent:
       type: object
-      description: Device details response (different format - no ApiResponse wrapper)
+      description: Detailed device information from GET /device/{deviceId}
       properties:
-        result:
+        deviceId:
           type: integer
-          description: Result code (1 = success)
-          example: 1
-        device:
-          $ref: "#/components/schemas/Device"
+          example: 41714
+        deviceSn:
+          type: string
+          example: "dcbdccbffe3d"
+        createDate:
+          type: integer
+          description: Device registration timestamp (milliseconds)
+          example: 1727164484000
+        firmwareVersion:
+          type: ["string", "null"]
+          example: "V1.5.8"
+        familyItem:
+          type: object
+          description: The family/space this device belongs to
+          properties:
+            id:
+              type: integer
+              example: 34038
+            name:
+              type: string
+              example: "Garage"
+        status:
+          type: string
+          enum: [Online, Offline, NotExist]
+          example: "Online"
+        manufacturer:
+          type: ["string", "null"]
+          example: "Highpower"
+        deviceType:
+          type: string
+          example: "ENERGY_STORAGE_BATTERY"
+        ssid:
+          type: ["string", "null"]
+          description: WiFi SSID the device is connected to
+          example: "WLAN-2TXFBD"
+        stationName:
+          type: ["string", "null"]
+          example: null
+        collectorSn:
+          type: ["string", "null"]
+          example: null
+        maxOutputPower:
+          type: ["number", "null"]
+          example: null
+        maxAllowedPower:
+          type: ["number", "null"]
+          example: null
+        ratedPower:
+          type: ["number", "null"]
+          example: null
+        xmChannel:
+          type: ["boolean", "null"]
+          description: Whether the Xiaomi/XM control channel is available
+          example: true
+        subStatus:
+          type: ["string", "null"]
+          example: null
+        collectorFirmwareVersion:
+          type: ["string", "null"]
+          example: null
+        wifiFirmwareVersion:
+          type: ["string", "null"]
+          example: null
+        acFirmwareVersion:
+          type: ["string", "null"]
+          example: null
+        dcFirmwareVersion:
+          type: ["string", "null"]
+          example: null
+        hwVersion:
+          type: ["string", "null"]
+          example: "V1.5"
+        batteryChargingBoxDto:
+          type: ["object", "null"]
+          example: null
+        batteryBoxStatus:
+          type: ["string", "null"]
+          enum: [Online, Offline, NotExist, null]
+          example: "NotExist"
+        supportReboot:
+          type: ["boolean", "null"]
+          description: Whether the device supports remote reboot
+          example: true
+        systemMultiStatus:
+          type: ["string", "null"]
+          description: Localized multi-battery topology description
+          example: "Drei Batterien parallel"
+        enableNotFullNotification:
+          type: ["boolean", "null"]
+          example: true
+        deviceModel:
+          type: ["string", "null"]
+          example: "BK_215"
+        hwSupportOnePercentage:
+          type: ["boolean", "null"]
+          description: Whether hardware supports 1% SOC granularity
+          example: true
+        hwSbmsLimitedDiscSocMin:
+          type: ["number", "null"]
+          description: Hardware SBMS discharge minimum SOC
+          example: 1.0
+        hwSbmsLimitedChgSocMax:
+          type: ["number", "null"]
+          description: Hardware SBMS charge maximum SOC
+          example: 100.0
+        batteryBmsDiscSocMin:
+          type: ["integer", "null"]
+          description: Battery BMS discharge minimum SOC
+          example: 10
+        batteryBmsChgSocMax:
+          type: ["integer", "null"]
+          description: Battery BMS charge maximum SOC
+          example: 100
+        hasInverter:
+          type: ["boolean", "null"]
+          example: false
+        supportLocalMode:
+          type: ["boolean", "null"]
+          description: Whether the device supports local (on-device) mode
+          example: true
+        localModeEnabled:
+          type: ["boolean", "null"]
+          description: Whether local mode is currently enabled
+          example: true
+        ip:
+          type: ["string", "null"]
+          description: Local network IP address of the device
+          example: "192.168.1.79"
+        port:
+          type: ["string", "null"]
+          description: Local control port of the device
+          example: "8000"
+        otaInProgress:
+          type: ["boolean", "null"]
+          example: false
+        hasValidMeter:
+          type: ["boolean", "null"]
+          example: false
+        upsModeEnabled:
+          type: ["boolean", "null"]
+          example: false
+        hasFault:
+          type: ["boolean", "null"]
+          example: false
+        evRunningNotice:
+          type: ["boolean", "null"]
+          example: false
 
     Family:
       type: object
@@ -1961,6 +2474,24 @@ components:
           type: ["string", "null"]
           description: Rabot customer identifier
           example: null
+        spaceType:
+          type: ["string", "null"]
+          description: Space type classification
+          example: null
+        evStrategyEnabled:
+          type: boolean
+          description: Whether an EV charging strategy is enabled for this space
+          example: false
+        tarrifStrategyEnabled:
+          type: boolean
+          description: >-
+            Whether a tariff-based strategy is enabled (note: the API spells
+            this field "tarrif").
+          example: false
+        remindWhileBoostOn:
+          type: boolean
+          description: Whether to notify the user while boost mode is active
+          example: false
 
     Device:
       type: object
@@ -2176,6 +2707,10 @@ components:
           type: string
           description: MPPT identifier
           example: "MPPT1"
+        deviceModel:
+          type: ["string", "null"]
+          description: Model of the unit this MPPT belongs to (e.g. BK_215, B_215)
+          example: "BK_215"
 
     BatteryStatistics:
       type: object
@@ -2201,6 +2736,10 @@ components:
           type: string
           description: Device type
           example: "ENERGY_STORAGE_BATTERY"
+        deviceModel:
+          type: ["string", "null"]
+          description: Battery model identifier
+          example: "BK_215"
         batterySoc:
           type: ["number", "null"]
           description: System battery SOC
@@ -2216,6 +2755,50 @@ components:
         battery3Soc:
           type: ["number", "null"]
           description: Battery module 3 SOC
+          example: null
+        battery4Soc:
+          type: ["number", "null"]
+          description: Battery module 4 SOC
+          example: null
+        battery5Soc:
+          type: ["number", "null"]
+          description: Battery module 5 SOC
+          example: null
+        battery6Soc:
+          type: ["number", "null"]
+          description: Battery module 6 SOC
+          example: null
+        battery7Soc:
+          type: ["number", "null"]
+          description: Battery module 7 SOC
+          example: null
+        battery1DeviceModel:
+          type: ["string", "null"]
+          description: Model of battery module 1
+          example: "B_215"
+        battery2DeviceModel:
+          type: ["string", "null"]
+          description: Model of battery module 2
+          example: "B_215"
+        battery3DeviceModel:
+          type: ["string", "null"]
+          description: Model of battery module 3
+          example: null
+        battery4DeviceModel:
+          type: ["string", "null"]
+          description: Model of battery module 4
+          example: null
+        battery5DeviceModel:
+          type: ["string", "null"]
+          description: Model of battery module 5
+          example: null
+        battery6DeviceModel:
+          type: ["string", "null"]
+          description: Model of battery module 6
+          example: null
+        battery7DeviceModel:
+          type: ["string", "null"]
+          description: Model of battery module 7
           example: null
         chargeRemaining:
           type: ["number", "null"]
@@ -2300,6 +2883,26 @@ components:
             - $ref: "#/components/schemas/MpptData"
             - type: "null"
           description: Battery module 3 MPPT data
+        battery4MpptData:
+          oneOf:
+            - $ref: "#/components/schemas/MpptData"
+            - type: "null"
+          description: Battery module 4 MPPT data
+        battery5MpptData:
+          oneOf:
+            - $ref: "#/components/schemas/MpptData"
+            - type: "null"
+          description: Battery module 5 MPPT data
+        battery6MpptData:
+          oneOf:
+            - $ref: "#/components/schemas/MpptData"
+            - type: "null"
+          description: Battery module 6 MPPT data
+        battery7MpptData:
+          oneOf:
+            - $ref: "#/components/schemas/MpptData"
+            - type: "null"
+          description: Battery module 7 MPPT data
         mpptCollectTime:
           type: ["integer", "null"]
           description: MPPT data collection timestamp
@@ -2372,3 +2975,260 @@ components:
           type: ["number", "null"]
           description: Battery level percentage
           example: 15.0
+
+    UserInfoResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              description: Authenticated user's profile
+              properties:
+                email:
+                  type: string
+                  example: "user@example.com"
+                nickName:
+                  type: string
+                  example: "username"
+                headPicUrl:
+                  type: ["string", "null"]
+                  example: null
+
+    SpaceStatisticsStaticResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              description: Lifetime yield and earnings for a space
+              properties:
+                spaceId:
+                  type: integer
+                  example: 34038
+                totalYield:
+                  type: number
+                  description: Lifetime energy yield in kWh
+                  example: 1547.04
+                totalEarnings:
+                  $ref: "#/components/schemas/MonetaryAmount"
+
+    SpaceStatisticsDynamicPowerResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              properties:
+                spaceId:
+                  type: integer
+                  example: 34038
+                powerList:
+                  type: array
+                  description: Intraday power samples
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                        description: Sample time (HH:MM)
+                        example: "00:01"
+                      power:
+                        type: number
+                        description: Generated power in watts
+                        example: 0.0
+                      homePower:
+                        type: ["number", "null"]
+                        description: Home consumption in watts (null if no meter)
+                        example: null
+
+    SpaceStatisticsDynamicEarningResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              properties:
+                totalPowerGeneration:
+                  type: number
+                  description: Total generation for the month in kWh
+                  example: 29.343
+                totalEarnings:
+                  $ref: "#/components/schemas/MonetaryAmount"
+                powerEarningsList:
+                  type: array
+                  description: Per-day generation and earnings
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: integer
+                        description: Day of month
+                        example: 1
+                      totalPowerGeneration:
+                        type: number
+                        example: 1.231
+                      totalEarnings:
+                        type: number
+                        example: 0.3693
+                      currency:
+                        type: string
+                        example: "EUR"
+                chargingEnergyList:
+                  type: array
+                  description: Per-day charging energy
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: integer
+                        description: Day of month
+                        example: 1
+                      chargingEnergy:
+                        type: number
+                        example: 0
+
+    InstantPowerResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              properties:
+                powerList:
+                  type: array
+                  description: Intraday instantaneous power samples for a device
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                        description: Sample time (HH:MM)
+                        example: "00:01"
+                      power:
+                        type: number
+                        description: Power in watts
+                        example: 97.0
+
+    StrategyMyListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              properties:
+                strategyList:
+                  type: array
+                  description: >-
+                    User-configured strategies. Empty when no custom strategy is
+                    set; item shape not yet observed.
+                  items:
+                    type: object
+                  example: []
+
+    StrategyDeviceStatusResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              description: Local-mode/UPS status for the strategy-capable device
+              properties:
+                batteryLocalModeEnabled:
+                  type: boolean
+                  example: true
+                aioLocalModeEnabled:
+                  type: boolean
+                  description: All-in-one (AIO) device local mode enabled
+                  example: false
+                aioUpsEnabled:
+                  type: boolean
+                  example: false
+                deviceModel:
+                  type: string
+                  example: "BK_215"
+
+    BatteryLocalModeUpdateResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: "null"
+              description: No content returned on successful update
+              example: null
+
+    MessageSummaryResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              properties:
+                unReadCount:
+                  type: integer
+                  example: 0
+                faultUnReadCount:
+                  type: integer
+                  example: 0
+                notificationUnReadCount:
+                  type: integer
+                  example: 8
+
+    HealthStatusResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              description: Backend service health snapshot
+              properties:
+                status:
+                  type: string
+                  example: "OK"
+                rabbitHealth:
+                  $ref: "#/components/schemas/HealthComponent"
+                redisHealth:
+                  $ref: "#/components/schemas/HealthComponent"
+                mysqlHealth:
+                  oneOf:
+                    - $ref: "#/components/schemas/HealthComponent"
+                    - type: "null"
+                mongoHealth:
+                  oneOf:
+                    - $ref: "#/components/schemas/HealthComponent"
+                    - type: "null"
+                diskSpaceHealth:
+                  $ref: "#/components/schemas/HealthComponent"
+
+    HealthComponent:
+      type: object
+      description: Health state of a single backend dependency
+      properties:
+        status:
+          type: string
+          example: "UP"
+        details:
+          type: object
+          additionalProperties: true
+          example:
+            version: "7.0.15"
+
+    MonetaryAmount:
+      type: object
+      description: A monetary amount with currency
+      properties:
+        earnings:
+          type: number
+          example: 473.38
+        currency:
+          type: string
+          example: "EUR"
