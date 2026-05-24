@@ -1,15 +1,34 @@
 """Test the Sunlit config flow."""
 
+from ipaddress import ip_address
 from unittest.mock import AsyncMock, patch
 
-import pytest
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from custom_components.sunlit import DOMAIN
 from custom_components.sunlit.api_client import SunlitAuthError, SunlitConnectionError
 from custom_components.sunlit.const import CONF_ACCESS_TOKEN, CONF_FAMILIES
+
+
+def _zeroconf_discovery_info(serial: str = "HP-BK215-001") -> ZeroconfServiceInfo:
+    """Build a ZeroconfServiceInfo mimicking a BK215 mDNS advertisement."""
+    return ZeroconfServiceInfo(
+        ip_address=ip_address("192.168.1.50"),
+        ip_addresses=[ip_address("192.168.1.50")],
+        port=80,
+        hostname="hp-bk215-001.local.",
+        type="_http._tcp.local.",
+        name="hp-bk215-001._http._tcp.local.",
+        properties={
+            "id": serial,
+            "port": "80",
+            "fw_ver": "1.2.3",
+            "model": "BK215",
+        },
+    )
 
 
 async def test_form_user_init(hass: HomeAssistant):
@@ -52,7 +71,9 @@ async def test_form_authentication_success(
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
-        mock_client.fetch_families = AsyncMock(return_value=families_response["content"])
+        mock_client.fetch_families = AsyncMock(
+            return_value=families_response["content"]
+        )
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -91,7 +112,9 @@ async def test_form_family_selection(
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
-        mock_client.fetch_families = AsyncMock(return_value=families_response["content"])
+        mock_client.fetch_families = AsyncMock(
+            return_value=families_response["content"]
+        )
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -126,7 +149,9 @@ async def test_form_authentication_error(
         "custom_components.sunlit.config_flow.SunlitApiClient",
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock(side_effect=SunlitAuthError("Authentication failed"))
+        mock_client.login = AsyncMock(
+            side_effect=SunlitAuthError("Authentication failed")
+        )
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -150,7 +175,9 @@ async def test_form_connection_error(
         "custom_components.sunlit.config_flow.SunlitApiClient",
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
-        mock_client.login = AsyncMock(side_effect=SunlitConnectionError("Cannot connect"))
+        mock_client.login = AsyncMock(
+            side_effect=SunlitConnectionError("Cannot connect")
+        )
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -176,7 +203,9 @@ async def test_form_no_families_selected(
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
-        mock_client.fetch_families = AsyncMock(return_value=families_response["content"])
+        mock_client.fetch_families = AsyncMock(
+            return_value=families_response["content"]
+        )
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -221,7 +250,9 @@ async def test_form_single_family_auto_select(
     ) as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
-        mock_client.fetch_families = AsyncMock(return_value=single_family_response["content"])
+        mock_client.fetch_families = AsyncMock(
+            return_value=single_family_response["content"]
+        )
 
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -255,6 +286,90 @@ async def test_form_duplicate_entry(
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_zeroconf_discovery_shows_confirm(hass: HomeAssistant):
+    """A discovered BK215 should present a confirmation step."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=_zeroconf_discovery_info(),
+    )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "zeroconf_confirm"
+    assert result["description_placeholders"]["serial_number"] == "HP-BK215-001"
+
+
+async def test_zeroconf_confirm_proceeds_to_user(hass: HomeAssistant):
+    """Confirming a discovery should funnel into the credential step."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=_zeroconf_discovery_info(),
+    )
+
+    result2 = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["step_id"] == "user"
+
+
+async def test_zeroconf_discovery_full_flow(
+    hass: HomeAssistant,
+    families_response,
+):
+    """A discovery should be able to complete the normal cloud setup."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=_zeroconf_discovery_info(),
+    )
+    assert result["step_id"] == "zeroconf_confirm"
+
+    result2 = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result2["step_id"] == "user"
+
+    with patch(
+        "custom_components.sunlit.config_flow.SunlitApiClient",
+    ) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.login = AsyncMock(return_value={"access_token": "test_api_key_123"})
+        mock_client.fetch_families = AsyncMock(
+            return_value=families_response["content"]
+        )
+
+        result3 = await hass.config_entries.flow.async_configure(
+            result2["flow_id"],
+            {"email": "test@example.com", "password": "test_password"},
+        )
+        assert result3["step_id"] == "select_families"
+
+        result4 = await hass.config_entries.flow.async_configure(
+            result3["flow_id"],
+            {"families": ["34038"]},
+        )
+
+    assert result4["type"] == FlowResultType.CREATE_ENTRY
+    assert result4["data"][CONF_ACCESS_TOKEN] == "test_api_key_123"
+    assert len(result4["data"][CONF_FAMILIES]) == 1
+
+
+async def test_zeroconf_discovery_already_configured(
+    hass: HomeAssistant,
+    mock_config_entry,
+):
+    """Discovery should abort when the account is already configured."""
+    mock_config_entry.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=_zeroconf_discovery_info(),
     )
 
     assert result["type"] == FlowResultType.ABORT

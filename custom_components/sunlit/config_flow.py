@@ -17,6 +17,7 @@ from homeassistant.helpers.selector import (
     NumberSelectorConfig,
     NumberSelectorMode,
 )
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 import voluptuous as vol
 
 from .api_client import SunlitApiClient, SunlitAuthError, SunlitConnectionError
@@ -66,6 +67,55 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.access_token: str | None = None
         self.families: dict[str, Any] = {}
         self.available_families: list[dict[str, Any]] = []
+        self._discovered_serial: str | None = None
+
+    async def async_step_zeroconf(
+        self, discovery_info: ZeroconfServiceInfo
+    ) -> FlowResult:
+        """Handle a battery discovered via mDNS/zeroconf.
+
+        The BK215 (Highpower) advertises itself on the local network as
+        ``hp-bk215*`` over ``_http._tcp.local.``. This integration is
+        cloud-polling, so discovery only acts as an onboarding trigger:
+        we surface the device and then funnel the user into the normal
+        cloud credential flow. The discovered serial is recorded so a
+        future opt-in local-polling mode can reuse it.
+        """
+        properties = discovery_info.properties
+        self._discovered_serial = properties.get("id")
+
+        # Dedupe concurrent discovery flows for the same battery.
+        await self.async_set_unique_id(self._discovered_serial or DOMAIN)
+        self._abort_if_unique_id_configured()
+
+        # Single-entry integration: one cloud account covers every device,
+        # so once anything is set up there is nothing more to discover.
+        if self._async_current_entries():
+            return self.async_abort(reason="already_configured")
+
+        self.context["title_placeholders"] = {
+            "name": (
+                f"Sunlit BK215 ({self._discovered_serial})"
+                if self._discovered_serial
+                else "Sunlit BK215"
+            )
+        }
+
+        return await self.async_step_zeroconf_confirm()
+
+    async def async_step_zeroconf_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Confirm a discovered battery and continue to cloud login."""
+        if user_input is not None:
+            return await self.async_step_user()
+
+        return self.async_show_form(
+            step_id="zeroconf_confirm",
+            description_placeholders={
+                "serial_number": self._discovered_serial or "unknown"
+            },
+        )
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

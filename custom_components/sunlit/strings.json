@@ -1,6 +1,11 @@
 {
   "config": {
+    "flow_title": "{name}",
     "step": {
+      "zeroconf_confirm": {
+        "title": "Sunlit battery discovered",
+        "description": "A Sunlit BK215 battery (serial {serial_number}) was found on your network. Sunlit reads its data from the Sunlit Solar cloud, so sign in with your Sunlit account on the next screen to set it up."
+      },
       "user": {
         "title": "Sunlit Authentication",
         "description": "Enter your credentials to connect to Sunlit Solar API ({api_url})",

@@ -12,5 +12,11 @@
     "requirements": [
         "aiohttp"
     ],
-    "version": "1.5.1"
+    "version": "1.5.1",
+    "zeroconf": [
+        {
+            "type": "_http._tcp.local.",
+            "name": "hp-bk215*"
+        }
+    ]
 }
