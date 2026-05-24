@@ -29,6 +29,7 @@ API_SPACE_STRATEGY_HISTORY = "/v1.1/space/strategyHistory"
 API_SPACE_INDEX = "/v1.5/space/index"
 API_SPACE_STATISTICS_STATIC = "/v1.1/space/statistics/static"
 API_CHARGING_BOX_CHECK_STRATEGY = "/v1.6/chargingBox/checkSpaceStrategy"
+API_BATTERY_LOCAL_MODE_CONFIG = "/v1.7/battery/updateLocalModeConfig"
 
 # Configuration keys
 CONF_EMAIL = "email"

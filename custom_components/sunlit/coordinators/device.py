@@ -345,6 +345,21 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
         else:
             data["module_count"] = fallback_module_count
 
+        # Local-mode capability and current state for the control switch (#160).
+        # Sourced from device details; only meaningful while the battery is online.
+        if device.get("status") == "Online":
+            try:
+                details = await self.api_client.fetch_device_details(device_id)
+                if details.get("supportLocalMode"):
+                    data["support_local_mode"] = True
+                    data["local_mode_enabled"] = details.get("localModeEnabled")
+            except Exception as err:
+                _LOGGER.debug(
+                    "Could not fetch local-mode status for device %s: %s",
+                    device_id,
+                    err,
+                )
+
     def _count_battery_modules(self, stats: dict) -> int:
         """Count physical B215 extension modules from per-slot statistics.
 

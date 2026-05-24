@@ -44,6 +44,11 @@ async def test_device_coordinator_update_success(
     api_client.fetch_device_statistics.return_value = device_statistics_response[
         "content"
     ]
+    api_client.fetch_device_details.return_value = {
+        "deviceSn": "dcbdccbffe3d",
+        "supportLocalMode": True,
+        "localModeEnabled": True,
+    }
 
     coordinator = SunlitDeviceCoordinator(
         hass,
@@ -81,6 +86,10 @@ async def test_device_coordinator_update_success(
     assert battery["batterySoc"] == 85
     assert battery["battery1Soc"] == 84
     assert battery["battery2Soc"] == 86
+
+    # Local-mode control state (issue #160)
+    assert battery["support_local_mode"] is True
+    assert battery["local_mode_enabled"] is True
 
     # Check aggregates
     aggregates = data["aggregates"]

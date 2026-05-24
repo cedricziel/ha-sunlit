@@ -11,6 +11,7 @@ import aiohttp
 from .const import (
     API_BASE_URL,
     API_BATTERY_IO_POWER,
+    API_BATTERY_LOCAL_MODE_CONFIG,
     API_CHARGING_BOX_CHECK_STRATEGY,
     API_DEVICE_DETAILS,
     API_DEVICE_LIST,
@@ -571,6 +572,32 @@ class SunlitApiClient:
                 "Failed to fetch lifetime statistics for space %s: %s", space_id, err
             )
             raise
+
+    async def update_battery_local_mode(
+        self, device_sn: str, enable: bool
+    ) -> dict[str, Any]:
+        """Enable or disable local mode for a battery (control endpoint).
+
+        Local mode lets the battery run from on-device logic rather than cloud
+        strategy. This mutates device state.
+
+        Args:
+            device_sn: Battery serial number
+            enable: True to enable local mode, False to disable
+
+        Returns:
+            The raw API envelope (``content`` is null on success)
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        payload = {"enable": enable, "deviceSn": device_sn}
+        _LOGGER.debug("Setting battery %s local mode to %s", device_sn, enable)
+        return await self._make_request(
+            "POST", API_BATTERY_LOCAL_MODE_CONFIG, json=payload
+        )
 
     async def fetch_space_current_strategy(
         self, family_id: str | int
