@@ -423,6 +423,43 @@ async def test_fetch_space_statistics_dynamic_energy_success(api_client, mock_se
 
 
 @pytest.mark.asyncio
+async def test_fetch_notification_list_success(api_client, mock_session):
+    """Test fetching the paginated notification feed."""
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "message": {"DE": "Ok"},
+            "content": {
+                "content": [
+                    {
+                        "id": 5851069,
+                        "title": "Speicher beginnt das Heizen",
+                        "read": True,
+                        "space": {"id": 34038, "name": "Garage"},
+                    }
+                ],
+                "totalElements": 1,
+                "empty": False,
+            },
+        },
+    )
+
+    data = await api_client.fetch_notification_list(page=0, size=20)
+
+    assert data["content"][0]["id"] == 5851069
+    assert data["totalElements"] == 1
+
+    mock_session.request.assert_called_once()
+    call_args = mock_session.request.call_args
+    assert call_args[0][0] == "POST"
+    assert "/v1.5/notification/list" in call_args[0][1]
+    assert call_args[1]["json"] == {"page": 0, "size": 20}
+    assert call_args[1]["headers"]["Authorization"] == "Bearer test_token"
+
+
+@pytest.mark.asyncio
 async def test_update_battery_local_mode_success(api_client, mock_session):
     """Test enabling/disabling battery local mode (control endpoint)."""
     setup_mock_response(

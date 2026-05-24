@@ -283,6 +283,9 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
         return "mdi:solar-power-variant"
     elif key == "self_sufficiency_rate":
         return "mdi:home-percent"
+    # Latest notification
+    elif key == "latest_notification":
+        return "mdi:bell"
     # Electricity price (dynamic tariff)
     elif key == "electricity_price_tag":
         return "mdi:tag-outline"

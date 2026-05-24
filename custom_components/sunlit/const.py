@@ -33,6 +33,7 @@ API_BATTERY_LOCAL_MODE_CONFIG = "/v1.7/battery/updateLocalModeConfig"
 API_STRATEGY_DEVICE_STATUS = "/v1.7/strategy/device/status"
 API_TARIFF_INDEX = "/v1.6/tariff/index"
 API_SPACE_STATISTICS_DYNAMIC_ENERGY = "/v1.1/space/statistics/dynamic/energy"
+API_NOTIFICATION_LIST = "/v1.5/notification/list"
 
 # Configuration keys
 CONF_EMAIL = "email"
@@ -187,6 +188,8 @@ FAMILY_SENSORS = {
     # Energy self-consumption from statistics/dynamic/energy endpoint
     "self_use_rate": "Self-Use Rate",
     "self_sufficiency_rate": "Self-Sufficiency Rate",
+    # Latest notification from notification/list endpoint
+    "latest_notification": "Latest Notification",
     # Total solar production tracking
     "total_solar_energy": "Total Solar Energy",
     "total_solar_power": "Total Solar Power",
@@ -273,6 +276,7 @@ SENSOR_GROUPS = {
     # Group 5: System Information - Static configuration data
     "device_count": SENSOR_GROUP_INFO,
     "battery_count": SENSOR_GROUP_INFO,
+    "latest_notification": SENSOR_GROUP_INFO,
     "rated_power": SENSOR_GROUP_INFO,
     "max_output_power": SENSOR_GROUP_INFO,
     "inverter_sn_list": SENSOR_GROUP_INFO,

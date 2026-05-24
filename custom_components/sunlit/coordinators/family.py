@@ -116,6 +116,9 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
             # Fetch energy self-consumption rates
             await self._fetch_energy_distribution(family_data)
 
+            # Fetch the latest notification for this family
+            await self._fetch_notifications(family_data)
+
             # Fetch current strategy
             await self._fetch_current_strategy(family_data)
 
@@ -283,6 +286,41 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
                     )
         except Exception as err:
             _LOGGER.debug("Could not fetch energy distribution: %s", err)
+
+    async def _fetch_notifications(self, family_data: dict) -> None:
+        """Fetch the latest notification for this family.
+
+        The feed is account-wide; filter to this family's space and keep the
+        newest entry. Full detail is stored under latest_notification_detail
+        for the sensor's attributes.
+        """
+        try:
+            result = await self.api_client.fetch_notification_list(page=0, size=20)
+            items = (result or {}).get("content") or []
+            try:
+                fid = int(self.family_id)
+            except (TypeError, ValueError):
+                fid = None
+            family_items = [
+                n
+                for n in items
+                if fid is None or (n.get("space") or {}).get("id") == fid
+            ]
+            if family_items:
+                latest = max(family_items, key=lambda n: n.get("createDate") or 0)
+                family_data["latest_notification"] = latest.get("title")
+                family_data["latest_notification_detail"] = {
+                    "id": latest.get("id"),
+                    "content": latest.get("content"),
+                    "type": latest.get("type"),
+                    "device_sn": latest.get("deviceSn"),
+                    "device_type": latest.get("readableDeviceType")
+                    or latest.get("deviceType"),
+                    "read": latest.get("read"),
+                    "create_date": latest.get("createDate"),
+                }
+        except Exception as err:
+            _LOGGER.debug("Could not fetch notifications: %s", err)
 
     async def _fetch_current_strategy(self, family_data: dict) -> None:
         """Fetch current strategy."""
