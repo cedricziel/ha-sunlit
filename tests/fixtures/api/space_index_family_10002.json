@@ -1,0 +1,67 @@
+{
+  "spaceId": 10002,
+  "today": {
+    "modifyDate": 1779623510392,
+    "yield": 0.0,
+    "earning": 0.0,
+    "needPrice": false,
+    "currency": "EUR",
+    "needHomePower": false,
+    "homePower": null
+  },
+  "eleMeter": {
+    "deviceStatus": "NotExist",
+    "deviceType": null,
+    "totalAcPower": null,
+    "modifyDate": null
+  },
+  "inverter": {
+    "deviceStatus": "NotExist",
+    "currentPower": null,
+    "modifyDate": null,
+    "deviceType": null,
+    "deviceTypes": []
+  },
+  "battery": {
+    "deviceSn": null,
+    "deviceId": null,
+    "deviceStatus": "NotExist",
+    "batteryCount": 0,
+    "fault": false,
+    "off": null,
+    "bypass": null,
+    "batteryLevel": null,
+    "chargingRemaining": null,
+    "dischargingRemaining": null,
+    "inputPower": null,
+    "firmwareVersion": null,
+    "supportDayGenVersion": null,
+    "outputPower": null,
+    "heaterStatusList": null,
+    "modifyDate": null,
+    "deviceModel": null
+  },
+  "chargingBox": {
+    "deviceStatus": "NotExist",
+    "fault": false,
+    "acInputPower": null,
+    "invertOutPower": null,
+    "acInputPhase": null,
+    "homeModeParam": null,
+    "carChgModeParam": null,
+    "chgModeParam": null,
+    "modifyDate": null
+  },
+  "boostSetting": {
+    "switching": false,
+    "isOn": false,
+    "batteryResult": null
+  },
+  "spaceChargePileDTO": {
+    "deviceSns": [],
+    "deviceType": "STAR_CHARGE_EVSE",
+    "deviceStatus": "NotExist",
+    "fault": false,
+    "evseStatus": null
+  }
+}

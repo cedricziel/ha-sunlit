@@ -1,0 +1,37 @@
+[
+  {
+    "spaceId": 10001,
+    "stationName": null,
+    "deviceCount": 3,
+    "deviceId": 10003,
+    "status": "Online",
+    "subStatus": null,
+    "modifyDate": 1779623486579,
+    "today": null,
+    "collectorSn": null,
+    "deviceSn": "SN1001",
+    "fault": false,
+    "off": false,
+    "deviceType": "ENERGY_STORAGE_BATTERY",
+    "batteryLevel": 100.0,
+    "chargeRemaining": null,
+    "dischargeRemaining": null,
+    "isChargingStatus": null,
+    "batteryPower": null,
+    "heaterStatusList": [
+      false,
+      false,
+      false
+    ],
+    "inputPowerTotal": 62.0,
+    "outputPowerTotal": 38.0,
+    "totalAcPower": null,
+    "dailyBuyEnergy": null,
+    "dailyRetEnergy": null,
+    "totalBuyEnergy": null,
+    "totalRetEnergy": null,
+    "starChargeEvseDto": null,
+    "batteryChargingBoxDto": null,
+    "deviceModel": "BK_215"
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "ev3600AutoStrategyExist": false,
+  "ev3600AutoStrategyRunning": false,
+  "ev3600AutoStrategyMode": null,
+  "boostOn": false,
+  "storageStrategy": null,
+  "normalChargeBoxMode": null,
+  "tariffStrategyExist": null,
+  "inverterSn": null,
+  "enableLocalSmartStrategy": false,
+  "deyeLocalSnList": [],
+  "acCoupleEnabled": false,
+  "multiSpaceAcCouple": false,
+  "batteryLocalModeEnabled": false,
+  "primary": false
+}

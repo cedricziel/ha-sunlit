@@ -1,0 +1,71 @@
+{
+  "spaceId": 10001,
+  "today": {
+    "modifyDate": 1779623486776,
+    "yield": 0.89,
+    "earning": 0.27,
+    "needPrice": false,
+    "currency": "EUR",
+    "needHomePower": false,
+    "homePower": null
+  },
+  "eleMeter": {
+    "deviceStatus": "NotExist",
+    "deviceType": null,
+    "totalAcPower": null,
+    "modifyDate": null
+  },
+  "inverter": {
+    "deviceStatus": "NotExist",
+    "currentPower": null,
+    "modifyDate": null,
+    "deviceType": null,
+    "deviceTypes": []
+  },
+  "battery": {
+    "deviceSn": "SN1001",
+    "deviceId": 10003,
+    "deviceStatus": "Online",
+    "batteryCount": 3,
+    "fault": false,
+    "off": false,
+    "bypass": true,
+    "batteryLevel": 100.0,
+    "chargingRemaining": null,
+    "dischargingRemaining": null,
+    "inputPower": 62.0,
+    "firmwareVersion": "V1.5.8",
+    "supportDayGenVersion": true,
+    "outputPower": 38.0,
+    "heaterStatusList": [
+      false,
+      false,
+      false
+    ],
+    "modifyDate": 1779623486579,
+    "deviceModel": "BK_215"
+  },
+  "chargingBox": {
+    "deviceStatus": "NotExist",
+    "fault": false,
+    "acInputPower": null,
+    "invertOutPower": null,
+    "acInputPhase": null,
+    "homeModeParam": null,
+    "carChgModeParam": null,
+    "chgModeParam": null,
+    "modifyDate": null
+  },
+  "boostSetting": {
+    "switching": false,
+    "isOn": false,
+    "batteryResult": null
+  },
+  "spaceChargePileDTO": {
+    "deviceSns": [],
+    "deviceType": "STAR_CHARGE_EVSE",
+    "deviceStatus": "NotExist",
+    "fault": false,
+    "evseStatus": null
+  }
+}
