@@ -37,15 +37,19 @@ async def test_total_solar_power_includes_all_sources():
         }
     ])
 
-    # Mock device statistics for battery with MPPT inputs
+    # Mock device statistics for battery with MPPT inputs.
+    # DeviceModel marks each real module (module count is derived from these).
     battery_stats = {
         "batterySoc": 75,
         "inputPowerTotal": 2800,  # Total input to battery
         "outputPowerTotal": 500,   # Battery output (should NOT be in solar total)
         "batteryMppt1InPower": 800,   # Main battery MPPT1: 800W solar
         "batteryMppt2InPower": 600,   # Main battery MPPT2: 600W solar
+        "battery1DeviceModel": "B_215",
         "battery1Mppt1InPower": 500,  # Module 1 MPPT: 500W solar
+        "battery2DeviceModel": "B_215",
         "battery2Mppt1InPower": 400,  # Module 2 MPPT: 400W solar
+        "battery3DeviceModel": "B_215",
         "battery3Mppt1InPower": 300,  # Module 3 MPPT: 300W solar
     }
 

@@ -57,7 +57,8 @@ async def test_device_coordinator_processes_real_battery(
 
     battery = data["devices"][BATTERY_DEVICE_ID]
     assert battery["deviceType"] == "ENERGY_STORAGE_BATTERY"
-    assert battery["module_count"] == 3  # from deviceCount in the device list
+    # deviceCount is 3 (head + 2 modules); the real module count is 2 (#73).
+    assert battery["module_count"] == 2
     assert battery["batterySoc"] == 100.0
     assert battery["battery1Mppt1InPower"] == 12.9  # module MPPT power copied through
     assert battery["battery2Mppt1InPower"] == 35.2
