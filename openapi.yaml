@@ -98,8 +98,11 @@ paths:
                   example: 12345
                 deviceType:
                   type: string
-                  description: Device type filter (use "" for all types)
-                  example: ""
+                  description: >-
+                    Device type filter. Use "ALL" for all types (the API
+                    rejects an empty string with code 400000). Specific types
+                    include ENERGY_STORAGE_BATTERY, SHELLY_3EM_METER, etc.
+                  example: "ALL"
       responses:
         "200":
           description: Successful response

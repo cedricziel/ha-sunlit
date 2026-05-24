@@ -9,3 +9,7 @@ __pycache__/
 .coverage
 coverage.xml
 htmlcov
+
+# Local secrets (e.g. Sunlit API credentials for scripts/verify-api.sh)
+.env
+.env.local

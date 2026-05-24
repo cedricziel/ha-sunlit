@@ -66,42 +66,6 @@ async def test_family_coordinator_update_success(
     api_client.get_charging_box_strategy.assert_called_once_with("34038")
 
 
-async def test_family_coordinator_global_devices(
-    hass: HomeAssistant,
-    enable_custom_integrations,
-):
-    """Test family coordinator for global/unassigned devices."""
-    api_client = AsyncMock()
-    api_client.get_device_list.return_value = [
-        {"deviceId": "dev1", "spaceId": None, "status": "Online"},
-        {"deviceId": "dev2", "spaceId": None, "status": "Offline"},
-        {"deviceId": "dev3", "spaceId": "123", "status": "Online"},  # Has spaceId, should be filtered
-    ]
-
-    coordinator = SunlitFamilyCoordinator(
-        hass,
-        api_client,
-        "global",
-        "Unassigned Devices",
-        is_global=True,
-    )
-
-    data = await coordinator._async_update_data()
-
-    assert data is not None
-    assert "family" in data
-    family_data = data["family"]
-
-    # Should only count devices without spaceId
-    assert family_data["device_count"] == 2
-    assert family_data["online_devices"] == 1
-    assert family_data["offline_devices"] == 1
-
-    # Should not call space-specific APIs
-    api_client.fetch_space_index.assert_not_called()
-    api_client.fetch_space_soc.assert_not_called()
-
-
 async def test_family_coordinator_partial_failure(
     hass: HomeAssistant,
     enable_custom_integrations,

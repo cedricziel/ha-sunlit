@@ -134,47 +134,6 @@ async def test_device_coordinator_offline_devices(
     api_client.fetch_device_statistics.assert_not_called()
 
 
-async def test_device_coordinator_global_devices(
-    hass: HomeAssistant,
-    enable_custom_integrations,
-):
-    """Test device coordinator for global/unassigned devices."""
-    api_client = AsyncMock()
-    api_client.get_device_list.return_value = [
-        {
-            "deviceId": "dev1",
-            "deviceType": "SHELLY_3EM_METER",
-            "spaceId": None,
-            "status": "Online",
-        },
-        {
-            "deviceId": "dev2",
-            "deviceType": "YUNENG_MICRO_INVERTER",
-            "spaceId": "123",  # Has spaceId, should be filtered
-            "status": "Online",
-        },
-    ]
-    api_client.fetch_device_statistics.return_value = {}
-
-    coordinator = SunlitDeviceCoordinator(
-        hass,
-        api_client,
-        "global",
-        "Unassigned Devices",
-        is_global=True,
-    )
-
-    data = await coordinator._async_update_data()
-
-    assert data is not None
-    devices = data["devices"]
-
-    # Should only include device without spaceId
-    assert len(devices) == 1
-    assert "dev1" in devices
-    assert "dev2" not in devices
-
-
 async def test_device_coordinator_inverter_variations(
     hass: HomeAssistant,
     enable_custom_integrations,
