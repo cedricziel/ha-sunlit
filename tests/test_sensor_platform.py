@@ -3,19 +3,19 @@
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-import pytest
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from homeassistant.const import UnitOfEnergy, UnitOfPower
+from homeassistant.const import EntityCategory, UnitOfEnergy, UnitOfPower
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry
+import pytest
 
-from custom_components.sunlit.coordinators.family import SunlitFamilyCoordinator
+from custom_components.sunlit.const import DOMAIN
 from custom_components.sunlit.coordinators.device import SunlitDeviceCoordinator
+from custom_components.sunlit.coordinators.family import SunlitFamilyCoordinator
+from custom_components.sunlit.coordinators.mppt import SunlitMpptEnergyCoordinator
 from custom_components.sunlit.coordinators.strategy import (
     SunlitStrategyHistoryCoordinator,
 )
-from custom_components.sunlit.coordinators.mppt import SunlitMpptEnergyCoordinator
-from custom_components.sunlit.const import DOMAIN
 from custom_components.sunlit.sensor import async_setup_entry
 from tests.test_utils import assert_sensors
 
@@ -54,7 +54,9 @@ def mock_coordinators():
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
-    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
+    device_coordinator.get_battery_module_count.return_value = (
+        3  # Mock dynamic module count
+    )
     device_coordinator.data = {
         "devices": {
             "meter_001": {
@@ -193,13 +195,16 @@ async def test_family_sensor_creation(
             == UnitOfEnergy.KILO_WATT_HOUR
         )
 
-    # Check battery sensor
+    # Check battery sensor (metered SOC -> MEASUREMENT for long-term statistics)
     if "average_battery_level" in sensor_map:
         battery_sensor = sensor_map["average_battery_level"]
         assert (
             battery_sensor.entity_description.device_class == SensorDeviceClass.BATTERY
         )
-        assert battery_sensor.entity_description.state_class is None
+        assert (
+            battery_sensor.entity_description.state_class
+            == SensorStateClass.MEASUREMENT
+        )
         assert battery_sensor.entity_description.native_unit_of_measurement == "%"
 
 
@@ -326,9 +331,9 @@ async def test_timestamp_sensor_value(
     # Verify it's approximately 2 hours ago (within 1 minute tolerance)
     now = datetime.now()
     time_diff = now.timestamp() - value.timestamp()
-    assert (
-        7100 < time_diff < 7300
-    ), f"Timestamp should be ~2 hours ago, but diff is {time_diff} seconds"
+    assert 7100 < time_diff < 7300, (
+        f"Timestamp should be ~2 hours ago, but diff is {time_diff} seconds"
+    )
 
 
 async def test_sensor_count(
@@ -371,12 +376,13 @@ async def test_meter_device_sensor_creation(
     mock_config_entry,
 ):
     """Test that meter devices create the correct sensors."""
-    from custom_components.sunlit.entities.meter_sensor import SunlitMeterSensor
     from custom_components.sunlit.const import (
         DEVICE_TYPE_METER,
         DEVICE_TYPE_METER_PRO,
         METER_SENSORS,
     )
+    from custom_components.sunlit.entities.meter_sensor import SunlitMeterSensor
+
     from .test_utils import assert_sensors
 
     # Create specialized coordinators for meter test
@@ -388,7 +394,9 @@ async def test_meter_device_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
-    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
+    device_coordinator.get_battery_module_count.return_value = (
+        3  # Mock dynamic module count
+    )
     device_coordinator.data = {
         "devices": {
             "meter_001": {
@@ -434,43 +442,55 @@ async def test_meter_device_sensor_creation(
         expected_keys = set(METER_SENSORS.keys()) | {"status"}
         expected_count = len(METER_SENSORS) + 1  # +1 for status
 
-        (assert_sensors(sensors)
-         .for_device("meter_001")
-         .with_count(expected_count)
-         .having_keys(expected_keys)
-         .with_sensor_class(SunlitMeterSensor))
+        (
+            assert_sensors(sensors)
+            .for_device("meter_001")
+            .with_count(expected_count)
+            .having_keys(expected_keys)
+            .with_sensor_class(SunlitMeterSensor)
+        )
 
         # Test specific sensor attributes with fluent API
-        (assert_sensors(sensors)
-         .for_device("meter_001")
-         .where_key("total_ac_power")
-         .matches_pattern(
-             device_class=SensorDeviceClass.POWER,
-             state_class=SensorStateClass.MEASUREMENT,
-             unit=UnitOfPower.WATT
-         ))
+        (
+            assert_sensors(sensors)
+            .for_device("meter_001")
+            .where_key("total_ac_power")
+            .matches_pattern(
+                device_class=SensorDeviceClass.POWER,
+                state_class=SensorStateClass.MEASUREMENT,
+                unit=UnitOfPower.WATT,
+            )
+        )
 
-        (assert_sensors(sensors)
-         .for_device("meter_001")
-         .where_key_contains("energy")
-         .has_device_class(SensorDeviceClass.ENERGY)
-         .has_unit(UnitOfEnergy.KILO_WATT_HOUR))
+        (
+            assert_sensors(sensors)
+            .for_device("meter_001")
+            .where_key_contains("energy")
+            .has_device_class(SensorDeviceClass.ENERGY)
+            .has_unit(UnitOfEnergy.KILO_WATT_HOUR)
+        )
 
-        (assert_sensors(sensors)
-         .for_device("meter_001")
-         .where_key_matches(lambda k: "daily" in k and "energy" in k)
-         .has_state_class(SensorStateClass.TOTAL))
+        (
+            assert_sensors(sensors)
+            .for_device("meter_001")
+            .where_key_matches(lambda k: "daily" in k and "energy" in k)
+            .has_state_class(SensorStateClass.TOTAL)
+        )
 
-        (assert_sensors(sensors)
-         .for_device("meter_001")
-         .where_key_matches(lambda k: "total" in k and "energy" in k)
-         .has_state_class(SensorStateClass.TOTAL_INCREASING))
+        (
+            assert_sensors(sensors)
+            .for_device("meter_001")
+            .where_key_matches(lambda k: "total" in k and "energy" in k)
+            .has_state_class(SensorStateClass.TOTAL_INCREASING)
+        )
 
-        (assert_sensors(sensors)
-         .for_device("meter_001")
-         .where_key("status")
-         .has_no_device_class()
-         .has_no_unit())
+        (
+            assert_sensors(sensors)
+            .for_device("meter_001")
+            .where_key("status")
+            .has_no_device_class()
+            .has_no_unit()
+        )
 
         # Clean up for next iteration
         hass.data[DOMAIN] = {}
@@ -483,8 +503,8 @@ async def test_battery_device_sensor_creation(
     mock_config_entry,
 ):
     """Test that battery devices create the correct sensors."""
+    from custom_components.sunlit.const import BATTERY_SENSORS, DEVICE_TYPE_BATTERY
     from custom_components.sunlit.entities.battery_sensor import SunlitBatterySensor
-    from custom_components.sunlit.const import DEVICE_TYPE_BATTERY, BATTERY_SENSORS
 
     # Create specialized coordinators for battery test
     family_coordinator = MagicMock(spec=SunlitFamilyCoordinator)
@@ -495,7 +515,9 @@ async def test_battery_device_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
-    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
+    device_coordinator.get_battery_module_count.return_value = (
+        3  # Mock dynamic module count
+    )
     device_coordinator.data = {
         "devices": {
             "battery_001": {
@@ -548,87 +570,108 @@ async def test_battery_device_sensor_creation(
     # Test battery device sensors using builder pattern
     expected_battery_keys = set(BATTERY_SENSORS.keys()) | {"status"}
 
-    (assert_sensors(sensors)
-     .for_device("battery_001")
-     .excluding_modules()  # Exclude battery module sensors
-     .with_count(len(BATTERY_SENSORS) + 1)  # +1 for status sensor
-     .having_keys(expected_battery_keys)
-     .with_sensor_class(SunlitBatterySensor))
+    (
+        assert_sensors(sensors)
+        .for_device("battery_001")
+        .excluding_modules()  # Exclude battery module sensors
+        .with_count(len(BATTERY_SENSORS) + 1)  # +1 for status sensor
+        .having_keys(expected_battery_keys)
+        .with_sensor_class(SunlitBatterySensor)
+    )
 
     # Test specific sensor patterns
-    (assert_sensors(sensors)
-     .for_device("battery_001")
-     .excluding_modules()
-     .where_key_contains("Remaining")
-     .matches_pattern(
-         device_class=SensorDeviceClass.DURATION,
-         unit="min"
-     ))
+    (
+        assert_sensors(sensors)
+        .for_device("battery_001")
+        .excluding_modules()
+        .where_key_contains("Remaining")
+        .matches_pattern(device_class=SensorDeviceClass.DURATION, unit="min")
+    )
 
-    (assert_sensors(sensors)
-     .for_device("battery_001")
-     .excluding_modules()
-     .where_key_matches(lambda k: k in ["battery_level", "batterySoc"])
-     .matches_pattern(
-         device_class=SensorDeviceClass.BATTERY,
-         unit="%"
-     ))
+    (
+        assert_sensors(sensors)
+        .for_device("battery_001")
+        .excluding_modules()
+        .where_key_matches(lambda k: k in ["battery_level", "batterySoc"])
+        .matches_pattern(device_class=SensorDeviceClass.BATTERY, unit="%")
+    )
 
-    (assert_sensors(sensors)
-     .for_device("battery_001")
-     .excluding_modules()
-     .where_key_contains("InVol")
-     .matches_pattern(
-         device_class=SensorDeviceClass.VOLTAGE,
-         unit="V"
-     ))
+    (
+        assert_sensors(sensors)
+        .for_device("battery_001")
+        .excluding_modules()
+        .where_key_contains("InVol")
+        .matches_pattern(device_class=SensorDeviceClass.VOLTAGE, unit="V")
+    )
 
-    (assert_sensors(sensors)
-     .for_device("battery_001")
-     .excluding_modules()
-     .where_key_contains("InCur")
-     .matches_pattern(
-         device_class=SensorDeviceClass.CURRENT,
-         unit="A"
-     ))
+    (
+        assert_sensors(sensors)
+        .for_device("battery_001")
+        .excluding_modules()
+        .where_key_contains("InCur")
+        .matches_pattern(device_class=SensorDeviceClass.CURRENT, unit="A")
+    )
 
-    (assert_sensors(sensors)
-     .for_device("battery_001")
-     .excluding_modules()
-     .where_key_matches(lambda k: "power" in k.lower())
-     .matches_pattern(
-         device_class=SensorDeviceClass.POWER,
-         unit=UnitOfPower.WATT
-     ))
+    (
+        assert_sensors(sensors)
+        .for_device("battery_001")
+        .excluding_modules()
+        .where_key_matches(lambda k: "power" in k.lower())
+        .matches_pattern(device_class=SensorDeviceClass.POWER, unit=UnitOfPower.WATT)
+    )
 
-    (assert_sensors(sensors)
-     .for_device("battery_001")
-     .excluding_modules()
-     .where_key_matches(
-         lambda k: ("energy" in k.lower() and "stored" not in k.lower())
-         or k == "battery_capacity"
-     )
-     .matches_pattern(
-         device_class=SensorDeviceClass.ENERGY,
-         unit=UnitOfEnergy.KILO_WATT_HOUR
-     ))
+    (
+        assert_sensors(sensors)
+        .for_device("battery_001")
+        .excluding_modules()
+        .where_key_matches(
+            lambda k: (
+                "energy" in k.lower()
+                and "stored" not in k.lower()
+                and "capacity" not in k.lower()
+            )
+        )
+        .matches_pattern(
+            device_class=SensorDeviceClass.ENERGY, unit=UnitOfEnergy.KILO_WATT_HOUR
+        )
+    )
+
+    # Nominal capacity: static spec -> no device class, diagnostic (issue: validate)
+    capacity_sensor = next(
+        s
+        for s in sensors
+        if getattr(s, "_device_id", None) == "battery_001"
+        and s.entity_description.key == "battery_capacity"
+    )
+    assert capacity_sensor.entity_description.device_class is None
+    assert (
+        capacity_sensor.entity_description.entity_category == EntityCategory.DIAGNOSTIC
+    )
+    assert (
+        capacity_sensor.entity_description.native_unit_of_measurement
+        == UnitOfEnergy.KILO_WATT_HOUR
+    )
 
     # Stored energy is ENERGY_STORAGE (the battery level), not ENERGY (issue #190)
-    (assert_sensors(sensors)
-     .for_device("battery_001")
-     .excluding_modules()
-     .where_key("stored_energy")
-     .matches_pattern(
-         device_class=SensorDeviceClass.ENERGY_STORAGE,
-         unit=UnitOfEnergy.KILO_WATT_HOUR
-     ))
+    (
+        assert_sensors(sensors)
+        .for_device("battery_001")
+        .excluding_modules()
+        .where_key("stored_energy")
+        .matches_pattern(
+            device_class=SensorDeviceClass.ENERGY_STORAGE,
+            unit=UnitOfEnergy.KILO_WATT_HOUR,
+        )
+    )
 
-    (assert_sensors(sensors)
-     .for_device("battery_001")
-     .excluding_modules()
-     .where_key("status")
-     .has_no_device_class()
-     .has_no_unit())
+    (
+        assert_sensors(sensors)
+        .for_device("battery_001")
+        .excluding_modules()
+        .where_key("status")
+        .has_no_device_class()
+        .has_no_unit()
+    )
 
 
 async def test_battery_module_sensor_creation(
@@ -637,12 +680,12 @@ async def test_battery_module_sensor_creation(
     mock_config_entry,
 ):
     """Test that battery devices create virtual battery module sensors."""
+    from custom_components.sunlit.const import (
+        BATTERY_MODULE_SENSORS,
+        DEVICE_TYPE_BATTERY,
+    )
     from custom_components.sunlit.entities.battery_module_sensor import (
         SunlitBatteryModuleSensor,
-    )
-    from custom_components.sunlit.const import (
-        DEVICE_TYPE_BATTERY,
-        BATTERY_MODULE_SENSORS,
     )
 
     # Create specialized coordinators for battery module test
@@ -654,7 +697,9 @@ async def test_battery_module_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
-    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
+    device_coordinator.get_battery_module_count.return_value = (
+        3  # Mock dynamic module count
+    )
     device_coordinator.data = {
         "devices": {
             "battery_001": {
@@ -724,17 +769,17 @@ async def test_battery_module_sensor_creation(
     # We need to get the actual module count from the test device
     test_module_count = 3  # Based on our test fixture deviceCount
     expected_module_count = test_module_count * len(BATTERY_MODULE_SENSORS)
-    assert (
-        len(battery_module_sensors) == expected_module_count
-    ), f"Expected {expected_module_count} battery module sensors, got {len(battery_module_sensors)}"
+    assert len(battery_module_sensors) == expected_module_count, (
+        f"Expected {expected_module_count} battery module sensors, got {len(battery_module_sensors)}"
+    )
 
     # Verify sensor classes
     module_class_sensors = [
         s for s in battery_module_sensors if isinstance(s, SunlitBatteryModuleSensor)
     ]
-    assert len(module_class_sensors) == len(
-        battery_module_sensors
-    ), f"All battery module sensors should use SunlitBatteryModuleSensor class"
+    assert len(module_class_sensors) == len(battery_module_sensors), (
+        f"All battery module sensors should use SunlitBatteryModuleSensor class"
+    )
 
     # Verify each module has the correct sensors
     for module_num in [1, 2, 3]:
@@ -743,9 +788,9 @@ async def test_battery_module_sensor_creation(
             for s in battery_module_sensors
             if hasattr(s, "_module_number") and s._module_number == module_num
         ]
-        assert len(module_sensors) == len(
-            BATTERY_MODULE_SENSORS
-        ), f"Module {module_num} should have {len(BATTERY_MODULE_SENSORS)} sensors"
+        assert len(module_sensors) == len(BATTERY_MODULE_SENSORS), (
+            f"Module {module_num} should have {len(BATTERY_MODULE_SENSORS)} sensors"
+        )
 
         # Verify sensor keys for this module
         module_sensor_keys = {
@@ -756,9 +801,9 @@ async def test_battery_module_sensor_creation(
         expected_module_keys = {
             f"battery{module_num}{suffix}" for suffix in BATTERY_MODULE_SENSORS.keys()
         }
-        assert (
-            module_sensor_keys == expected_module_keys
-        ), f"Module {module_num} expected keys {expected_module_keys}, got {module_sensor_keys}"
+        assert module_sensor_keys == expected_module_keys, (
+            f"Module {module_num} expected keys {expected_module_keys}, got {module_sensor_keys}"
+        )
 
     # Verify specific sensor attributes for battery modules
     for sensor in battery_module_sensors:
@@ -795,7 +840,18 @@ async def test_battery_module_sensor_creation(
                     sensor.entity_description.native_unit_of_measurement
                     == UnitOfEnergy.KILO_WATT_HOUR
                 )
-            elif "Energy" in key or "capacity" in key:
+            elif "capacity" in key:
+                # Nominal capacity: static spec -> no device class, diagnostic.
+                assert sensor.entity_description.device_class is None
+                assert (
+                    sensor.entity_description.entity_category
+                    == EntityCategory.DIAGNOSTIC
+                )
+                assert (
+                    sensor.entity_description.native_unit_of_measurement
+                    == UnitOfEnergy.KILO_WATT_HOUR
+                )
+            elif "Energy" in key:
                 assert (
                     sensor.entity_description.device_class == SensorDeviceClass.ENERGY
                 )
@@ -824,7 +880,9 @@ async def test_unknown_device_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
-    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
+    device_coordinator.get_battery_module_count.return_value = (
+        3  # Mock dynamic module count
+    )
     device_coordinator.data = {
         "devices": {
             "unknown_001": {
@@ -867,17 +925,17 @@ async def test_unknown_device_sensor_creation(
     ]
 
     # Should have only status sensor (no device-specific sensors for unknown devices)
-    assert (
-        len(unknown_sensors) == 1
-    ), f"Expected 1 unknown device sensor (status only), got {len(unknown_sensors)}"
+    assert len(unknown_sensors) == 1, (
+        f"Expected 1 unknown device sensor (status only), got {len(unknown_sensors)}"
+    )
 
     # Verify sensor class
     unknown_class_sensors = [
         s for s in unknown_sensors if isinstance(s, SunlitUnknownDeviceSensor)
     ]
-    assert len(unknown_class_sensors) == len(
-        unknown_sensors
-    ), f"All unknown device sensors should use SunlitUnknownDeviceSensor class"
+    assert len(unknown_class_sensors) == len(unknown_sensors), (
+        f"All unknown device sensors should use SunlitUnknownDeviceSensor class"
+    )
 
     # Verify it's the status sensor
     status_sensor = unknown_sensors[0]
@@ -891,20 +949,20 @@ async def test_device_type_sensor_mapping(
     enable_custom_integrations,
 ):
     """Test the create_device_sensor factory function with different device types."""
-    from custom_components.sunlit.sensor import create_device_sensor
-    from custom_components.sunlit.entities.meter_sensor import SunlitMeterSensor
-    from custom_components.sunlit.entities.inverter_sensor import SunlitInverterSensor
+    from custom_components.sunlit.const import (
+        DEVICE_TYPE_BATTERY,
+        DEVICE_TYPE_INVERTER,
+        DEVICE_TYPE_INVERTER_SOLAR,
+        DEVICE_TYPE_METER,
+        DEVICE_TYPE_METER_PRO,
+    )
     from custom_components.sunlit.entities.battery_sensor import SunlitBatterySensor
+    from custom_components.sunlit.entities.inverter_sensor import SunlitInverterSensor
+    from custom_components.sunlit.entities.meter_sensor import SunlitMeterSensor
     from custom_components.sunlit.entities.unknown_device_sensor import (
         SunlitUnknownDeviceSensor,
     )
-    from custom_components.sunlit.const import (
-        DEVICE_TYPE_METER,
-        DEVICE_TYPE_METER_PRO,
-        DEVICE_TYPE_INVERTER,
-        DEVICE_TYPE_INVERTER_SOLAR,
-        DEVICE_TYPE_BATTERY,
-    )
+    from custom_components.sunlit.sensor import create_device_sensor
 
     # Test data for sensor creation
     test_kwargs = {
@@ -919,39 +977,39 @@ async def test_device_type_sensor_mapping(
 
     # Test meter device types
     meter_sensor = create_device_sensor(DEVICE_TYPE_METER, **test_kwargs)
-    assert isinstance(
-        meter_sensor, SunlitMeterSensor
-    ), f"Expected SunlitMeterSensor, got {type(meter_sensor)}"
+    assert isinstance(meter_sensor, SunlitMeterSensor), (
+        f"Expected SunlitMeterSensor, got {type(meter_sensor)}"
+    )
 
     meter_pro_sensor = create_device_sensor(DEVICE_TYPE_METER_PRO, **test_kwargs)
-    assert isinstance(
-        meter_pro_sensor, SunlitMeterSensor
-    ), f"Expected SunlitMeterSensor, got {type(meter_pro_sensor)}"
+    assert isinstance(meter_pro_sensor, SunlitMeterSensor), (
+        f"Expected SunlitMeterSensor, got {type(meter_pro_sensor)}"
+    )
 
     # Test inverter device types
     inverter_sensor = create_device_sensor(DEVICE_TYPE_INVERTER, **test_kwargs)
-    assert isinstance(
-        inverter_sensor, SunlitInverterSensor
-    ), f"Expected SunlitInverterSensor, got {type(inverter_sensor)}"
+    assert isinstance(inverter_sensor, SunlitInverterSensor), (
+        f"Expected SunlitInverterSensor, got {type(inverter_sensor)}"
+    )
 
     inverter_solar_sensor = create_device_sensor(
         DEVICE_TYPE_INVERTER_SOLAR, **test_kwargs
     )
-    assert isinstance(
-        inverter_solar_sensor, SunlitInverterSensor
-    ), f"Expected SunlitInverterSensor, got {type(inverter_solar_sensor)}"
+    assert isinstance(inverter_solar_sensor, SunlitInverterSensor), (
+        f"Expected SunlitInverterSensor, got {type(inverter_solar_sensor)}"
+    )
 
     # Test battery device type
     battery_sensor = create_device_sensor(DEVICE_TYPE_BATTERY, **test_kwargs)
-    assert isinstance(
-        battery_sensor, SunlitBatterySensor
-    ), f"Expected SunlitBatterySensor, got {type(battery_sensor)}"
+    assert isinstance(battery_sensor, SunlitBatterySensor), (
+        f"Expected SunlitBatterySensor, got {type(battery_sensor)}"
+    )
 
     # Test unknown device type (fallback)
     unknown_sensor = create_device_sensor("UNKNOWN_TYPE", **test_kwargs)
-    assert isinstance(
-        unknown_sensor, SunlitUnknownDeviceSensor
-    ), f"Expected SunlitUnknownDeviceSensor, got {type(unknown_sensor)}"
+    assert isinstance(unknown_sensor, SunlitUnknownDeviceSensor), (
+        f"Expected SunlitUnknownDeviceSensor, got {type(unknown_sensor)}"
+    )
 
 
 async def test_inverter_device_sensor_creation(
@@ -960,12 +1018,13 @@ async def test_inverter_device_sensor_creation(
     mock_config_entry,
 ):
     """Test that inverter devices create the correct sensors."""
-    from custom_components.sunlit.entities.inverter_sensor import SunlitInverterSensor
     from custom_components.sunlit.const import (
         DEVICE_TYPE_INVERTER,
         DEVICE_TYPE_INVERTER_SOLAR,
         INVERTER_SENSORS,
     )
+    from custom_components.sunlit.entities.inverter_sensor import SunlitInverterSensor
+
     from .test_utils import assert_sensors
 
     # Create specialized coordinators for inverter test
@@ -977,7 +1036,9 @@ async def test_inverter_device_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
-    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
+    device_coordinator.get_battery_module_count.return_value = (
+        3  # Mock dynamic module count
+    )
     device_coordinator.data = {
         "devices": {
             "inverter_001": {
@@ -1022,55 +1083,64 @@ async def test_inverter_device_sensor_creation(
         expected_keys = set(INVERTER_SENSORS.keys()) | {"status"}
         expected_count = len(INVERTER_SENSORS) + 1  # +1 for status
 
-        (assert_sensors(sensors)
-         .for_device("inverter_001")
-         .with_count(expected_count)
-         .having_keys(expected_keys)
-         .with_sensor_class(SunlitInverterSensor))
+        (
+            assert_sensors(sensors)
+            .for_device("inverter_001")
+            .with_count(expected_count)
+            .having_keys(expected_keys)
+            .with_sensor_class(SunlitInverterSensor)
+        )
 
         # Test specific sensor attributes with fluent API
-        (assert_sensors(sensors)
-         .for_device("inverter_001")
-         .where_key("current_power")
-         .matches_pattern(
-             device_class=SensorDeviceClass.POWER,
-             state_class=SensorStateClass.MEASUREMENT,
-             unit=UnitOfPower.WATT
-         ))
+        (
+            assert_sensors(sensors)
+            .for_device("inverter_001")
+            .where_key("current_power")
+            .matches_pattern(
+                device_class=SensorDeviceClass.POWER,
+                state_class=SensorStateClass.MEASUREMENT,
+                unit=UnitOfPower.WATT,
+            )
+        )
 
         # total_power_generation is daily data (resets at midnight)
-        (assert_sensors(sensors)
-         .for_device("inverter_001")
-         .where_key("total_power_generation")
-         .matches_pattern(
-             device_class=SensorDeviceClass.ENERGY,
-             state_class=SensorStateClass.TOTAL,
-             unit=UnitOfEnergy.KILO_WATT_HOUR
-         ))
+        (
+            assert_sensors(sensors)
+            .for_device("inverter_001")
+            .where_key("total_power_generation")
+            .matches_pattern(
+                device_class=SensorDeviceClass.ENERGY,
+                state_class=SensorStateClass.TOTAL,
+                unit=UnitOfEnergy.KILO_WATT_HOUR,
+            )
+        )
 
         # total_yield is lifetime cumulative data
-        (assert_sensors(sensors)
-         .for_device("inverter_001")
-         .where_key("total_yield")
-         .matches_pattern(
-             device_class=SensorDeviceClass.ENERGY,
-             state_class=SensorStateClass.TOTAL_INCREASING,
-             unit=UnitOfEnergy.KILO_WATT_HOUR
-         ))
+        (
+            assert_sensors(sensors)
+            .for_device("inverter_001")
+            .where_key("total_yield")
+            .matches_pattern(
+                device_class=SensorDeviceClass.ENERGY,
+                state_class=SensorStateClass.TOTAL_INCREASING,
+                unit=UnitOfEnergy.KILO_WATT_HOUR,
+            )
+        )
 
-        (assert_sensors(sensors)
-         .for_device("inverter_001")
-         .where_key("daily_earnings")
-         .matches_pattern(
-             device_class=SensorDeviceClass.MONETARY,
-             unit="EUR"
-         ))
+        (
+            assert_sensors(sensors)
+            .for_device("inverter_001")
+            .where_key("daily_earnings")
+            .matches_pattern(device_class=SensorDeviceClass.MONETARY, unit="EUR")
+        )
 
-        (assert_sensors(sensors)
-         .for_device("inverter_001")
-         .where_key("status")
-         .has_no_device_class()
-         .has_no_unit())
+        (
+            assert_sensors(sensors)
+            .for_device("inverter_001")
+            .where_key("status")
+            .has_no_device_class()
+            .has_no_unit()
+        )
 
         # Clean up for next iteration
         hass.data[DOMAIN] = {}
@@ -1083,12 +1153,12 @@ async def test_battery_module_sensor_creation(
     mock_config_entry,
 ):
     """Test that battery devices create virtual battery module sensors."""
+    from custom_components.sunlit.const import (
+        BATTERY_MODULE_SENSORS,
+        DEVICE_TYPE_BATTERY,
+    )
     from custom_components.sunlit.entities.battery_module_sensor import (
         SunlitBatteryModuleSensor,
-    )
-    from custom_components.sunlit.const import (
-        DEVICE_TYPE_BATTERY,
-        BATTERY_MODULE_SENSORS,
     )
 
     # Create specialized coordinators for battery module test
@@ -1100,7 +1170,9 @@ async def test_battery_module_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
-    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
+    device_coordinator.get_battery_module_count.return_value = (
+        3  # Mock dynamic module count
+    )
     device_coordinator.data = {
         "devices": {
             "battery_001": {
@@ -1170,17 +1242,17 @@ async def test_battery_module_sensor_creation(
     # We need to get the actual module count from the test device
     test_module_count = 3  # Based on our test fixture deviceCount
     expected_module_count = test_module_count * len(BATTERY_MODULE_SENSORS)
-    assert (
-        len(battery_module_sensors) == expected_module_count
-    ), f"Expected {expected_module_count} battery module sensors, got {len(battery_module_sensors)}"
+    assert len(battery_module_sensors) == expected_module_count, (
+        f"Expected {expected_module_count} battery module sensors, got {len(battery_module_sensors)}"
+    )
 
     # Verify sensor classes
     module_class_sensors = [
         s for s in battery_module_sensors if isinstance(s, SunlitBatteryModuleSensor)
     ]
-    assert len(module_class_sensors) == len(
-        battery_module_sensors
-    ), f"All battery module sensors should use SunlitBatteryModuleSensor class"
+    assert len(module_class_sensors) == len(battery_module_sensors), (
+        f"All battery module sensors should use SunlitBatteryModuleSensor class"
+    )
 
     # Verify each module has the correct sensors
     for module_num in [1, 2, 3]:
@@ -1189,9 +1261,9 @@ async def test_battery_module_sensor_creation(
             for s in battery_module_sensors
             if hasattr(s, "_module_number") and s._module_number == module_num
         ]
-        assert len(module_sensors) == len(
-            BATTERY_MODULE_SENSORS
-        ), f"Module {module_num} should have {len(BATTERY_MODULE_SENSORS)} sensors"
+        assert len(module_sensors) == len(BATTERY_MODULE_SENSORS), (
+            f"Module {module_num} should have {len(BATTERY_MODULE_SENSORS)} sensors"
+        )
 
         # Verify sensor keys for this module
         module_sensor_keys = {
@@ -1202,9 +1274,9 @@ async def test_battery_module_sensor_creation(
         expected_module_keys = {
             f"battery{module_num}{suffix}" for suffix in BATTERY_MODULE_SENSORS.keys()
         }
-        assert (
-            module_sensor_keys == expected_module_keys
-        ), f"Module {module_num} expected keys {expected_module_keys}, got {module_sensor_keys}"
+        assert module_sensor_keys == expected_module_keys, (
+            f"Module {module_num} expected keys {expected_module_keys}, got {module_sensor_keys}"
+        )
 
     # Verify specific sensor attributes for battery modules
     for sensor in battery_module_sensors:
@@ -1241,7 +1313,18 @@ async def test_battery_module_sensor_creation(
                     sensor.entity_description.native_unit_of_measurement
                     == UnitOfEnergy.KILO_WATT_HOUR
                 )
-            elif "Energy" in key or "capacity" in key:
+            elif "capacity" in key:
+                # Nominal capacity: static spec -> no device class, diagnostic.
+                assert sensor.entity_description.device_class is None
+                assert (
+                    sensor.entity_description.entity_category
+                    == EntityCategory.DIAGNOSTIC
+                )
+                assert (
+                    sensor.entity_description.native_unit_of_measurement
+                    == UnitOfEnergy.KILO_WATT_HOUR
+                )
+            elif "Energy" in key:
                 assert (
                     sensor.entity_description.device_class == SensorDeviceClass.ENERGY
                 )
@@ -1270,7 +1353,9 @@ async def test_unknown_device_sensor_creation(
     device_coordinator = MagicMock(spec=SunlitDeviceCoordinator)
     device_coordinator.family_id = "test_family_123"
     device_coordinator.family_name = "Test Family"
-    device_coordinator.get_battery_module_count.return_value = 3  # Mock dynamic module count
+    device_coordinator.get_battery_module_count.return_value = (
+        3  # Mock dynamic module count
+    )
     device_coordinator.data = {
         "devices": {
             "unknown_001": {
@@ -1313,17 +1398,17 @@ async def test_unknown_device_sensor_creation(
     ]
 
     # Should have only status sensor (no device-specific sensors for unknown devices)
-    assert (
-        len(unknown_sensors) == 1
-    ), f"Expected 1 unknown device sensor (status only), got {len(unknown_sensors)}"
+    assert len(unknown_sensors) == 1, (
+        f"Expected 1 unknown device sensor (status only), got {len(unknown_sensors)}"
+    )
 
     # Verify sensor class
     unknown_class_sensors = [
         s for s in unknown_sensors if isinstance(s, SunlitUnknownDeviceSensor)
     ]
-    assert len(unknown_class_sensors) == len(
-        unknown_sensors
-    ), f"All unknown device sensors should use SunlitUnknownDeviceSensor class"
+    assert len(unknown_class_sensors) == len(unknown_sensors), (
+        f"All unknown device sensors should use SunlitUnknownDeviceSensor class"
+    )
 
     # Verify it's the status sensor
     status_sensor = unknown_sensors[0]
@@ -1337,20 +1422,20 @@ async def test_device_type_sensor_mapping(
     enable_custom_integrations,
 ):
     """Test the create_device_sensor factory function with different device types."""
-    from custom_components.sunlit.sensor import create_device_sensor
-    from custom_components.sunlit.entities.meter_sensor import SunlitMeterSensor
-    from custom_components.sunlit.entities.inverter_sensor import SunlitInverterSensor
+    from custom_components.sunlit.const import (
+        DEVICE_TYPE_BATTERY,
+        DEVICE_TYPE_INVERTER,
+        DEVICE_TYPE_INVERTER_SOLAR,
+        DEVICE_TYPE_METER,
+        DEVICE_TYPE_METER_PRO,
+    )
     from custom_components.sunlit.entities.battery_sensor import SunlitBatterySensor
+    from custom_components.sunlit.entities.inverter_sensor import SunlitInverterSensor
+    from custom_components.sunlit.entities.meter_sensor import SunlitMeterSensor
     from custom_components.sunlit.entities.unknown_device_sensor import (
         SunlitUnknownDeviceSensor,
     )
-    from custom_components.sunlit.const import (
-        DEVICE_TYPE_METER,
-        DEVICE_TYPE_METER_PRO,
-        DEVICE_TYPE_INVERTER,
-        DEVICE_TYPE_INVERTER_SOLAR,
-        DEVICE_TYPE_BATTERY,
-    )
+    from custom_components.sunlit.sensor import create_device_sensor
 
     # Test data for sensor creation
     test_kwargs = {
@@ -1365,36 +1450,36 @@ async def test_device_type_sensor_mapping(
 
     # Test meter device types
     meter_sensor = create_device_sensor(DEVICE_TYPE_METER, **test_kwargs)
-    assert isinstance(
-        meter_sensor, SunlitMeterSensor
-    ), f"Expected SunlitMeterSensor, got {type(meter_sensor)}"
+    assert isinstance(meter_sensor, SunlitMeterSensor), (
+        f"Expected SunlitMeterSensor, got {type(meter_sensor)}"
+    )
 
     meter_pro_sensor = create_device_sensor(DEVICE_TYPE_METER_PRO, **test_kwargs)
-    assert isinstance(
-        meter_pro_sensor, SunlitMeterSensor
-    ), f"Expected SunlitMeterSensor, got {type(meter_pro_sensor)}"
+    assert isinstance(meter_pro_sensor, SunlitMeterSensor), (
+        f"Expected SunlitMeterSensor, got {type(meter_pro_sensor)}"
+    )
 
     # Test inverter device types
     inverter_sensor = create_device_sensor(DEVICE_TYPE_INVERTER, **test_kwargs)
-    assert isinstance(
-        inverter_sensor, SunlitInverterSensor
-    ), f"Expected SunlitInverterSensor, got {type(inverter_sensor)}"
+    assert isinstance(inverter_sensor, SunlitInverterSensor), (
+        f"Expected SunlitInverterSensor, got {type(inverter_sensor)}"
+    )
 
     inverter_solar_sensor = create_device_sensor(
         DEVICE_TYPE_INVERTER_SOLAR, **test_kwargs
     )
-    assert isinstance(
-        inverter_solar_sensor, SunlitInverterSensor
-    ), f"Expected SunlitInverterSensor, got {type(inverter_solar_sensor)}"
+    assert isinstance(inverter_solar_sensor, SunlitInverterSensor), (
+        f"Expected SunlitInverterSensor, got {type(inverter_solar_sensor)}"
+    )
 
     # Test battery device type
     battery_sensor = create_device_sensor(DEVICE_TYPE_BATTERY, **test_kwargs)
-    assert isinstance(
-        battery_sensor, SunlitBatterySensor
-    ), f"Expected SunlitBatterySensor, got {type(battery_sensor)}"
+    assert isinstance(battery_sensor, SunlitBatterySensor), (
+        f"Expected SunlitBatterySensor, got {type(battery_sensor)}"
+    )
 
     # Test unknown device type (fallback)
     unknown_sensor = create_device_sensor("UNKNOWN_TYPE", **test_kwargs)
-    assert isinstance(
-        unknown_sensor, SunlitUnknownDeviceSensor
-    ), f"Expected SunlitUnknownDeviceSensor, got {type(unknown_sensor)}"
+    assert isinstance(unknown_sensor, SunlitUnknownDeviceSensor), (
+        f"Expected SunlitUnknownDeviceSensor, got {type(unknown_sensor)}"
+    )

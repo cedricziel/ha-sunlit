@@ -1,8 +1,15 @@
 """Helper functions for Sunlit sensors."""
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+import re
+
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntityDescription,
+    SensorStateClass,
+)
 from homeassistant.const import (
     PERCENTAGE,
+    EntityCategory,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
@@ -10,12 +17,43 @@ from homeassistant.const import (
     UnitOfTime,
 )
 
+# Text sensors with a known, bounded value set -> ENUM device class + options.
+# Only fields whose values are documented enums in the API are listed; strategy
+# and battery-status fields are intentionally excluded (their value sets are not
+# reliably bounded, so ENUM would emit "state not in options" warnings).
+ENUM_SENSOR_OPTIONS: dict[str, list[str]] = {
+    "electricity_price_tag": [
+        "VERY_CHEAP",
+        "CHEAP",
+        "NORMAL",
+        "EXPENSIVE",
+        "VERY_EXPENSIVE",
+    ],
+    "battery_device_status": ["Online", "Offline", "NotExist"],
+    "inverter_device_status": ["Online", "Offline", "NotExist"],
+    "meter_device_status": ["Online", "Offline", "NotExist"],
+}
+
+# Battery SOC that is actually metered and fluctuates -> SensorDeviceClass.BATTERY.
+# SOC *limits* (hw/bms/strategy/current min/max) are configuration thresholds,
+# not metered battery levels, so they are deliberately excluded.
+_METERED_SOC_KEYS = {"battery_level", "batterySoc", "average_battery_level"}
+_MODULE_SOC_RE = re.compile(r"^battery\d+Soc$")
+
+
+def _is_metered_battery_soc(key: str) -> bool:
+    """Return True for fluctuating, metered battery SOC sensors only."""
+    return key in _METERED_SOC_KEYS or _MODULE_SOC_RE.match(key) is not None
+
 
 def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     """Get the appropriate device class for a sensor."""
     # Check specific keys first before general pattern matching
     if key == "last_strategy_change":
         return SensorDeviceClass.TIMESTAMP
+    # Bounded text states -> ENUM (before the status guard, which would null them)
+    elif key in ENUM_SENSOR_OPTIONS:
+        return SensorDeviceClass.ENUM
     # Check for status and strategy fields (they're text, not numeric)
     elif (
         "status" in key.lower()
@@ -28,10 +66,10 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     # generic "energy"/"battery" checks so it is not mis-classified as ENERGY.
     elif "storedenergy" in key.lower().replace("_", ""):
         return SensorDeviceClass.ENERGY_STORAGE
-    # Battery capacity
+    # Cumulative/flow energy. Nominal capacity is intentionally NOT here: it is a
+    # static spec value, not metered energy (see get_entity_category -> diagnostic).
     elif (
-        "capacity" in key.lower()
-        or "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
+        "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
         or key == "total_solar_energy"
         or key in ["total_grid_export_energy", "daily_grid_export_energy"]
         or key in ["daily_yield", "lifetime_yield"]
@@ -62,7 +100,8 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
         return SensorDeviceClass.CURRENT
     elif "energy" in key.lower():
         return SensorDeviceClass.ENERGY
-    elif "soc" in key.lower() or "battery" in key.lower() or "level" in key.lower():
+    # BATTERY only for metered, fluctuating SOC — not for SOC limit thresholds.
+    elif _is_metered_battery_soc(key):
         return SensorDeviceClass.BATTERY
     elif key == "has_fault":
         return None  # Binary-like sensor but as regular sensor
@@ -74,11 +113,8 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     # Stored energy fluctuates (rises and falls) -> MEASUREMENT, never TOTAL*.
     if "storedenergy" in key.lower().replace("_", ""):
         return SensorStateClass.MEASUREMENT
-    # Static configuration values don't need state class
-    if key in ["rated_power", "max_output_power", "currency", "battery_count"]:
-        return None
     # Lifetime cumulative energy sensors (never reset)
-    elif (
+    if (
         key == "total_yield"
         or key == "lifetime_yield"
         or "mpptenergy" in key.lower().replace("_", "").replace(" ", "")
@@ -89,7 +125,7 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     # TOTAL state class: daily counters that reset at midnight, plus
     # lifetime_earnings (cumulative monetary value, TOTAL per HA convention).
     # total_power_generation is actually today's daily generation.
-    elif key == "lifetime_earnings" or (
+    if key == "lifetime_earnings" or (
         key == "total_power_generation"
         or key == "daily_grid_export_energy"
         or key == "daily_yield"
@@ -97,26 +133,31 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     ):
         return SensorStateClass.TOTAL
     # Energy sensors need special handling
-    elif "energy" in key.lower():
+    if "energy" in key.lower():
         if "total" in key.lower():
-            # Total energy counters that never reset
             return SensorStateClass.TOTAL_INCREASING
         elif "daily" in key.lower():
-            # Daily energy counters that reset each day
             return SensorStateClass.TOTAL
         else:
-            # Other energy sensors
             return SensorStateClass.TOTAL_INCREASING
-    elif "power" in key.lower() or key in [
+    # Measurement-type device classes opt into long-term statistics. This covers
+    # power (incl. rated_power / max_output_power), voltage, current, metered
+    # battery SOC, time-remaining (duration) and stored energy.
+    if get_device_class_for_sensor(key) in (
+        SensorDeviceClass.POWER,
+        SensorDeviceClass.VOLTAGE,
+        SensorDeviceClass.CURRENT,
+        SensorDeviceClass.BATTERY,
+        SensorDeviceClass.DURATION,
+        SensorDeviceClass.ENERGY_STORAGE,
+    ):
+        return SensorStateClass.MEASUREMENT
+    # Numeric measurements that carry no device class (counts, prices, rates).
+    if key in [
         "device_count",
         "online_devices",
         "offline_devices",
         "strategy_changes_today",
-        "home_power",
-        "battery_charging_remaining",
-        "battery_discharging_remaining",
-        "inverter_current_power",
-        "total_solar_power",
         "electricity_price",
         "electricity_price_avg",
         "electricity_price_high",
@@ -317,3 +358,59 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     elif key == "currency":
         return "mdi:currency-eur"
     return None
+
+
+def get_options_for_sensor(key: str) -> list[str] | None:
+    """Return the ENUM options for a bounded text sensor, else None."""
+    return ENUM_SENSOR_OPTIONS.get(key)
+
+
+def get_entity_category(key: str) -> EntityCategory | None:
+    """Return the entity category for a sensor.
+
+    Nominal capacity is a static hardware spec, not live telemetry -> diagnostic.
+    """
+    if key == "battery_capacity" or key.endswith("capacity"):
+        return EntityCategory.DIAGNOSTIC
+    return None
+
+
+def get_suggested_display_precision(key: str) -> int | None:
+    """Suggested number of decimals for a numeric sensor's displayed state."""
+    device_class = get_device_class_for_sensor(key)
+    unit = get_unit_for_sensor(key)
+    if device_class in (
+        SensorDeviceClass.ENERGY,
+        SensorDeviceClass.ENERGY_STORAGE,
+        SensorDeviceClass.MONETARY,
+    ):
+        return 2
+    if device_class == SensorDeviceClass.CURRENT:
+        return 2
+    if device_class in (SensorDeviceClass.POWER, SensorDeviceClass.VOLTAGE):
+        return 1
+    if device_class == SensorDeviceClass.BATTERY:
+        return 1
+    if device_class == SensorDeviceClass.DURATION:
+        return 0
+    if unit == UnitOfEnergy.KILO_WATT_HOUR:  # nominal capacity (no device class)
+        return 2
+    if unit == "ct/kWh":
+        return 2
+    if unit == PERCENTAGE:
+        return 1
+    return None
+
+
+def build_sensor_description(key: str, name: str) -> SensorEntityDescription:
+    """Build a SensorEntityDescription with all derived metadata for a key."""
+    return SensorEntityDescription(
+        key=key,
+        name=name,
+        device_class=get_device_class_for_sensor(key),
+        state_class=get_state_class_for_sensor(key),
+        native_unit_of_measurement=get_unit_for_sensor(key),
+        options=get_options_for_sensor(key),
+        suggested_display_precision=get_suggested_display_precision(key),
+        entity_category=get_entity_category(key),
+    )
