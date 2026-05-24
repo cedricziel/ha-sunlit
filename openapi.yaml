@@ -14,7 +14,7 @@ info:
     Requests authenticate with `Authorization: bearer <token>` (lowercase scheme)
     and the app additionally sends `appVersion`, `language`, `phoneModel`, and
     `osVersion` headers; these are not required for the documented data endpoints.
-  version: 1.3.0
+  version: 1.4.0
   contact:
     name: Home Assistant Integration
     url: https://github.com/cedricziel/ha-sunlit
@@ -50,6 +50,8 @@ tags:
     description: User account information
   - name: System
     description: Backend health and app lifecycle endpoints
+  - name: Notifications
+    description: Notification and message inbox operations
 
 paths:
   /family/list:
@@ -1180,6 +1182,238 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.5/notification/list:
+    post:
+      tags:
+        - Notifications
+      summary: List notifications
+      description: Retrieve the paginated notification feed for the account.
+      operationId: getNotificationList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PageRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.5/notification/read:
+    post:
+      tags:
+        - Notifications
+      summary: Mark a notification read
+      operationId: markNotificationRead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: integer
+                  description: Notification ID
+                  example: 6340630
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResultResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.5/notification/delete:
+    post:
+      tags:
+        - Notifications
+      summary: Delete a notification
+      operationId: deleteNotification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: integer
+                  description: Notification ID
+                  example: 6340630
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResultResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.6/notification/batchRead:
+    post:
+      tags:
+        - Notifications
+      summary: Mark multiple notifications read
+      operationId: batchReadNotifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: Notification IDs to mark read
+                  example: [5851069, 5849035]
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResultResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /message/list:
+    post:
+      tags:
+        - Notifications
+      summary: List messages
+      description: Retrieve the paginated message inbox (distinct from notifications).
+      operationId: getMessageList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PageRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.6/message/readAll:
+    post:
+      tags:
+        - Notifications
+      summary: Mark all messages read
+      operationId: markAllMessagesRead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Empty object
+              example: {}
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResultResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /util/warning/check:
+    post:
+      tags:
+        - System
+      summary: Check a warning condition
+      description: |
+        Probe whether a named warning condition is currently active for a space.
+        Returns a boolean. The `type` enumerates warning conditions; only
+        `WARNING_STRATEGY_INVALID` has been observed so far.
+      operationId: checkWarning
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - spaceId
+              properties:
+                type:
+                  type: string
+                  description: Warning condition identifier
+                  example: "WARNING_STRATEGY_INVALID"
+                spaceId:
+                  type: integer
+                  example: 34038
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResultResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.4/device/add/preCheck:
+    post:
+      tags:
+        - Device
+      summary: Pre-check adding a device
+      description: |
+        Onboarding gate — checks whether a device of the given type can be added
+        to a space. Returns a boolean.
+      operationId: deviceAddPreCheck
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+                - deviceType
+              properties:
+                spaceId:
+                  type: integer
+                  example: 34038
+                deviceType:
+                  type: string
+                  description: Device type to add (e.g. EN_PLUS_EVSE)
+                  example: "EN_PLUS_EVSE"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BooleanResultResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -2736,6 +2970,8 @@ components:
             - YUNENG_MICRO_INVERTER
             - SOLAR_MICRO_INVERTER
             - ENERGY_STORAGE_BATTERY
+            - STAR_CHARGE_EVSE
+            - EN_PLUS_EVSE
           example: "ENERGY_STORAGE_BATTERY"
         batteryLevel:
           type: ["number", "null"]
@@ -3603,3 +3839,149 @@ components:
         currency:
           type: string
           example: "EUR"
+
+    PageRequest:
+      type: object
+      description: Standard pagination request
+      properties:
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+
+    BooleanResultResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: boolean
+              description: Result flag (semantics depend on the endpoint)
+              example: true
+
+    NotificationListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              $ref: "#/components/schemas/PaginatedNotificationList"
+
+    PaginatedNotificationList:
+      type: object
+      description: Paginated notification feed (Spring Data Page shape)
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationItem"
+        pageable:
+          $ref: "#/components/schemas/Pageable"
+        totalPages:
+          type: integer
+          example: 1
+        totalElements:
+          type: integer
+          example: 7
+        last:
+          type: boolean
+          example: true
+        number:
+          type: integer
+          example: 0
+        sort:
+          $ref: "#/components/schemas/Sort"
+        numberOfElements:
+          type: integer
+          example: 7
+        first:
+          type: boolean
+          example: true
+        size:
+          type: integer
+          example: 20
+        empty:
+          type: boolean
+          example: false
+
+    NotificationItem:
+      type: object
+      description: A single notification feed entry
+      properties:
+        id:
+          type: integer
+          example: 5851069
+        type:
+          type: string
+          description: Notification channel/type
+          example: "push"
+        title:
+          type: string
+          example: "Speicher beginnt das Heizen"
+        content:
+          type: string
+          example: "Sie müssen nichts tun. …"
+        read:
+          type: boolean
+          example: true
+        deviceSn:
+          type: ["string", "null"]
+          example: "dcbdccbffe3d"
+        collectorSn:
+          type: ["string", "null"]
+          example: null
+        deviceType:
+          type: ["string", "null"]
+          example: "ENERGY_STORAGE_BATTERY"
+        showType:
+          type: ["string", "null"]
+          example: null
+        h5Url:
+          type: ["string", "null"]
+          example: null
+        readableDeviceType:
+          type: ["string", "null"]
+          example: "SunEnergyXT BK215"
+        space:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 34038
+            name:
+              type: string
+              example: "Garage"
+        createDate:
+          type: integer
+          description: Creation timestamp (milliseconds)
+          example: 1774768241000
+
+    MessageListResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: object
+              description: >-
+                Paginated message inbox (Spring Data Page). Empty in the capture;
+                item shape not yet observed populated.
+              properties:
+                content:
+                  type: array
+                  items:
+                    type: object
+                  example: []
+                pageable:
+                  $ref: "#/components/schemas/Pageable"
+                totalElements:
+                  type: integer
+                  example: 0
+                totalPages:
+                  type: integer
+                  example: 0
+                empty:
+                  type: boolean
+                  example: true
