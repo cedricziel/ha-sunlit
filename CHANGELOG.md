@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/cedricziel/ha-sunlit/compare/v1.9.0...v1.9.1) (2026-05-24)
+
+
+### Bug Fixes
+
+* **sensors:** correct state class for daily-resetting counters ([#195](https://github.com/cedricziel/ha-sunlit/issues/195)) ([fe59b9b](https://github.com/cedricziel/ha-sunlit/commit/fe59b9b9441400bc71a3051308edbfe1d0f160cb))
+
 ## [1.9.0](https://github.com/cedricziel/ha-sunlit/compare/v1.8.0...v1.9.0) (2026-05-24)
 
 
