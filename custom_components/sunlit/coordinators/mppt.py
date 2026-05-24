@@ -7,12 +7,18 @@ import logging
 import time
 from typing import Any
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from ..const import DOMAIN
 from .device import SunlitDeviceCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+STORAGE_VERSION = 1
+# Debounce window for persisting accumulators after an update.
+SAVE_DELAY = 30
 
 
 class SunlitMpptEnergyCoordinator(DataUpdateCoordinator):
@@ -35,6 +41,12 @@ class SunlitMpptEnergyCoordinator(DataUpdateCoordinator):
         self.last_mppt_update = {}
         self.last_mppt_power = {}
 
+        # Persist accumulators so lifetime energy survives HA restarts.
+        self._store: Store = Store(
+            hass, STORAGE_VERSION, f"{DOMAIN}_mppt_energy_{family_id}"
+        )
+        self._restored = False
+
         super().__init__(
             hass,
             _LOGGER,
@@ -42,9 +54,37 @@ class SunlitMpptEnergyCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(minutes=1),  # 1 minute updates
         )
 
+    @callback
+    def _data_to_store(self) -> dict[str, Any]:
+        """Return the accumulator state to persist."""
+        return {"mppt_energy": self.mppt_energy}
+
+    async def _async_restore_energy(self) -> None:
+        """Restore persisted MPPT energy accumulators.
+
+        Only the energy totals are restored, deliberately not the per-channel
+        timestamps. Leaving ``last_mppt_update`` empty makes the first tick
+        after a restart record a fresh baseline instead of integrating over the
+        (possibly very large) gap since the last save, which would otherwise
+        inject a bogus one-off energy spike.
+        """
+        stored = await self._store.async_load()
+        if stored and isinstance(stored.get("mppt_energy"), dict):
+            self.mppt_energy = stored["mppt_energy"]
+            _LOGGER.debug(
+                "Restored MPPT energy for %s: %d channels",
+                self.family_name,
+                len(self.mppt_energy),
+            )
+
     async def _async_update_data(self) -> dict[str, Any]:
         """Calculate MPPT energy accumulation."""
         try:
+            # Restore persisted accumulators on the first run after startup.
+            if not self._restored:
+                await self._async_restore_energy()
+                self._restored = True
+
             current_time = time.time()
 
             mppt_data = {}
@@ -78,6 +118,9 @@ class SunlitMpptEnergyCoordinator(DataUpdateCoordinator):
             total_mppt_energy = sum(
                 self.mppt_energy.get(key, 0) for key in self.mppt_energy
             )
+
+            # Persist accumulators (debounced) so they survive restarts.
+            self._store.async_delay_save(self._data_to_store, SAVE_DELAY)
 
             return {
                 "mppt_energy": mppt_data,
