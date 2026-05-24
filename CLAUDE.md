@@ -27,12 +27,37 @@ make clean
 make help
 ```
 
-### Testing HomeAssistant
+### Testing
+
+```bash
+make test          # pytest (asyncio auto mode)
+make test-cov      # with coverage; enforces --cov-fail-under=60 (pytest.ini)
+
+# Single test / file / pattern:
+pytest tests/test_api_client.py::test_fetch_families_success --asyncio-mode=auto
+pytest tests/ -k "localized" --asyncio-mode=auto
+```
+
+Tests rely on `pytest-homeassistant-custom-component`; async mode is automatic
+(`asyncio_mode = auto`). Coordinator tests inject an `AsyncMock` API client and
+call `_async_update_data()` directly.
+
+### Running HomeAssistant
 
 ```bash
 # Run HomeAssistant in development mode (port 8123)
 hass -c config
 ```
+
+### Python version
+
+HomeAssistant (pinned in `requirements.txt`) requires **Python 3.14.2+**; CI runs
+3.14 — do not target 3.13. (`pyproject.toml` still declares `py312` for ruff/black;
+that's stale but harmless. The `UP038` ignore there is for a removed ruff rule and
+is the source of the recurring lint warning.)
+
+`scripts/verify-api.sh` probes the live API (auth, family/device lists, parameter
+behavior); it loads credentials from a gitignored `.env` (see `.env.example`).
 
 ## Architecture
 
@@ -221,20 +246,28 @@ The integration supports the following device types:
 - Version: `VERSION` in `const.py` (managed by release-please)
 - GitHub URL: `GITHUB_URL` in `const.py`
 
-## Recent Features
+## API Conventions
 
-- **Device Type Support**: Added DEYE 2000 inverters and Shelly Pro 3EM meter support
-- **Daily Energy Validation**: Added validation to prevent negative daily energy values at midnight
-- **Enhanced Logging**: Debug logging during midnight window (23:50-00:10) for troubleshooting
-- Refactored coordinator architecture with specialized coordinators
-- Different update intervals based on data volatility (30s, 1min, 5min)
-- Fixed `last_strategy_change` sensor to use TIMESTAMP device class
-- MPPT energy accumulation with trapezoidal integration
-- Grid export energy tracking (daily and total)
-- Total solar energy aggregation across all inverters
-- B215 battery module virtual devices
-- Makefile for development workflow
+- Responses use an envelope: `{"code": ..., "message": ..., "content": ...}`.
+  `code != 0` is an error and `_make_request` raises `SunlitApiError`.
+- Error `message` may be a **localized dict** (`{"DE": "..."}`); `_format_api_message`
+  renders it to a readable string (preferring English).
+- `POST /v1.2/device/list` **requires** `familyId` + `deviceType`. Use
+  `deviceType="ALL"` for all types — the API rejects `""`. There is **no**
+  account-wide device listing; every call is family-scoped.
+- `openapi.yaml` is a hand-maintained reference and has been wrong before (e.g. the
+  `deviceType` example). Verify against the live API with `scripts/verify-api.sh`
+  rather than trusting the spec.
 
-## API Reference
+## Releases
 
-If we need to compare API responses, the OpenAPI spec that's included in the project can guide us.
+Versioning is automated by **release-please** (`.release-please-config.json`).
+
+- Commits must follow Conventional Commits; the PR title is validated in CI.
+- Only `feat:` (minor) and `fix:` (patch) bump the version and reach the changelog —
+  `chore:`/`ci:`/`docs:` do not trigger a release. Use a `Release-As:` footer to force one.
+- Merging the generated release PR updates `VERSION` (`const.py`), `manifest.json`,
+  and the manifest, then tags and publishes the GitHub Release.
+- `pre-commit` hooks run ruff/isort/format on commit. The `main` branch ruleset
+  requires the `Test Python <version>`, `Lint`, and `Validate with hassfest` checks —
+  renaming the test job (e.g. on a Python bump) means updating the ruleset too.
