@@ -394,3 +394,24 @@ class TestSelfConsumptionSensors:
         assert get_state_class_for_sensor(key) == SensorStateClass.MEASUREMENT
         assert get_unit_for_sensor(key) == PERCENTAGE
         assert get_icon_for_sensor(key) is not None
+
+
+class TestDeviceDiagnosticSensors:
+    """Test classification of device-detail diagnostic sensors (issue #159)."""
+
+    def test_text_diagnostics_have_no_device_class(self):
+        """ssid / system status are plain text sensors."""
+        for key in ("wifi_ssid", "system_status"):
+            assert get_device_class_for_sensor(key) is None
+            assert get_state_class_for_sensor(key) is None
+            assert get_unit_for_sensor(key) is None
+
+    def test_diagnostic_icons_resolve_for_battery_device(self):
+        """Icons must resolve before the battery device_type branch."""
+        assert (
+            get_icon_for_sensor("wifi_ssid", "ENERGY_STORAGE_BATTERY") == "mdi:wifi"
+        )
+        assert (
+            get_icon_for_sensor("system_status", "ENERGY_STORAGE_BATTERY")
+            == "mdi:information-outline"
+        )

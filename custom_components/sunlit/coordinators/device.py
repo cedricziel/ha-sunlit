@@ -345,17 +345,22 @@ class SunlitDeviceCoordinator(DataUpdateCoordinator):
         else:
             data["module_count"] = fallback_module_count
 
-        # Local-mode capability and current state for the control switch (#160).
-        # Sourced from device details; only meaningful while the battery is online.
+        # Device details (only meaningful while online): local-mode flags for the
+        # control switch (#160) plus diagnostic fields (#159).
         if device.get("status") == "Online":
             try:
                 details = await self.api_client.fetch_device_details(device_id)
                 if details.get("supportLocalMode"):
                     data["support_local_mode"] = True
                     data["local_mode_enabled"] = details.get("localModeEnabled")
+                # Diagnostics (#159)
+                data["wifi_ssid"] = details.get("ssid")
+                data["system_status"] = details.get("systemMultiStatus")
+                data["ota_in_progress"] = details.get("otaInProgress")
+                data["has_valid_meter"] = details.get("hasValidMeter")
             except Exception as err:
                 _LOGGER.debug(
-                    "Could not fetch local-mode status for device %s: %s",
+                    "Could not fetch device details for device %s: %s",
                     device_id,
                     err,
                 )

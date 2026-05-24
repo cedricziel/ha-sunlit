@@ -194,6 +194,12 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
             return "mdi:timer-sand"
         elif "discharge" in key.lower():
             return "mdi:timer-sand-empty"
+    # Device diagnostics (#159) — before device_type branches so battery
+    # devices don't fall through to the generic battery icon.
+    elif key == "wifi_ssid":
+        return "mdi:wifi"
+    elif key == "system_status":
+        return "mdi:information-outline"
     # Solar/Inverter related
     elif device_type == "YUNENG_MICRO_INVERTER" or "generation" in key:
         return "mdi:solar-power"
