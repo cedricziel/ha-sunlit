@@ -457,6 +457,44 @@ async def test_fetch_strategy_device_status_success(api_client, mock_session):
 
 
 @pytest.mark.asyncio
+async def test_fetch_tariff_index_success(api_client, mock_session):
+    """Test fetching dynamic electricity tariff/pricing."""
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "message": {"DE": "Ok"},
+            "content": {
+                "rabotHasContract": True,
+                "rabotHourPriceDTO": {
+                    "priceInCentPerKwh": -0.2,
+                    "avgPriceInCentPerKwh": 6.67,
+                    "highestPriceInCentPerKwh": 15.32,
+                    "lowestPriceInCentPerKwh": -7.59,
+                    "priceTag": "CHEAP",
+                    "hour": 16,
+                },
+                "countryCode": "DE",
+            },
+        },
+    )
+
+    data = await api_client.fetch_tariff_index(34038)
+
+    assert data["rabotHasContract"] is True
+    assert data["rabotHourPriceDTO"]["priceInCentPerKwh"] == -0.2
+    assert data["rabotHourPriceDTO"]["priceTag"] == "CHEAP"
+
+    mock_session.request.assert_called_once()
+    call_args = mock_session.request.call_args
+    assert call_args[0][0] == "POST"
+    assert "/v1.6/tariff/index" in call_args[0][1]
+    assert call_args[1]["json"] == {"spaceId": 34038}
+    assert call_args[1]["headers"]["Authorization"] == "Bearer test_token"
+
+
+@pytest.mark.asyncio
 async def test_fetch_device_statistics_auth_error(api_client, mock_session):
     """Test authentication error when fetching device statistics."""
     # Setup 401 response

@@ -110,6 +110,10 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
         "battery_discharging_remaining",
         "inverter_current_power",
         "total_solar_power",
+        "electricity_price",
+        "electricity_price_avg",
+        "electricity_price_high",
+        "electricity_price_low",
     ]:
         return SensorStateClass.MEASUREMENT
     return None
@@ -158,6 +162,13 @@ def get_unit_for_sensor(key: str) -> str | None:
         "soc" in key.lower() or "battery_level" in key or "average_battery_level" in key
     ):
         return PERCENTAGE
+    elif key in (
+        "electricity_price",
+        "electricity_price_avg",
+        "electricity_price_high",
+        "electricity_price_low",
+    ):
+        return "ct/kWh"
     elif "earnings" in key:
         return "EUR"  # Could be made configurable, will use currency field
     return None
@@ -259,6 +270,11 @@ def get_icon_for_sensor(key: str, device_type: str = None) -> str | None:
     # Earnings
     elif "earnings" in key:
         return "mdi:cash"
+    # Electricity price (dynamic tariff)
+    elif key == "electricity_price_tag":
+        return "mdi:tag-outline"
+    elif key.startswith("electricity_price"):
+        return "mdi:cash-multiple"
     # Yield (daily / lifetime)
     elif key in ("daily_yield", "lifetime_yield"):
         return "mdi:solar-power-variant"
