@@ -85,6 +85,10 @@ class SunlitStrategyHistoryCoordinator(DataUpdateCoordinator):
         """
         if band not in self._tariff_setup:
             raise ValueError(f"Unknown tariff band: {band}")
+        if field not in self._tariff_setup[band]:
+            raise ValueError(
+                f"Unknown field '{field}' for tariff band '{band}'"
+            )
         self._tariff_setup[band][field] = value
 
     async def async_push_tariff_setup(

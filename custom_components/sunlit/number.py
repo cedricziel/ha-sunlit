@@ -144,12 +144,16 @@ class SunlitTariffSocNumber(
                     f"{self._band}-price socMax must be > socMin ({other_value})"
                 )
 
+        previous_value = self.coordinator.tariff_setup[self._band].get(self._field)
         self.coordinator.update_tariff_setup_field(
             self._band, self._field, int_value
         )
         try:
             await self.coordinator.async_push_tariff_setup()
         except Exception as err:
+            self.coordinator.update_tariff_setup_field(
+                self._band, self._field, previous_value
+            )
             raise HomeAssistantError(
                 f"Failed to set {self._band}-price {self._field}: {err}"
             ) from err

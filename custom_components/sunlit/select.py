@@ -122,12 +122,16 @@ class SunlitTariffStrategySelect(
         """Push the new strategy to the API."""
         if option not in TARIFF_STRATEGY_OPTIONS:
             raise HomeAssistantError(f"Invalid strategy option: {option}")
+        previous_option = self.coordinator.tariff_setup[self._band].get("strategy")
         self.coordinator.update_tariff_setup_field(
             self._band, "strategy", option
         )
         try:
             await self.coordinator.async_push_tariff_setup()
         except Exception as err:
+            self.coordinator.update_tariff_setup_field(
+                self._band, "strategy", previous_option
+            )
             raise HomeAssistantError(
                 f"Failed to set {self._band}-price strategy: {err}"
             ) from err
