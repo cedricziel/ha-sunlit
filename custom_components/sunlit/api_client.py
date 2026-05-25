@@ -26,6 +26,7 @@ from .const import (
     API_SPACE_STRATEGY_HISTORY,
     API_STRATEGY_DEVICE_STATUS,
     API_TARIFF_INDEX,
+    API_TARIFF_STRATEGY_ADD,
     API_USER_LOGIN,
 )
 
@@ -688,6 +689,53 @@ class SunlitApiClient:
         _LOGGER.debug("Setting battery %s local mode to %s", device_sn, enable)
         return await self._make_request(
             "POST", API_BATTERY_LOCAL_MODE_CONFIG, json=payload
+        )
+
+    async def set_tariff_strategy(
+        self,
+        family_id: str | int,
+        low_price_strategy: dict[str, Any],
+        high_price_strategy: dict[str, Any],
+        enable_switch_notice: bool = True,
+    ) -> dict[str, Any]:
+        """Add or update the tariff-based battery strategy for a family.
+
+        POSTs to /v1.6/tariffStrategy/add. Configures the battery's behaviour
+        for low- and high-price tariff windows in a single call. The endpoint
+        is all-or-nothing: callers must always supply both low and high blocks.
+
+        Args:
+            family_id: The family/space ID
+            low_price_strategy: Dict with keys ``strategy``, ``socMin``,
+                ``socMax`` and optional ``defaultExpectInverterOutput``
+            high_price_strategy: Dict with keys ``strategy``, ``socMin``,
+                ``socMax`` and optional ``smartStrategyMode``,
+                ``smartStrategyFullMode``
+            enable_switch_notice: Send a push notification when the strategy
+                switches between price bands
+
+        Returns:
+            The raw API envelope (``content`` is null on success)
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        payload = {
+            "familyId": int(family_id),
+            "lowPriceStrategy": low_price_strategy,
+            "highPriceStrategy": high_price_strategy,
+            "enableSwitchNotice": enable_switch_notice,
+        }
+        _LOGGER.debug(
+            "Setting tariff strategy for family %s: low=%s high=%s",
+            family_id,
+            low_price_strategy,
+            high_price_strategy,
+        )
+        return await self._make_request(
+            "POST", API_TARIFF_STRATEGY_ADD, json=payload
         )
 
     async def fetch_tariff_index(self, space_id: str | int) -> dict[str, Any]:

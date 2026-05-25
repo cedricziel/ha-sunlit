@@ -10,12 +10,27 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from ..api_client import SunlitApiClient
+from ..const import (
+    DEFAULT_HIGH_PRICE_SOC_MAX,
+    DEFAULT_HIGH_PRICE_SOC_MIN,
+    DEFAULT_HIGH_PRICE_STRATEGY,
+    DEFAULT_LOW_PRICE_INVERTER_OUTPUT,
+    DEFAULT_LOW_PRICE_SOC_MAX,
+    DEFAULT_LOW_PRICE_SOC_MIN,
+    DEFAULT_LOW_PRICE_STRATEGY,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class SunlitStrategyHistoryCoordinator(DataUpdateCoordinator):
-    """Coordinator for strategy history data."""
+    """Coordinator for strategy history data and tariff-strategy setup cache.
+
+    The /v1.6/tariffStrategy/add endpoint is all-or-nothing: every write must
+    carry the full low+high blocks. This coordinator owns the in-memory cache
+    of the last sent values so that individual select/number entities can
+    mutate one field at a time and the coordinator submits the bundle.
+    """
 
     def __init__(
         self,
@@ -29,12 +44,60 @@ class SunlitStrategyHistoryCoordinator(DataUpdateCoordinator):
         self.family_id = family_id
         self.family_name = family_name
 
+        # Cached tariff-strategy setup. Mutated by entity setters and read by
+        # set_tariff_strategy(). Initialised with sensible defaults; entities
+        # may overwrite via restored state on startup.
+        self._tariff_setup: dict[str, dict[str, Any]] = {
+            "low": {
+                "strategy": DEFAULT_LOW_PRICE_STRATEGY,
+                "socMin": DEFAULT_LOW_PRICE_SOC_MIN,
+                "socMax": DEFAULT_LOW_PRICE_SOC_MAX,
+                "defaultExpectInverterOutput": DEFAULT_LOW_PRICE_INVERTER_OUTPUT,
+            },
+            "high": {
+                "strategy": DEFAULT_HIGH_PRICE_STRATEGY,
+                "socMin": DEFAULT_HIGH_PRICE_SOC_MIN,
+                "socMax": DEFAULT_HIGH_PRICE_SOC_MAX,
+            },
+        }
+
         super().__init__(
             hass,
             _LOGGER,
             name=f"Sunlit Strategy History {family_name}",
             update_interval=timedelta(minutes=5),  # 5 minute updates
         )
+
+    @property
+    def tariff_setup(self) -> dict[str, dict[str, Any]]:
+        """Return the cached tariff-strategy setup (low/high blocks)."""
+        return self._tariff_setup
+
+    def update_tariff_setup_field(
+        self, band: str, field: str, value: Any
+    ) -> None:
+        """Update one field of the cached tariff setup before pushing.
+
+        Args:
+            band: ``low`` or ``high``
+            field: e.g. ``strategy``, ``socMin``, ``socMax``
+            value: new value
+        """
+        if band not in self._tariff_setup:
+            raise ValueError(f"Unknown tariff band: {band}")
+        self._tariff_setup[band][field] = value
+
+    async def async_push_tariff_setup(
+        self, enable_switch_notice: bool = True
+    ) -> None:
+        """Push the cached tariff setup to /v1.6/tariffStrategy/add."""
+        await self.api_client.set_tariff_strategy(
+            self.family_id,
+            low_price_strategy=self._tariff_setup["low"],
+            high_price_strategy=self._tariff_setup["high"],
+            enable_switch_notice=enable_switch_notice,
+        )
+        await self.async_request_refresh()
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch strategy history data from REST API."""
