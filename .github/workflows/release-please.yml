@@ -25,7 +25,7 @@ jobs:
           manifest-file: .release-please-manifest.json
 
       # When a release is published, attach the OpenAPI spec as a release asset.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         if: ${{ steps.release.outputs.release_created }}
 
       - name: Attach OpenAPI spec to the release
