@@ -77,6 +77,22 @@ def test_parse_message():
     assert protocol.parse_message("not json") is None
 
 
+def test_parse_message_rejects_non_integer_data_values():
+    """Strings, floats, and bools in data values reject the whole message.
+
+    decode_telemetry multiplies by a scale factor; admitting strings/floats
+    would either crash or quietly poison entity state.
+    """
+    assert protocol.parse_message('{"code":24658,"data":{"t211":"50"}}') is None
+    assert protocol.parse_message('{"code":24658,"data":{"t211":1.5}}') is None
+    assert protocol.parse_message('{"code":24658,"data":{"t211":true}}') is None
+    # A non-string key would be unusual but also invalid for a register name.
+    assert protocol.parse_message('{"code":24658,"data":{"1":50}}') == (
+        24658,
+        {"1": 50},
+    )
+
+
 def test_iter_messages_buffers_partial_line():
     """A trailing unterminated fragment is returned as the remainder."""
     buffer = '{"code":24658,"data":{"t33":1}}\n{"code":24661,"data":{"t34":2'

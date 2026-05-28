@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 
 import pytest
@@ -70,6 +71,8 @@ class MockBK215Server:
             pass
         finally:
             writer.close()
+            with contextlib.suppress(ConnectionError, OSError):
+                await writer.wait_closed()
 
 
 @pytest.fixture
@@ -149,6 +152,30 @@ async def test_reconnects_after_drop(server: MockBK215Server):
         await client.async_stop()
 
     assert server.connections >= 2
+
+
+async def test_client_survives_raising_telemetry_callback(server: MockBK215Server):
+    """A buggy on_telemetry must not terminate the listen task."""
+    server.queue_telemetry(0x6052, {"t211": 50})
+    server.queue_telemetry(0x6052, {"t33": 42})
+
+    received: list[dict] = []
+
+    def callback(decoded: dict) -> None:
+        received.append(decoded)
+        if len(received) == 1:
+            raise RuntimeError("boom")
+
+    client = BK215LocalClient("127.0.0.1", server.port, on_telemetry=callback)
+    client.start()
+    try:
+        await _wait_for(lambda: len(received) >= 2)
+    finally:
+        await client.async_stop()
+
+    # Two messages were delivered despite the first callback raising.
+    assert {"t211": 50} in received
+    assert {"t33": 42} in received
 
 
 async def test_state_change_callback(server: MockBK215Server):

@@ -216,6 +216,14 @@ def parse_message(line: str) -> tuple[int, dict[str, int]] | None:
     data = envelope.get("data") or {}
     if not isinstance(data, dict):
         return None
+    # Every register entry must be a string key mapped to a plain int; reject
+    # the whole message if any value is a string/bool/float so downstream
+    # scaling (raw * factor) doesn't blow up at runtime.
+    for key, value in data.items():
+        if not isinstance(key, str):
+            return None
+        if not isinstance(value, int) or isinstance(value, bool):
+            return None
     return code, data
 
 

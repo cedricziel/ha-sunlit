@@ -169,7 +169,7 @@ class BK215LocalClient:
         if code in TELEMETRY_CODES:
             decoded = decode_telemetry(data)
             if decoded and self._on_telemetry is not None:
-                self._on_telemetry(decoded)
+                self._safe_callback("on_telemetry", self._on_telemetry, decoded)
         elif code == CODE_SET_ACK:
             self._resolve_acks(data)
 
@@ -203,4 +203,15 @@ class BK215LocalClient:
             return
         self._connected = value
         if self._on_state_change is not None:
-            self._on_state_change(value)
+            self._safe_callback("on_state_change", self._on_state_change, value)
+
+    def _safe_callback(self, name: str, callback: Callable, *args: Any) -> None:
+        """Invoke a user callback; log and swallow any exception.
+
+        Callbacks run on the listen task; an unhandled exception there would
+        terminate the background loop and silently disable the client.
+        """
+        try:
+            callback(*args)
+        except Exception:  # pragma: no cover - defensive isolation
+            _LOGGER.exception("[%s] %s callback raised", self._name, name)
