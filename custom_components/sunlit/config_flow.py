@@ -24,6 +24,7 @@ from .api_client import SunlitApiClient, SunlitAuthError, SunlitConnectionError
 from .const import (
     API_BASE_URL,
     CONF_ACCESS_TOKEN,
+    CONF_BATTERIES,
     CONF_EMAIL,
     CONF_FAMILIES,
     CONF_PASSWORD,
@@ -44,8 +45,42 @@ from .const import (
     OPT_SOC_THRESHOLD_HIGH,
     OPT_SOC_THRESHOLD_LOW,
 )
+from .local.protocol import DEFAULT_PORT as LOCAL_TCP_PORT
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _parse_battery_discovery(
+    discovery_info: ZeroconfServiceInfo,
+) -> dict[str, Any] | None:
+    """Extract battery LAN info from a ``hp-bk215`` zeroconf advertisement.
+
+    Returns a dict with serial/host/port and optional firmware/hardware
+    versions, or ``None`` if the advertisement lacks the required fields.
+
+    The TXT ``port`` property carries the TCP control port (observed 8000);
+    the mDNS service port (``discovery_info.port``) advertises the device's
+    ``_http`` port and is not what the local-mode channel uses.
+    """
+    properties = discovery_info.properties or {}
+    serial = properties.get("id")
+    if not serial:
+        return None
+    host = discovery_info.host
+    if not host:
+        return None
+    port_raw = properties.get("port")
+    try:
+        port = int(port_raw) if port_raw is not None else LOCAL_TCP_PORT
+    except (TypeError, ValueError):
+        port = LOCAL_TCP_PORT
+    return {
+        "serial": serial,
+        "host": host,
+        "port": port,
+        "sw_version": properties.get("fw_ver"),
+        "hw_version": properties.get("model"),
+    }
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -68,41 +103,68 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.access_token: str | None = None
         self.families: dict[str, Any] = {}
         self.available_families: list[dict[str, Any]] = []
-        self._discovered_serial: str | None = None
+        self._discovered_battery: dict[str, Any] | None = None
 
     async def async_step_zeroconf(
         self, discovery_info: ZeroconfServiceInfo
     ) -> FlowResult:
         """Handle a battery discovered via mDNS/zeroconf.
 
-        The BK215 (Highpower) advertises itself on the local network as
-        ``hp-bk215*`` over ``_http._tcp.local.``. This integration is
-        cloud-polling, so discovery only acts as an onboarding trigger:
-        we surface the device and then funnel the user into the normal
-        cloud credential flow. The discovered serial is recorded so a
-        future opt-in local-polling mode can reuse it.
+        The BK215 (Highpower) advertises itself as ``hp-bk215*`` over
+        ``_http._tcp.local.``. Two roles for this step:
+
+        - **Onboarding** — when no cloud entry exists yet, surface the device
+          and funnel the user into the normal credential flow; the captured
+          LAN info is stamped onto the entry as it's created.
+        - **Address refresh** — when an entry already exists, merge the
+          (possibly changed) host/port into ``entry.data[CONF_BATTERIES]``
+          so the opt-in local-mode channel can use it. DHCP can rotate the
+          IP, so we accept rediscoveries instead of ignoring them.
         """
-        properties = discovery_info.properties
-        self._discovered_serial = properties.get("id")
+        battery = _parse_battery_discovery(discovery_info)
+        if battery is None:
+            return self.async_abort(reason="invalid_discovery")
+        self._discovered_battery = battery
 
         # Dedupe concurrent discovery flows for the same battery.
-        await self.async_set_unique_id(self._discovered_serial or DOMAIN)
+        await self.async_set_unique_id(battery["serial"])
         self._abort_if_unique_id_configured()
 
-        # Single-entry integration: one cloud account covers every device,
-        # so once anything is set up there is nothing more to discover.
-        if self._async_current_entries():
+        # If a cloud entry is already set up, this advertisement is just a
+        # LAN refresh: merge the LAN info and reload only on real changes.
+        existing = self._existing_entry()
+        if existing is not None:
+            if self._merge_battery_into_entry(existing, battery):
+                self.hass.async_create_task(
+                    self.hass.config_entries.async_reload(existing.entry_id)
+                )
             return self.async_abort(reason="already_configured")
 
         self.context["title_placeholders"] = {
-            "name": (
-                f"Sunlit BK215 ({self._discovered_serial})"
-                if self._discovered_serial
-                else "Sunlit BK215"
-            )
+            "name": f"Sunlit BK215 ({battery['serial']})"
         }
 
         return await self.async_step_zeroconf_confirm()
+
+    def _existing_entry(self) -> config_entries.ConfigEntry | None:
+        """Return the integration's single cloud entry, or None."""
+        entries = self._async_current_entries()
+        return entries[0] if entries else None
+
+    def _merge_battery_into_entry(
+        self,
+        entry: config_entries.ConfigEntry,
+        battery: dict[str, Any],
+    ) -> bool:
+        """Merge a discovered battery into ``entry.data``; return True if changed."""
+        current = entry.data.get(CONF_BATTERIES, {}) or {}
+        if current.get(battery["serial"]) == battery:
+            return False
+        updated = {**current, battery["serial"]: battery}
+        self.hass.config_entries.async_update_entry(
+            entry, data={**entry.data, CONF_BATTERIES: updated}
+        )
+        return True
 
     async def async_step_zeroconf_confirm(
         self, user_input: dict[str, Any] | None = None
@@ -111,11 +173,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             return await self.async_step_user()
 
+        serial = (
+            self._discovered_battery["serial"]
+            if self._discovered_battery is not None
+            else "unknown"
+        )
         return self.async_show_form(
             step_id="zeroconf_confirm",
-            description_placeholders={
-                "serial_number": self._discovered_serial or "unknown"
-            },
+            description_placeholders={"serial_number": serial},
         )
 
     async def async_step_user(
@@ -217,12 +282,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 family_names = [f["name"] for f in self.families.values()]
                 title = f"Sunlit ({', '.join(family_names)})"
 
+                # Stamp any zeroconf-discovered battery onto the new entry so
+                # the local channel can pick up the LAN address without
+                # waiting for another mDNS round.
+                batteries: dict[str, dict[str, Any]] = {}
+                if self._discovered_battery is not None:
+                    batteries[self._discovered_battery["serial"]] = (
+                        self._discovered_battery
+                    )
+
                 return self.async_create_entry(
                     title=title,
                     data={
                         CONF_EMAIL: self.email,
                         CONF_ACCESS_TOKEN: self.access_token,
                         CONF_FAMILIES: self.families,
+                        CONF_BATTERIES: batteries,
                     },
                     options=DEFAULT_OPTIONS,
                 )
