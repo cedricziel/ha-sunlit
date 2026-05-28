@@ -45,6 +45,10 @@ CONF_ACCESS_TOKEN = "access_token"
 CONF_FAMILIES = "families"
 CONF_FAMILY_ID = "family_id"
 CONF_FAMILY_NAME = "family_name"
+# Per-battery LAN info captured from zeroconf, keyed by serial. Consumed by
+# the opt-in local-mode (TCP) channel; absent for entries that have never
+# seen a zeroconf advertisement.
+CONF_BATTERIES = "batteries"
 
 # Options keys for SOC event management
 OPT_ENABLE_SOC_EVENTS = "enable_soc_events"

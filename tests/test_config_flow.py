@@ -10,24 +10,40 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from custom_components.sunlit import DOMAIN
 from custom_components.sunlit.api_client import SunlitAuthError, SunlitConnectionError
-from custom_components.sunlit.const import CONF_ACCESS_TOKEN, CONF_FAMILIES
+from custom_components.sunlit.const import (
+    CONF_ACCESS_TOKEN,
+    CONF_BATTERIES,
+    CONF_FAMILIES,
+)
 
 
-def _zeroconf_discovery_info(serial: str = "HP-BK215-001") -> ZeroconfServiceInfo:
-    """Build a ZeroconfServiceInfo mimicking a BK215 mDNS advertisement."""
+def _zeroconf_discovery_info(
+    serial: str = "HP-BK215-001",
+    host: str = "192.168.1.50",
+    properties: dict[str, str] | None = None,
+) -> ZeroconfServiceInfo:
+    """Build a ZeroconfServiceInfo mimicking a BK215 mDNS advertisement.
+
+    The mDNS service ``port`` is the device's ``_http`` port (80); the real
+    TCP control port is advertised separately in the TXT ``port`` property
+    (observed as 8000) and is what the local-mode channel uses.
+    """
+    txt = {
+        "id": serial,
+        "port": "8000",
+        "fw_ver": "1.2.3",
+        "model": "BK215",
+    }
+    if properties is not None:
+        txt.update(properties)
     return ZeroconfServiceInfo(
-        ip_address=ip_address("192.168.1.50"),
-        ip_addresses=[ip_address("192.168.1.50")],
+        ip_address=ip_address(host),
+        ip_addresses=[ip_address(host)],
         port=80,
-        hostname="hp-bk215-001.local.",
+        hostname=f"{serial.lower()}.local.",
         type="_http._tcp.local.",
-        name="hp-bk215-001._http._tcp.local.",
-        properties={
-            "id": serial,
-            "port": "80",
-            "fw_ver": "1.2.3",
-            "model": "BK215",
-        },
+        name=f"{serial.lower()}._http._tcp.local.",
+        properties=txt,
     )
 
 
@@ -357,13 +373,25 @@ async def test_zeroconf_discovery_full_flow(
     assert result4["type"] == FlowResultType.CREATE_ENTRY
     assert result4["data"][CONF_ACCESS_TOKEN] == "test_api_key_123"
     assert len(result4["data"][CONF_FAMILIES]) == 1
+    # The discovered battery is stamped onto the new entry so the local
+    # channel can pick up its LAN address without waiting for another mDNS round.
+    batteries = result4["data"][CONF_BATTERIES]
+    assert batteries == {
+        "HP-BK215-001": {
+            "serial": "HP-BK215-001",
+            "host": "192.168.1.50",
+            "port": 8000,
+            "sw_version": "1.2.3",
+            "hw_version": "BK215",
+        }
+    }
 
 
 async def test_zeroconf_discovery_already_configured(
     hass: HomeAssistant,
     mock_config_entry,
 ):
-    """Discovery should abort when the account is already configured."""
+    """Discovery into a configured account merges LAN info, then aborts."""
     mock_config_entry.add_to_hass(hass)
 
     result = await hass.config_entries.flow.async_init(
@@ -374,3 +402,110 @@ async def test_zeroconf_discovery_already_configured(
 
     assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+    # First-time discovery against a pre-existing entry should populate
+    # the batteries map.
+    assert mock_config_entry.data[CONF_BATTERIES] == {
+        "HP-BK215-001": {
+            "serial": "HP-BK215-001",
+            "host": "192.168.1.50",
+            "port": 8000,
+            "sw_version": "1.2.3",
+            "hw_version": "BK215",
+        }
+    }
+
+
+async def test_zeroconf_rediscovery_updates_changed_host(
+    hass: HomeAssistant,
+    mock_config_entry,
+):
+    """A rediscovery with a new IP rewrites the entry's batteries map."""
+    mock_config_entry.add_to_hass(hass)
+
+    # First advertisement at the original address.
+    await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=_zeroconf_discovery_info(host="192.168.1.50"),
+    )
+    assert mock_config_entry.data[CONF_BATTERIES]["HP-BK215-001"]["host"] == (
+        "192.168.1.50"
+    )
+
+    # DHCP gave the battery a new lease.
+    with patch.object(hass.config_entries, "async_reload", AsyncMock()) as mock_reload:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_ZEROCONF},
+            data=_zeroconf_discovery_info(host="192.168.1.99"),
+        )
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert mock_config_entry.data[CONF_BATTERIES]["HP-BK215-001"]["host"] == (
+        "192.168.1.99"
+    )
+    # The change should trigger a reload so the local channel picks up the
+    # new address.
+    mock_reload.assert_called_once_with(mock_config_entry.entry_id)
+
+
+async def test_zeroconf_rediscovery_no_change_does_not_reload(
+    hass: HomeAssistant,
+    mock_config_entry,
+):
+    """Repeat advertisements with identical info must not reload the entry."""
+    mock_config_entry.add_to_hass(hass)
+
+    # Prime the entry with one advertisement.
+    await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=_zeroconf_discovery_info(),
+    )
+
+    # Identical re-advertisement should be a no-op.
+    with patch.object(hass.config_entries, "async_reload", AsyncMock()) as mock_reload:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_ZEROCONF},
+            data=_zeroconf_discovery_info(),
+        )
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    mock_reload.assert_not_called()
+
+
+async def test_zeroconf_falls_back_to_default_port_when_txt_port_missing(
+    hass: HomeAssistant,
+    mock_config_entry,
+):
+    """A TXT advertisement without a usable port falls back to 8000."""
+    mock_config_entry.add_to_hass(hass)
+
+    discovery = _zeroconf_discovery_info()
+    discovery.properties.pop("port")
+
+    await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=discovery,
+    )
+
+    assert mock_config_entry.data[CONF_BATTERIES]["HP-BK215-001"]["port"] == 8000
+
+
+async def test_zeroconf_aborts_when_serial_missing(hass: HomeAssistant):
+    """A TXT record with no ``id`` (serial) is rejected as invalid."""
+    discovery = _zeroconf_discovery_info()
+    discovery.properties.pop("id")
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=discovery,
+    )
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "invalid_discovery"
