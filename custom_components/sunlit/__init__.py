@@ -12,6 +12,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api_client import SunlitApiClient
 from .const import (
     CONF_ACCESS_TOKEN,
+    CONF_BATTERIES,
     CONF_FAMILIES,
     DEFAULT_OPTIONS,
     DOMAIN,
@@ -30,6 +31,7 @@ from .coordinators import (
     SunlitStrategyHistoryCoordinator,
 )
 from .event_manager import SunlitEventManager
+from .local.manager import LocalChannelManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -156,11 +158,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "mppt": mppt_coordinator,
         }
 
+    # Spin up the opt-in local-mode TCP channel. The manager watches each
+    # family's device coordinator and, for batteries with local mode enabled
+    # and a host known (from zeroconf), maintains a persistent TCP client
+    # that pushes telemetry into the same coordinator the cloud poll feeds.
+    device_coordinators = {
+        family_id: coord_set["device"] for family_id, coord_set in coordinators.items()
+    }
+    local_manager = LocalChannelManager(
+        hass,
+        device_coordinators=device_coordinators,
+        batteries=entry.data.get(CONF_BATTERIES, {}),
+    )
+    local_manager.start()
+
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinators": coordinators,
         "event_managers": event_managers,
         "api_client": api_client,
+        "local_manager": local_manager,
     }
 
     # Add update listener for options changes
@@ -180,6 +197,9 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+        entry_data = hass.data[DOMAIN].pop(entry.entry_id, {})
+        local_manager = entry_data.get("local_manager")
+        if local_manager is not None:
+            await local_manager.async_stop()
 
     return unload_ok
