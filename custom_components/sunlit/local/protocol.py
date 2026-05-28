@@ -26,8 +26,14 @@ from typing import Any
 # port is advertised in the TXT ``port`` property (not the _http service port).
 DEFAULT_PORT = 8000
 
-# A register carrying this value is unset and should be treated as "no data".
+# Values that mean "no data" and must not be scaled. The unsigned-max value
+# is the documented sentinel; ``-1`` shows up in the wild on absent modules
+# (e.g. ``t595=-1`` when only modules 1 and 2 are populated) and on
+# no-charging-box fields (``t710``, ``t711``, ``t701_4``, ``t702_4``).
+# Without filtering both, scaled-by-0.001 fields turn into nonsense like
+# ``t710 = -0.001 kWh``. Verified against firmware V1.5.8 (2026-05).
 UNSET = 0xFFFFFFFF
+UNSET_VALUES: frozenset[int] = frozenset({UNSET, -1})
 
 # --- Message codes ---------------------------------------------------------
 
@@ -58,12 +64,22 @@ def _offset(offset: int) -> Decoder:
     return lambda raw: raw - offset
 
 
+def _rssi(raw: int) -> int:
+    """Decode ``t475`` RSSI: the magnitude is reported positive; dB is negative.
+
+    The device sends e.g. ``80`` for a real-world signal strength of ``-80 dB``.
+    Storing the negated value lets sensors render as plain ``dB`` without any
+    custom display logic.
+    """
+    return -raw
+
+
 def heater_bits(raw: int) -> list[bool]:
     """Split the ``t586`` heater bitfield into per-unit booleans.
 
     Bit 0 is the main unit, bits 1..7 are extension modules 1..7.
     """
-    if raw == UNSET:
+    if raw in UNSET_VALUES:
         return []
     return [bool((raw >> bit) & 1) for bit in range(8)]
 
@@ -143,7 +159,7 @@ def _build_registers() -> dict[str, Register]:
         "t544": _voltage(),
         "t545": _current(),
         "t586": Register(int, None, None),  # heater bitfield (use heater_bits)
-        "t475": Register(int, "dB", "signal_strength"),  # RSSI (see decode note)
+        "t475": Register(_rssi, "dB", "signal_strength"),  # RSSI -> negative dB
     }
     # SOC per unit
     for reg in _MODULE_SOC:
@@ -167,12 +183,13 @@ REGISTERS: dict[str, Register] = _build_registers()
 def decode_telemetry(data: dict[str, int]) -> dict[str, Any]:
     """Decode a raw telemetry ``data`` map into scaled values.
 
-    Unset registers (``0xFFFFFFFF``) and unknown register names are dropped.
-    Known registers are scaled per their :class:`Register` definition.
+    Registers carrying an "unset" sentinel (see :data:`UNSET_VALUES`) and
+    registers without a known scaling definition are both dropped. Known
+    registers are scaled per their :class:`Register` definition.
     """
     decoded: dict[str, Any] = {}
     for name, raw in data.items():
-        if raw == UNSET:
+        if raw in UNSET_VALUES:
             continue
         register = REGISTERS.get(name)
         if register is None:

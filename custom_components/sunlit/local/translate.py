@@ -18,11 +18,22 @@ from typing import Any
 # tNNN -> tuple of cloud entity keys it should populate. A few local
 # registers map to multiple cloud keys because the cloud surfaces the
 # same value under more than one name (e.g. system SOC).
+#
+# Some registers map to **local-only** keys that the cloud never populates;
+# their entities stay unavailable until the local channel is active. They
+# expose information the cloud doesn't (head unit SOC distinct from the
+# system aggregate, RSSI for connection health, per-battery daily energy
+# counters).
 _REGISTER_TO_CLOUD_KEYS: dict[str, tuple[str, ...]] = {
     # System aggregates (head + all modules)
     "t211": ("battery_level", "batterySoc"),
     "t33": ("input_power_total",),
     "t34": ("output_power_total",),
+    # Local-only (no cloud equivalent)
+    "t592": ("head_battery_soc",),  # head unit real SOC vs system t211 average
+    "t49": ("daily_pv_energy",),  # daily PV generation as the battery sees it
+    "t66": ("daily_output_energy",),  # daily energy out of the battery
+    "t475": ("wifi_rssi",),  # already negated by decode -> negative dB
     # Head unit MPPTs (1 and 2)
     "t536": ("batteryMppt1InVol",),
     "t537": ("batteryMppt1InCur",),
@@ -76,11 +87,11 @@ def translate_to_device_keys(decoded: dict[str, Any]) -> dict[str, Any]:
     is a partial cloud-key map to merge into one battery device's slot in
     ``device_coordinator.data["devices"][device_id]``.
 
-    Registers without a known cloud mapping (e.g. ``t592`` head real SOC,
-    ``t49`` daily generation, ``t586`` heater bitfield) are dropped. They
-    can be surfaced later as new local-only entities; until then the cloud
-    poll continues to be the source of truth for derived fields like
-    ``stored_energy``, which won't refresh from local pushes alone.
+    Registers without a known cloud or local-only mapping (e.g. ``t586``
+    heater bitfield, BMS hardware SOC limits) are dropped. They can be
+    surfaced later as new entities; until then the cloud poll continues to
+    be the source of truth for derived fields like ``stored_energy``,
+    which won't refresh from local pushes alone.
     """
     result: dict[str, Any] = {}
     for register, value in decoded.items():

@@ -84,11 +84,27 @@ def test_module_mppt_voltage_current_power():
     }
 
 
+def test_local_only_registers_populate_dedicated_keys():
+    """Registers without a cloud equivalent map to local-only entity keys."""
+    # t592 = head unit real SOC (distinct from system aggregate t211)
+    # t49  = daily PV generation (cloud doesn't track this per battery)
+    # t66  = daily output energy (cloud doesn't track this per battery)
+    # t475 = WiFi RSSI in dB (already negated by decode)
+    result = translate_to_device_keys(
+        {"t592": 78, "t49": 1.234, "t66": 0.42, "t475": -80}
+    )
+    assert result == {
+        "head_battery_soc": 78,
+        "daily_pv_energy": 1.234,
+        "daily_output_energy": 0.42,
+        "wifi_rssi": -80,
+    }
+
+
 def test_unmapped_registers_are_dropped():
-    """Local registers without a cloud equivalent are silently ignored."""
-    # t592 (head real SOC), t49 (daily generation), t586 (heater bitfield)
-    # all have no corresponding cloud entity key today.
-    result = translate_to_device_keys({"t592": 75, "t49": 1.234, "t586": 5})
+    """Local registers we have no entity for are silently ignored."""
+    # t586 (heater bitfield) and BMS hardware SOC limits have no entity yet.
+    result = translate_to_device_keys({"t586": 5, "t507": 5, "t508": 95})
     assert result == {}
 
 

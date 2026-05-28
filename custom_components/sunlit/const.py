@@ -132,6 +132,12 @@ BATTERY_SENSORS = {
     # Diagnostics from device details (#159)
     "wifi_ssid": "WiFi SSID",
     "system_status": "System Status",
+    # Local-only sensors (populated by the local-mode TCP channel; stay
+    # unavailable while the channel is disconnected or local mode is off)
+    "head_battery_soc": "Head Unit Battery SOC",
+    "daily_pv_energy": "Daily PV Energy",
+    "daily_output_energy": "Daily Output Energy",
+    "wifi_rssi": "WiFi Signal Strength",
 }
 
 # Battery module specific sensors (will be created for each module 1, 2, 3)

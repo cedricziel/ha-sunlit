@@ -36,6 +36,20 @@ def test_decode_drops_unset_sentinel():
     assert decoded["t33"] == 100
 
 
+def test_decode_drops_negative_one_sentinel():
+    """-1 is used as 'no value' on absent modules and missing charging-box.
+
+    Without filtering, x0.001 fields turn into -0.001 kWh nonsense. Verified
+    against firmware V1.5.8 (2026-05): t595=-1 for absent module 3, t710=-1
+    when no charging box is attached.
+    """
+    decoded = protocol.decode_telemetry(
+        {"t595": -1, "t710": -1, "t711": -1, "t701_4": -1, "t211": 73}
+    )
+    # All -1 readings are dropped, but the real value survives.
+    assert decoded == {"t211": 73}
+
+
 def test_decode_drops_unknown_registers():
     """Registers not in the map are ignored rather than passed through raw."""
     decoded = protocol.decode_telemetry({"t999": 5, "t211": 42})
@@ -49,6 +63,12 @@ def test_module_soc_registers_present():
     assert all(decoded[reg] == 80 for reg in raw)
 
 
+def test_rssi_decodes_to_negative_db():
+    """t475 carries the magnitude; the dB value (and HA sensor) is negative."""
+    decoded = protocol.decode_telemetry({"t475": 80})
+    assert decoded == {"t475": -80}
+
+
 def test_heater_bits():
     """The t586 bitfield splits into head + module booleans."""
     # bits 0 (main) and 2 (module 2) set => 0b101 = 5
@@ -57,6 +77,10 @@ def test_heater_bits():
     assert bits[1] is False
     assert bits[2] is True
     assert protocol.heater_bits(protocol.UNSET) == []
+    # -1 is also a sentinel (verified against live device)
+    assert protocol.heater_bits(-1) == []
+    # Live-observed common case: no heaters working
+    assert protocol.heater_bits(0) == [False] * 8
 
 
 def test_is_protocol_line_filters():
