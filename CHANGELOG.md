@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.10.0](https://github.com/cedricziel/ha-sunlit/compare/v1.9.2...v1.10.0) (2026-05-29)
+
+
+### Features
+
+* **local:** add BK215 TCP protocol decoder and client ([#202](https://github.com/cedricziel/ha-sunlit/issues/202)) ([2cb281e](https://github.com/cedricziel/ha-sunlit/commit/2cb281eab771a355c32673c35aefa41aa7742d02))
+* **local:** expose head SOC, daily energy and RSSI as local-only sensors ([#207](https://github.com/cedricziel/ha-sunlit/issues/207)) ([67afdb4](https://github.com/cedricziel/ha-sunlit/commit/67afdb44c47ddb4860ca102c3c0b654365a62653))
+* **local:** persist BK215 LAN info from zeroconf for local channel ([#204](https://github.com/cedricziel/ha-sunlit/issues/204)) ([4282b09](https://github.com/cedricziel/ha-sunlit/commit/4282b09570e2a3cb4fc074add5afa61e79f073d4))
+* **local:** wire BK215 TCP channel into the device coordinator ([#205](https://github.com/cedricziel/ha-sunlit/issues/205)) ([e5c47ad](https://github.com/cedricziel/ha-sunlit/commit/e5c47ad9be9a3dc4d963a6517c0cfa2274ab3dbb))
+
 ## [1.9.2](https://github.com/cedricziel/ha-sunlit/compare/v1.9.1...v1.9.2) (2026-05-24)
 
 
