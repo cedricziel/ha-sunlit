@@ -3,6 +3,7 @@
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
     PERCENTAGE,
+    SIGNAL_STRENGTH_DECIBELS,
     EntityCategory,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
@@ -48,9 +49,9 @@ class TestDeviceClassForSensor:
             "batteryMppt1Energy",
         ]
         for sensor in energy_sensors:
-            assert get_device_class_for_sensor(sensor) == SensorDeviceClass.ENERGY, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_device_class_for_sensor(sensor) == SensorDeviceClass.ENERGY
+            ), f"Failed for {sensor}"
 
     def test_capacity_is_not_energy(self):
         """Nominal capacity is a static spec, not metered energy (no device class)."""
@@ -72,9 +73,9 @@ class TestDeviceClassForSensor:
             "batteryMppt1InPower",
         ]
         for sensor in power_sensors:
-            assert get_device_class_for_sensor(sensor) == SensorDeviceClass.POWER, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_device_class_for_sensor(sensor) == SensorDeviceClass.POWER
+            ), f"Failed for {sensor}"
 
     def test_battery_sensors(self):
         """Only metered, fluctuating SOC is BATTERY (issue: validate sensors)."""
@@ -84,11 +85,13 @@ class TestDeviceClassForSensor:
             "batterySoc",
             "battery1Soc",
             "battery2Soc",
+            # Head unit real SOC from the local channel (t592)
+            "head_battery_soc",
         ]
         for sensor in battery_sensors:
-            assert get_device_class_for_sensor(sensor) == SensorDeviceClass.BATTERY, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_device_class_for_sensor(sensor) == SensorDeviceClass.BATTERY
+            ), f"Failed for {sensor}"
 
     def test_soc_limits_are_not_battery(self):
         """SOC limit thresholds are config values, not metered battery levels."""
@@ -114,9 +117,9 @@ class TestDeviceClassForSensor:
             "battery_discharging_remaining",
         ]
         for sensor in duration_sensors:
-            assert get_device_class_for_sensor(sensor) == SensorDeviceClass.DURATION, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_device_class_for_sensor(sensor) == SensorDeviceClass.DURATION
+            ), f"Failed for {sensor}"
 
     def test_voltage_sensors(self):
         """Test voltage sensor classification."""
@@ -126,9 +129,9 @@ class TestDeviceClassForSensor:
             "battery1Mppt1InVol",
         ]
         for sensor in voltage_sensors:
-            assert get_device_class_for_sensor(sensor) == SensorDeviceClass.VOLTAGE, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_device_class_for_sensor(sensor) == SensorDeviceClass.VOLTAGE
+            ), f"Failed for {sensor}"
 
     def test_current_sensors(self):
         """Test current sensor classification."""
@@ -138,9 +141,9 @@ class TestDeviceClassForSensor:
             "battery1Mppt1InCur",
         ]
         for sensor in current_sensors:
-            assert get_device_class_for_sensor(sensor) == SensorDeviceClass.CURRENT, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_device_class_for_sensor(sensor) == SensorDeviceClass.CURRENT
+            ), f"Failed for {sensor}"
 
     def test_monetary_sensor(self):
         """Test monetary sensor classification."""
@@ -216,9 +219,9 @@ class TestStateClassForSensor:
             "lifetime_earnings",
         ]
         for sensor in total_sensors:
-            assert get_state_class_for_sensor(sensor) == SensorStateClass.TOTAL, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_state_class_for_sensor(sensor) == SensorStateClass.TOTAL
+            ), f"Failed for {sensor}"
 
     def test_measurement_sensors(self):
         """Test sensors with measurement state class."""
@@ -238,9 +241,9 @@ class TestStateClassForSensor:
             "total_solar_power",
         ]
         for sensor in measurement_sensors:
-            assert get_state_class_for_sensor(sensor) == SensorStateClass.MEASUREMENT, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_state_class_for_sensor(sensor) == SensorStateClass.MEASUREMENT
+            ), f"Failed for {sensor}"
 
     def test_no_state_class_sensors(self):
         """Test sensors that should have no state class."""
@@ -278,9 +281,9 @@ class TestUnitForSensor:
             "battery_capacity",
         ]
         for sensor in energy_sensors:
-            assert get_unit_for_sensor(sensor) == UnitOfEnergy.KILO_WATT_HOUR, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_unit_for_sensor(sensor) == UnitOfEnergy.KILO_WATT_HOUR
+            ), f"Failed for {sensor}"
 
     def test_power_units(self):
         """Test power sensors return W."""
@@ -292,9 +295,9 @@ class TestUnitForSensor:
             "home_power",
         ]
         for sensor in power_sensors:
-            assert get_unit_for_sensor(sensor) == UnitOfPower.WATT, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_unit_for_sensor(sensor) == UnitOfPower.WATT
+            ), f"Failed for {sensor}"
 
     def test_percentage_units(self):
         """Test battery/SOC sensors return %."""
@@ -316,9 +319,9 @@ class TestUnitForSensor:
             "battery_charging_remaining",
         ]
         for sensor in time_sensors:
-            assert get_unit_for_sensor(sensor) == UnitOfTime.MINUTES, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_unit_for_sensor(sensor) == UnitOfTime.MINUTES
+            ), f"Failed for {sensor}"
 
     def test_voltage_units(self):
         """Test voltage sensors return V."""
@@ -327,9 +330,9 @@ class TestUnitForSensor:
             "batteryMppt2InVol",
         ]
         for sensor in voltage_sensors:
-            assert get_unit_for_sensor(sensor) == UnitOfElectricPotential.VOLT, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_unit_for_sensor(sensor) == UnitOfElectricPotential.VOLT
+            ), f"Failed for {sensor}"
 
     def test_current_units(self):
         """Test current sensors return A."""
@@ -338,9 +341,9 @@ class TestUnitForSensor:
             "batteryMppt2InCur",
         ]
         for sensor in current_sensors:
-            assert get_unit_for_sensor(sensor) == UnitOfElectricCurrent.AMPERE, (
-                f"Failed for {sensor}"
-            )
+            assert (
+                get_unit_for_sensor(sensor) == UnitOfElectricCurrent.AMPERE
+            ), f"Failed for {sensor}"
 
     def test_monetary_units(self):
         """Test monetary sensor returns EUR."""
@@ -491,6 +494,42 @@ class TestSensorMetadataExtras:
         assert get_suggested_display_precision(key) == precision
 
 
+class TestLocalOnlySensors:
+    """Validate metadata for the local-channel-only battery sensors."""
+
+    def test_head_battery_soc_is_metered_battery(self):
+        """t592 -> head_battery_soc behaves like the per-module SOC keys."""
+        assert (
+            get_device_class_for_sensor("head_battery_soc") == SensorDeviceClass.BATTERY
+        )
+        assert (
+            get_state_class_for_sensor("head_battery_soc")
+            == SensorStateClass.MEASUREMENT
+        )
+        assert get_unit_for_sensor("head_battery_soc") == PERCENTAGE
+        # Primary telemetry, not diagnostic.
+        assert get_entity_category("head_battery_soc") is None
+
+    def test_daily_energy_keys_are_total_increasing(self):
+        """Local daily energy counters behave like the cloud daily_yield."""
+        for key in ("daily_pv_energy", "daily_output_energy"):
+            assert get_device_class_for_sensor(key) == SensorDeviceClass.ENERGY, key
+            assert (
+                get_state_class_for_sensor(key) == SensorStateClass.TOTAL_INCREASING
+            ), key
+            assert get_unit_for_sensor(key) == UnitOfEnergy.KILO_WATT_HOUR, key
+
+    def test_wifi_rssi_is_diagnostic_signal_strength(self):
+        """t475 -> wifi_rssi: SIGNAL_STRENGTH device class, dB unit, diagnostic."""
+        assert (
+            get_device_class_for_sensor("wifi_rssi")
+            == SensorDeviceClass.SIGNAL_STRENGTH
+        )
+        assert get_state_class_for_sensor("wifi_rssi") == SensorStateClass.MEASUREMENT
+        assert get_unit_for_sensor("wifi_rssi") == SIGNAL_STRENGTH_DECIBELS
+        assert get_entity_category("wifi_rssi") == EntityCategory.DIAGNOSTIC
+
+
 class TestStoredEnergySensors:
     """Test classification of battery stored-energy sensors (issue #190)."""
 
@@ -500,15 +539,15 @@ class TestStoredEnergySensors:
     )
     def test_stored_energy_classification(self, key):
         """Stored energy is ENERGY_STORAGE / MEASUREMENT / kWh."""
-        assert get_device_class_for_sensor(key) == SensorDeviceClass.ENERGY_STORAGE, (
-            f"Failed device_class for {key}"
-        )
-        assert get_state_class_for_sensor(key) == SensorStateClass.MEASUREMENT, (
-            f"Failed state_class for {key}"
-        )
-        assert get_unit_for_sensor(key) == UnitOfEnergy.KILO_WATT_HOUR, (
-            f"Failed unit for {key}"
-        )
+        assert (
+            get_device_class_for_sensor(key) == SensorDeviceClass.ENERGY_STORAGE
+        ), f"Failed device_class for {key}"
+        assert (
+            get_state_class_for_sensor(key) == SensorStateClass.MEASUREMENT
+        ), f"Failed state_class for {key}"
+        assert (
+            get_unit_for_sensor(key) == UnitOfEnergy.KILO_WATT_HOUR
+        ), f"Failed unit for {key}"
 
     def test_stored_energy_not_total_increasing(self):
         """Regression: stored energy must not be classified as a meter."""

@@ -9,6 +9,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     PERCENTAGE,
+    SIGNAL_STRENGTH_DECIBELS,
     EntityCategory,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
@@ -37,7 +38,14 @@ ENUM_SENSOR_OPTIONS: dict[str, list[str]] = {
 # Battery SOC that is actually metered and fluctuates -> SensorDeviceClass.BATTERY.
 # SOC *limits* (hw/bms/strategy/current min/max) are configuration thresholds,
 # not metered battery levels, so they are deliberately excluded.
-_METERED_SOC_KEYS = {"battery_level", "batterySoc", "average_battery_level"}
+_METERED_SOC_KEYS = {
+    "battery_level",
+    "batterySoc",
+    "average_battery_level",
+    # Head unit SOC from the local channel (t592) is metered just like the
+    # per-module battery1Soc..battery7Soc readings.
+    "head_battery_soc",
+}
 _MODULE_SOC_RE = re.compile(r"^battery\d+Soc$")
 
 
@@ -81,6 +89,9 @@ def get_device_class_for_sensor(key: str) -> SensorDeviceClass | None:
     # Home power
     elif key == "home_power":
         return SensorDeviceClass.POWER
+    # WiFi RSSI from the local channel (t475 -> negative dB).
+    elif key == "wifi_rssi":
+        return SensorDeviceClass.SIGNAL_STRENGTH
     # Time remaining sensors
     elif "remaining" in key.lower():
         return SensorDeviceClass.DURATION
@@ -139,6 +150,7 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
         SensorDeviceClass.BATTERY,
         SensorDeviceClass.DURATION,
         SensorDeviceClass.ENERGY_STORAGE,
+        SensorDeviceClass.SIGNAL_STRENGTH,
     ):
         return SensorStateClass.MEASUREMENT
     # Numeric measurements that carry no device class (counts, prices, rates).
@@ -173,6 +185,9 @@ def get_unit_for_sensor(key: str) -> str | None:
         or key in ["total_power_generation", "total_yield"]
     ):
         return UnitOfEnergy.KILO_WATT_HOUR
+    # WiFi RSSI (t475 -> negative dB)
+    elif key == "wifi_rssi":
+        return SIGNAL_STRENGTH_DECIBELS
     # Time remaining sensors
     elif "remaining" in key.lower():
         return UnitOfTime.MINUTES
@@ -373,6 +388,9 @@ def get_entity_category(key: str) -> EntityCategory | None:
     Nominal capacity is a static hardware spec, not live telemetry -> diagnostic.
     """
     if key == "battery_capacity" or key.endswith("capacity"):
+        return EntityCategory.DIAGNOSTIC
+    # WiFi RSSI is a connection-health signal, not primary telemetry.
+    if key == "wifi_rssi":
         return EntityCategory.DIAGNOSTIC
     return None
 
