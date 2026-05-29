@@ -32,9 +32,13 @@ stays authoritative for account/family aggregates, tariff, strategy and earnings
   RSTs incoming SYNs) **and** stops advertising via mDNS. Closing the
   occupying client restores both. So app vs HA cannot run concurrently —
   whoever connects first owns the channel.
-- **Cloud-divert behaviour:** still unverified. We have not yet observed
-  whether enabling local mode freezes cloud freshness or whether the cloud
-  keeps polling normally.
+- **Cloud-divert behaviour:** ✅ confirmed **no divert** (verified 2026-05).
+  The device's cloud upload path is independent of its local TCP server.
+  With HA holding the LAN socket for 4 minutes (25 telemetry pushes
+  received locally), the cloud channel continued to update battery state
+  at its normal ~90-120 s cache cadence — identical to a baseline pass
+  with no local connection. So "cloud as the floor" really is a floor:
+  when local drops, the cloud keeps refreshing entities, just slower.
 
 ## Discovery
 
@@ -287,5 +291,7 @@ Confirmations against a live BK215 on the user's LAN, **2026-05-28**:
 - Writable config registers (`t362/t363/t590`, mode toggles) never seen in
   routine telemetry.
 
-Verified using `scripts/verify-local.py`. Cloud-divert behaviour and
-`0x6055` semantics remain to be tested.
+Verified using `scripts/verify-local.py` and (for the cloud-divert
+question, 2026-05-29) `scripts/probe-cloud-freshness.py`. Open: `0x6055`
+semantics (the third telemetry code was never observed in passive
+listening, only the operational `0x6052` and diagnostic `0x6060`).
