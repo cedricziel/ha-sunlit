@@ -1,0 +1,46 @@
+{
+  "code": 0,
+  "responseTime": 1780156858545,
+  "message": {
+    "DE": "Ok",
+    "EN": "Ok"
+  },
+  "content": {
+    "strategyType": "TariffStrategy",
+    "spaceId": 40566,
+    "enabled": true,
+    "settingId": "8a010ca5-fefe-41e6-9894-9e7a85bf1b97",
+    "storageStrategy": null,
+    "acCouple": null,
+    "tariffStrategy": {
+      "enableSwitchNotice": true,
+      "lowPriceStrategy": {
+        "strategy": "EnergyStorageOnly",
+        "socMin": 1,
+        "socMax": 90,
+        "defaultExpectInverterOutput": 300.0,
+        "smartStrategyMode": "usagePriority",
+        "smartStrategyFullMode": "throttle",
+        "smartStrategyMaxOutputPower": null,
+        "smartStrategyVersion": null,
+        "gridChargingEnabled": null,
+        "chargingPower": null,
+        "acCoupleEnabled": null
+      },
+      "highPriceStrategy": {
+        "strategy": "SmartStrategy",
+        "socMin": 10,
+        "socMax": 100,
+        "defaultExpectInverterOutput": null,
+        "smartStrategyMode": "usagePriority",
+        "smartStrategyFullMode": "throttle",
+        "smartStrategyMaxOutputPower": 2000.0,
+        "smartStrategyVersion": "V1",
+        "gridChargingEnabled": null,
+        "chargingPower": null,
+        "acCoupleEnabled": false
+      }
+    },
+    "evStrategy": null
+  }
+}

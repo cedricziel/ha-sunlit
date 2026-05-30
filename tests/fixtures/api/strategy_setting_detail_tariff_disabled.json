@@ -1,0 +1,18 @@
+{
+  "code": 0,
+  "responseTime": 1780157000000,
+  "message": {
+    "DE": "Ok",
+    "EN": "Ok"
+  },
+  "content": {
+    "strategyType": "TariffStrategy",
+    "spaceId": 40566,
+    "enabled": false,
+    "settingId": null,
+    "storageStrategy": null,
+    "acCouple": null,
+    "tariffStrategy": null,
+    "evStrategy": null
+  }
+}

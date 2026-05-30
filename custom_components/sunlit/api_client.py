@@ -25,6 +25,7 @@ from .const import (
     API_SPACE_STATISTICS_STATIC,
     API_SPACE_STRATEGY_HISTORY,
     API_STRATEGY_DEVICE_STATUS,
+    API_STRATEGY_SETTING_DETAIL,
     API_TARIFF_INDEX,
     API_TARIFF_STRATEGY_ADD,
     API_USER_LOGIN,
@@ -735,6 +736,55 @@ class SunlitApiClient:
             high_price_strategy,
         )
         return await self._make_request("POST", API_TARIFF_STRATEGY_ADD, json=payload)
+
+    async def fetch_tariff_setup(self, family_id: str | int) -> dict[str, Any] | None:
+        """Read the cloud's authoritative tariff-strategy setup for a family.
+
+        POSTs to /v1.8/strategy/setting/detail with strategyType=TariffStrategy.
+        The cloud returns the currently-active low- and high-price strategy
+        blocks — the same shape we send to /v1.6/tariffStrategy/add.
+
+        This is the read side that complements ``set_tariff_strategy`` and
+        lets the coordinator reconcile its in-memory cache against
+        out-of-band edits made via the SunEnergyXT app.
+
+        Args:
+            family_id: The family/space ID
+
+        Returns:
+            A ``{"low": {...}, "high": {...}, "enableSwitchNotice": bool}``
+            dict ready to feed into the coordinator's
+            ``update_tariff_setup_field`` machinery, or ``None`` if the cloud
+            says no tariff strategy is currently configured (``enabled: false``
+            or ``content: null``).
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        payload = {
+            "spaceId": int(family_id),
+            "primarySpaceId": int(family_id),
+            "strategyType": "TariffStrategy",
+        }
+        _LOGGER.debug("Fetching tariff setup for family %s", family_id)
+        envelope = await self._make_request(
+            "POST", API_STRATEGY_SETTING_DETAIL, json=payload
+        )
+        content = (envelope or {}).get("content")
+        if not content or not content.get("enabled"):
+            return None
+        tariff = content.get("tariffStrategy") or {}
+        low = tariff.get("lowPriceStrategy")
+        high = tariff.get("highPriceStrategy")
+        if not low or not high:
+            return None
+        return {
+            "low": low,
+            "high": high,
+            "enableSwitchNotice": bool(tariff.get("enableSwitchNotice", True)),
+        }
 
     async def fetch_tariff_index(self, space_id: str | int) -> dict[str, Any]:
         """Fetch dynamic electricity tariff/pricing for a space.
