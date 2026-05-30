@@ -132,6 +132,9 @@ async def test_number_socmax_must_be_above_socmin(
     with pytest.raises(HomeAssistantError, match="must be > socMin"):
         await entity.async_set_native_value(20)
 
+    # Fail-fast: must abort before any API call, same as the socMin test.
+    coord.api_client.set_tariff_strategy.assert_not_called()
+
 
 async def test_number_rolls_back_on_push_failure(
     hass: HomeAssistant, enable_custom_integrations
