@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from homeassistant.components.number import NumberEntity, NumberMode
@@ -15,11 +14,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api_client import SunlitApiError
 from .const import DOMAIN
 from .coordinators.strategy import SunlitStrategyHistoryCoordinator
-
-_LOGGER = logging.getLogger(__name__)
-
 
 # (band, field, friendly suffix)
 _NUMBER_FIELDS: list[tuple[str, str, str]] = [
@@ -98,9 +95,7 @@ class SunlitTariffSocNumber(
         self._field = field
 
         slug = family_name.lower().replace(" ", "_")
-        self._attr_unique_id = (
-            f"sunlit_{slug}_{family_id}_tariff_{band}_{field}"
-        )
+        self._attr_unique_id = f"sunlit_{slug}_{family_id}_tariff_{band}_{field}"
         self._attr_name = name_suffix
 
     @property
@@ -145,12 +140,10 @@ class SunlitTariffSocNumber(
                 )
 
         previous_value = self.coordinator.tariff_setup[self._band].get(self._field)
-        self.coordinator.update_tariff_setup_field(
-            self._band, self._field, int_value
-        )
+        self.coordinator.update_tariff_setup_field(self._band, self._field, int_value)
         try:
             await self.coordinator.async_push_tariff_setup()
-        except Exception as err:
+        except SunlitApiError as err:
             self.coordinator.update_tariff_setup_field(
                 self._band, self._field, previous_value
             )

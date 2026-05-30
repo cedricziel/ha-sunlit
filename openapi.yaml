@@ -670,6 +670,14 @@ paths:
         Configure tariff-based battery charging strategies for low and high electricity prices.
         Allows setting different behaviors for when electricity prices are cheap vs expensive,
         including energy storage mode, smart strategy settings, and SOC limits.
+
+        **All-or-nothing:** every call must carry the full `lowPriceStrategy` and
+        `highPriceStrategy` blocks — there is no partial-update path.
+
+        **Server-side validation:** the cloud rejects logically invalid combinations
+        (e.g. `EnergyStorageOnly` as the high-price strategy, or `socMin >= socMax`)
+        with a HTTP 200 envelope but `code: 500003`. Clients must inspect `code`
+        before treating a 200 as success — see the rejected response example below.
       operationId: addTariffStrategy
       requestBody:
         required: true
@@ -697,11 +705,32 @@ paths:
                   example: 34038
       responses:
         "200":
-          description: Successful response
+          description: |
+            Standard envelope. Either accepted (`code: 0`) or
+            rejected by server-side validation (`code: 500003`).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TariffStrategyAddResponse"
+              examples:
+                accepted:
+                  summary: Accepted — strategy stored
+                  value:
+                    code: 0
+                    responseTime: 1716800000000
+                    message:
+                      DE: "Ok"
+                      EN: "Ok"
+                    content: null
+                rejected:
+                  summary: Rejected — invalid combination (e.g. EnergyStorageOnly as high-price)
+                  value:
+                    code: 500003
+                    responseTime: 1716800000000
+                    message:
+                      DE: "Der Service ist vorübergehend nicht verfügbar"
+                      EN: "Service temporarily unavailable"
+                    content: null
         "401":
           $ref: "#/components/responses/Unauthorized"
 

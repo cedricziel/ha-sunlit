@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from homeassistant.components.select import SelectEntity
@@ -14,10 +13,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api_client import SunlitApiError
 from .const import DOMAIN, TARIFF_STRATEGY_OPTIONS
 from .coordinators.strategy import SunlitStrategyHistoryCoordinator
-
-_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -93,9 +91,7 @@ class SunlitTariffStrategySelect(
         self._band = band  # "low" | "high"
 
         slug = family_name.lower().replace(" ", "_")
-        self._attr_unique_id = (
-            f"sunlit_{slug}_{family_id}_tariff_strategy_{band}"
-        )
+        self._attr_unique_id = f"sunlit_{slug}_{family_id}_tariff_strategy_{band}"
         nice = "Low Price" if band == "low" else "High Price"
         self._attr_name = f"{nice} Strategy"
 
@@ -123,12 +119,10 @@ class SunlitTariffStrategySelect(
         if option not in TARIFF_STRATEGY_OPTIONS:
             raise HomeAssistantError(f"Invalid strategy option: {option}")
         previous_option = self.coordinator.tariff_setup[self._band].get("strategy")
-        self.coordinator.update_tariff_setup_field(
-            self._band, "strategy", option
-        )
+        self.coordinator.update_tariff_setup_field(self._band, "strategy", option)
         try:
             await self.coordinator.async_push_tariff_setup()
-        except Exception as err:
+        except SunlitApiError as err:
             self.coordinator.update_tariff_setup_field(
                 self._band, "strategy", previous_option
             )
@@ -140,8 +134,9 @@ class SunlitTariffStrategySelect(
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Surface the cached low/high bundle for debugging."""
+        setup = self.coordinator.tariff_setup
         return {
             "band": self._band,
-            "low_price_strategy": self.coordinator.tariff_setup["low"],
-            "high_price_strategy": self.coordinator.tariff_setup["high"],
+            "low_price_strategy": dict(setup["low"]),
+            "high_price_strategy": dict(setup["high"]),
         }

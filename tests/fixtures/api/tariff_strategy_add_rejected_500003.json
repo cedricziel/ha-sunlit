@@ -1,0 +1,9 @@
+{
+  "code": 500003,
+  "responseTime": 1716800000000,
+  "message": {
+    "DE": "Der Service ist vorübergehend nicht verfügbar",
+    "EN": "Service temporarily unavailable"
+  },
+  "content": null
+}

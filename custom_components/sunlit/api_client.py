@@ -734,9 +734,7 @@ class SunlitApiClient:
             low_price_strategy,
             high_price_strategy,
         )
-        return await self._make_request(
-            "POST", API_TARIFF_STRATEGY_ADD, json=payload
-        )
+        return await self._make_request("POST", API_TARIFF_STRATEGY_ADD, json=payload)
 
     async def fetch_tariff_index(self, space_id: str | int) -> dict[str, Any]:
         """Fetch dynamic electricity tariff/pricing for a space.

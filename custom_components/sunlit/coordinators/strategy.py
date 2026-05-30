@@ -9,7 +9,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from ..api_client import SunlitApiClient
+from ..api_client import SunlitApiClient, SunlitApiError
 from ..const import (
     DEFAULT_HIGH_PRICE_SOC_MAX,
     DEFAULT_HIGH_PRICE_SOC_MIN,
@@ -70,12 +70,15 @@ class SunlitStrategyHistoryCoordinator(DataUpdateCoordinator):
 
     @property
     def tariff_setup(self) -> dict[str, dict[str, Any]]:
-        """Return the cached tariff-strategy setup (low/high blocks)."""
-        return self._tariff_setup
+        """Return a defensive copy of the cached tariff-strategy setup.
 
-    def update_tariff_setup_field(
-        self, band: str, field: str, value: Any
-    ) -> None:
+        The copy keeps callers from mutating the cache directly — every
+        change must go through :meth:`update_tariff_setup_field` so that
+        validation runs and the readback path stays authoritative.
+        """
+        return {band: dict(fields) for band, fields in self._tariff_setup.items()}
+
+    def update_tariff_setup_field(self, band: str, field: str, value: Any) -> None:
         """Update one field of the cached tariff setup before pushing.
 
         Args:
@@ -86,14 +89,10 @@ class SunlitStrategyHistoryCoordinator(DataUpdateCoordinator):
         if band not in self._tariff_setup:
             raise ValueError(f"Unknown tariff band: {band}")
         if field not in self._tariff_setup[band]:
-            raise ValueError(
-                f"Unknown field '{field}' for tariff band '{band}'"
-            )
+            raise ValueError(f"Unknown field '{field}' for tariff band '{band}'")
         self._tariff_setup[band][field] = value
 
-    async def async_push_tariff_setup(
-        self, enable_switch_notice: bool = True
-    ) -> None:
+    async def async_push_tariff_setup(self, enable_switch_notice: bool = True) -> None:
         """Push the cached tariff setup to /v1.6/tariffStrategy/add."""
         await self.api_client.set_tariff_strategy(
             self.family_id,
@@ -106,7 +105,7 @@ class SunlitStrategyHistoryCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch strategy history data from REST API."""
         try:
-            strategy_data = {}
+            strategy_data: dict[str, Any] = {}
 
             # Fetch strategy history
             strategy_history = await self.api_client.fetch_space_strategy_history(
@@ -142,7 +141,7 @@ class SunlitStrategyHistoryCoordinator(DataUpdateCoordinator):
 
             return {"strategy": strategy_data}
 
-        except Exception as err:
+        except SunlitApiError as err:
             _LOGGER.warning(
                 "Error fetching strategy history for %s: %s", self.family_name, err
             )
