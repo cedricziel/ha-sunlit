@@ -258,6 +258,61 @@ For modular battery systems with B215 extension modules, each additional battery
 > cloud control endpoint; see [`docs/local-protocol.md`](docs/local-protocol.md)
 > for the (not-yet-implemented) direct local-TCP channel.
 
+### Tariff Calendars
+
+When the **Rabot day-ahead price feed** is available for your space (verified
+*not* gated on a Rabot Charge contract), two read-only calendar entities are
+created per family:
+
+| Entity | State `on` during |
+| --- | --- |
+| `calendar.sunlit_<family>_cheap_electricity`     | `VERY_CHEAP` and `CHEAP` hours |
+| `calendar.sunlit_<family>_expensive_electricity` | `EXPENSIVE` and `VERY_EXPENSIVE` hours |
+
+`NORMAL` hours fall into **neither** calendar — automations should not fire on
+neutrally-priced hours. Each contiguous run of matching hours becomes one
+`CalendarEvent`; the event `summary` carries the block's average price
+(e.g. `"Cheap electricity · ⌀ 4.20 ct/kWh"`).
+
+**Fetch behaviour** (no service needed, no startup burst):
+
+- On setup: one `rabot/day/price` POST for today. If the feed returns no
+  hourly rows for your space, the calendars are not created.
+- Hourly poll: today + tomorrow. Tomorrow returns an empty list until EPEX
+  publishes day-ahead prices around 13:00 CET; that's expected.
+- Past days are fetched **on demand** when you scroll back in the Calendar
+  dashboard. The endpoint's verified horizon is roughly the last 12 months.
+
+**Example automations** (HA's Calendar trigger fires once at event start/end
+with an optional offset):
+
+```yaml
+automation:
+  - alias: Run dishwasher when the cheap window starts
+    triggers:
+      - platform: calendar
+        entity_id: calendar.sunlit_garage_cheap_electricity
+        event: start
+    actions:
+      - service: switch.turn_on
+        target: { entity_id: switch.dishwasher }
+
+  - alias: Pre-cool freezer 15 min before cheap
+    triggers:
+      - platform: calendar
+        entity_id: calendar.sunlit_garage_cheap_electricity
+        event: start
+        offset: "-00:15:00"
+    actions: ...
+
+  - alias: Hold off the dryer while electricity is expensive
+    conditions:
+      - condition: state
+        entity_id: calendar.sunlit_garage_expensive_electricity
+        state: "off"
+    actions: ...
+```
+
 ## Energy Dashboard Integration
 
 To integrate with HomeAssistant's Energy Dashboard:

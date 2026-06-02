@@ -18,6 +18,7 @@ from .const import (
     API_DEVICE_STATISTICS,
     API_FAMILY_LIST,
     API_NOTIFICATION_LIST,
+    API_RABOT_DAY_PRICE,
     API_SPACE_CURRENT_STRATEGY,
     API_SPACE_INDEX,
     API_SPACE_SOC,
@@ -819,6 +820,76 @@ class SunlitApiClient:
         except SunlitApiError as err:
             _LOGGER.error(
                 "Failed to fetch tariff index for space %s: %s", space_id, err
+            )
+            raise
+
+    async def fetch_rabot_day_price(
+        self,
+        space_id: str | int,
+        day: str,
+        *,
+        show_tax: bool = True,
+        show_strategy: bool = False,
+    ) -> dict[str, Any]:
+        """Fetch the 24 hourly Rabot Charge electricity prices for one day.
+
+        The endpoint is **not** gated on a Rabot Charge contract; it returns the
+        German day-ahead market prices for the configured space. Verified
+        horizon: today + tomorrow (after ~13:00 CET when EPEX publishes) and
+        back ~12 months. Unsupported days return ``code=0`` with an empty
+        ``prices`` array.
+
+        Args:
+            space_id: The space/family ID.
+            day: Local date in ``YYYY-MM-DD`` format.
+            show_tax: Whether to include tax in the prices (default True).
+            show_strategy: Whether to also return per-hour strategy mode
+                (default False; required by the API contract regardless).
+
+        Returns:
+            Dictionary containing:
+            - prices: list of 24 entries with ``hour`` (0-23),
+              ``priceInCentPerKwh``, ``avgPriceInCentPerKwh``, ``priceTag``
+              (``VERY_CHEAP``..``VERY_EXPENSIVE``), ``timestamp`` (local),
+              ``utcFullTime`` (UTC), and ``mode`` (when ``show_strategy``).
+              Empty list when the day is outside the available window.
+            - utcOffset: e.g. ``"UTC+2"``.
+            - rabotHasContractPrice: per-response flag (may be null).
+
+        Raises:
+            SunlitAuthError: Authentication failed
+            SunlitConnectionError: Connection failed
+            SunlitApiError: API returned an error
+        """
+        try:
+            payload = {
+                "spaceId": int(space_id),
+                "day": day,
+                "showTax": show_tax,
+                "showStrategy": show_strategy,
+            }
+            response = await self._make_request(
+                "POST", API_RABOT_DAY_PRICE, json=payload
+            )
+
+            _LOGGER.debug(
+                "Rabot day-price response for space %s on %s: %s",
+                space_id,
+                day,
+                response,
+            )
+
+            if "content" in response:
+                return response["content"]
+
+            return {}
+
+        except SunlitApiError as err:
+            _LOGGER.error(
+                "Failed to fetch Rabot day price for space %s on %s: %s",
+                space_id,
+                day,
+                err,
             )
             raise
 
