@@ -35,6 +35,8 @@ API_CHARGING_BOX_CHECK_STRATEGY = "/v1.6/chargingBox/checkSpaceStrategy"
 API_BATTERY_LOCAL_MODE_CONFIG = "/v1.7/battery/updateLocalModeConfig"
 API_STRATEGY_DEVICE_STATUS = "/v1.7/strategy/device/status"
 API_TARIFF_INDEX = "/v1.6/tariff/index"
+API_TARIFF_STRATEGY_ADD = "/v1.6/tariffStrategy/add"
+API_STRATEGY_SETTING_DETAIL = "/v1.8/strategy/setting/detail"
 API_SPACE_STATISTICS_DYNAMIC_ENERGY = "/v1.1/space/statistics/dynamic/energy"
 API_NOTIFICATION_LIST = "/v1.5/notification/list"
 
@@ -78,6 +80,16 @@ DEFAULT_OPTIONS = {
     OPT_SOC_CHANGE_THRESHOLD: DEFAULT_SOC_CHANGE_THRESHOLD,
     OPT_MIN_EVENT_INTERVAL: DEFAULT_MIN_EVENT_INTERVAL,
 }
+
+# Tariff strategy options accepted by /v1.6/tariffStrategy/add
+TARIFF_STRATEGY_OPTIONS = ["EnergyStorageOnly", "SmartStrategy", "Manual"]
+DEFAULT_LOW_PRICE_STRATEGY = "EnergyStorageOnly"
+DEFAULT_HIGH_PRICE_STRATEGY = "SmartStrategy"
+DEFAULT_LOW_PRICE_SOC_MIN = 1
+DEFAULT_LOW_PRICE_SOC_MAX = 100
+DEFAULT_HIGH_PRICE_SOC_MIN = 10
+DEFAULT_HIGH_PRICE_SOC_MAX = 100
+DEFAULT_LOW_PRICE_INVERTER_OUTPUT = 800
 
 # Device Types
 # Meters

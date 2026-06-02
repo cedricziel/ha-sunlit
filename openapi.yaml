@@ -670,6 +670,14 @@ paths:
         Configure tariff-based battery charging strategies for low and high electricity prices.
         Allows setting different behaviors for when electricity prices are cheap vs expensive,
         including energy storage mode, smart strategy settings, and SOC limits.
+
+        **All-or-nothing:** every call must carry the full `lowPriceStrategy` and
+        `highPriceStrategy` blocks — there is no partial-update path.
+
+        **Server-side validation:** the cloud rejects logically invalid combinations
+        (e.g. `EnergyStorageOnly` as the high-price strategy, or `socMin >= socMax`)
+        with a HTTP 200 envelope but `code: 500003`. Clients must inspect `code`
+        before treating a 200 as success — see the rejected response example below.
       operationId: addTariffStrategy
       requestBody:
         required: true
@@ -697,11 +705,32 @@ paths:
                   example: 34038
       responses:
         "200":
-          description: Successful response
+          description: |
+            Standard envelope. Either accepted (`code: 0`) or
+            rejected by server-side validation (`code: 500003`).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TariffStrategyAddResponse"
+              examples:
+                accepted:
+                  summary: Accepted — strategy stored
+                  value:
+                    code: 0
+                    responseTime: 1716800000000
+                    message:
+                      DE: "Ok"
+                      EN: "Ok"
+                    content: null
+                rejected:
+                  summary: Rejected — invalid combination (e.g. EnergyStorageOnly as high-price)
+                  value:
+                    code: 500003
+                    responseTime: 1716800000000
+                    message:
+                      DE: "Der Service ist vorübergehend nicht verfügbar"
+                      EN: "Service temporarily unavailable"
+                    content: null
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -1069,6 +1098,108 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StrategyRecommendResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1.8/strategy/setting/detail:
+    post:
+      tags:
+        - Strategy
+      summary: Read the active setup for a single strategy type
+      description: |
+        Returns the currently-stored configuration for one strategy type
+        (`TariffStrategy`, `SmartStrategy`, `EnergyStorageOnly`, …) on a given
+        space. The shape mirrors what `/v1.6/tariffStrategy/add` (and the
+        equivalent setters for other types) accepts on the way back in — i.e.
+        this is the **read side** of the writes performed via those endpoints.
+
+        Used by the integration's `SunlitStrategyHistoryCoordinator` to
+        reconcile its in-memory tariff-strategy cache against out-of-band
+        edits made in the SunEnergyXT app. Without this readback, an entity
+        push from HA would silently overwrite app-side changes because the
+        all-or-nothing `tariffStrategy/add` endpoint requires every field on
+        every call.
+      operationId: getStrategySettingDetail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spaceId
+                - primarySpaceId
+                - strategyType
+              properties:
+                spaceId:
+                  type: integer
+                  example: 40566
+                primarySpaceId:
+                  type: integer
+                  example: 40566
+                strategyType:
+                  type: string
+                  enum:
+                    - TariffStrategy
+                    - SmartStrategy
+                    - EnergyStorageOnly
+                    - AcCouple
+                    - CustomAdjustments
+                    - MultiSpaceSmartStrategy
+                    - EvStrategy
+                  example: TariffStrategy
+      responses:
+        "200":
+          description: |
+            Standard envelope. `content.enabled` is `false` when no strategy
+            of the requested type is currently active for the space.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategySettingDetailResponse"
+              examples:
+                tariff_active:
+                  summary: TariffStrategy currently active
+                  value:
+                    code: 0
+                    responseTime: 1780156858545
+                    message:
+                      DE: Ok
+                      EN: Ok
+                    content:
+                      strategyType: TariffStrategy
+                      spaceId: 40566
+                      enabled: true
+                      settingId: 8a010ca5-fefe-41e6-9894-9e7a85bf1b97
+                      storageStrategy: null
+                      acCouple: null
+                      tariffStrategy:
+                        enableSwitchNotice: true
+                        lowPriceStrategy:
+                          strategy: EnergyStorageOnly
+                          socMin: 1
+                          socMax: 90
+                          defaultExpectInverterOutput: 300.0
+                          smartStrategyMode: usagePriority
+                          smartStrategyFullMode: throttle
+                          smartStrategyMaxOutputPower: null
+                          smartStrategyVersion: null
+                          gridChargingEnabled: null
+                          chargingPower: null
+                          acCoupleEnabled: null
+                        highPriceStrategy:
+                          strategy: SmartStrategy
+                          socMin: 10
+                          socMax: 100
+                          defaultExpectInverterOutput: null
+                          smartStrategyMode: usagePriority
+                          smartStrategyFullMode: throttle
+                          smartStrategyMaxOutputPower: 2000.0
+                          smartStrategyVersion: V1
+                          gridChargingEnabled: null
+                          chargingPower: null
+                          acCoupleEnabled: false
+                      evStrategy: null
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -3737,6 +3868,48 @@ components:
                   items:
                     type: object
                   example: []
+
+    StrategySettingDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            content:
+              type: ["object", "null"]
+              description: |
+                The cloud-stored configuration for the requested strategy
+                type. ``null`` (or ``enabled: false``) means no strategy of
+                that type is currently active.
+              properties:
+                strategyType:
+                  type: string
+                  example: TariffStrategy
+                spaceId:
+                  type: integer
+                  example: 40566
+                enabled:
+                  type: boolean
+                  example: true
+                settingId:
+                  type: string
+                  example: 8a010ca5-fefe-41e6-9894-9e7a85bf1b97
+                storageStrategy:
+                  type: ["object", "null"]
+                  description: Populated when strategyType=SmartStrategy
+                acCouple:
+                  type: ["object", "null"]
+                tariffStrategy:
+                  type: ["object", "null"]
+                  description: Populated when strategyType=TariffStrategy
+                  properties:
+                    enableSwitchNotice:
+                      type: boolean
+                    lowPriceStrategy:
+                      $ref: "#/components/schemas/LowPriceStrategy"
+                    highPriceStrategy:
+                      $ref: "#/components/schemas/HighPriceStrategy"
+                evStrategy:
+                  type: ["object", "null"]
 
     StrategyDeviceStatusResponse:
       allOf:

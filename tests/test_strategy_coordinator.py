@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 from homeassistant.core import HomeAssistant
 
+from custom_components.sunlit.api_client import SunlitApiError
 from custom_components.sunlit.coordinators.strategy import (
     SunlitStrategyHistoryCoordinator,
 )
@@ -84,9 +85,11 @@ async def test_strategy_coordinator_api_failure(
     hass: HomeAssistant,
     enable_custom_integrations,
 ):
-    """Test strategy coordinator handles API failures gracefully."""
+    """Test strategy coordinator handles SunlitApiError gracefully."""
     api_client = AsyncMock()
-    api_client.fetch_space_strategy_history.side_effect = Exception("API failed")
+    api_client.fetch_space_strategy_history.side_effect = SunlitApiError(
+        "API failed"
+    )
 
     coordinator = SunlitStrategyHistoryCoordinator(
         hass,

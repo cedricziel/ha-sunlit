@@ -9,13 +9,28 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from ..api_client import SunlitApiClient
+from ..api_client import SunlitApiClient, SunlitApiError
+from ..const import (
+    DEFAULT_HIGH_PRICE_SOC_MAX,
+    DEFAULT_HIGH_PRICE_SOC_MIN,
+    DEFAULT_HIGH_PRICE_STRATEGY,
+    DEFAULT_LOW_PRICE_INVERTER_OUTPUT,
+    DEFAULT_LOW_PRICE_SOC_MAX,
+    DEFAULT_LOW_PRICE_SOC_MIN,
+    DEFAULT_LOW_PRICE_STRATEGY,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class SunlitStrategyHistoryCoordinator(DataUpdateCoordinator):
-    """Coordinator for strategy history data."""
+    """Coordinator for strategy history data and tariff-strategy setup cache.
+
+    The /v1.6/tariffStrategy/add endpoint is all-or-nothing: every write must
+    carry the full low+high blocks. This coordinator owns the in-memory cache
+    of the last sent values so that individual select/number entities can
+    mutate one field at a time and the coordinator submits the bundle.
+    """
 
     def __init__(
         self,
@@ -29,6 +44,23 @@ class SunlitStrategyHistoryCoordinator(DataUpdateCoordinator):
         self.family_id = family_id
         self.family_name = family_name
 
+        # Cached tariff-strategy setup. Mutated by entity setters and read by
+        # set_tariff_strategy(). Initialised with sensible defaults; entities
+        # may overwrite via restored state on startup.
+        self._tariff_setup: dict[str, dict[str, Any]] = {
+            "low": {
+                "strategy": DEFAULT_LOW_PRICE_STRATEGY,
+                "socMin": DEFAULT_LOW_PRICE_SOC_MIN,
+                "socMax": DEFAULT_LOW_PRICE_SOC_MAX,
+                "defaultExpectInverterOutput": DEFAULT_LOW_PRICE_INVERTER_OUTPUT,
+            },
+            "high": {
+                "strategy": DEFAULT_HIGH_PRICE_STRATEGY,
+                "socMin": DEFAULT_HIGH_PRICE_SOC_MIN,
+                "socMax": DEFAULT_HIGH_PRICE_SOC_MAX,
+            },
+        }
+
         super().__init__(
             hass,
             _LOGGER,
@@ -36,10 +68,94 @@ class SunlitStrategyHistoryCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(minutes=5),  # 5 minute updates
         )
 
-    async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch strategy history data from REST API."""
+    @property
+    def tariff_setup(self) -> dict[str, dict[str, Any]]:
+        """Return a defensive copy of the cached tariff-strategy setup.
+
+        The copy keeps callers from mutating the cache directly — every
+        change must go through :meth:`update_tariff_setup_field` so that
+        validation runs and the readback path stays authoritative.
+        """
+        return {band: dict(fields) for band, fields in self._tariff_setup.items()}
+
+    def update_tariff_setup_field(self, band: str, field: str, value: Any) -> None:
+        """Update one field of the cached tariff setup before pushing.
+
+        Args:
+            band: ``low`` or ``high``
+            field: e.g. ``strategy``, ``socMin``, ``socMax``
+            value: new value
+        """
+        if band not in self._tariff_setup:
+            raise ValueError(f"Unknown tariff band: {band}")
+        if field not in self._tariff_setup[band]:
+            raise ValueError(f"Unknown field '{field}' for tariff band '{band}'")
+        self._tariff_setup[band][field] = value
+
+    async def async_push_tariff_setup(self, enable_switch_notice: bool = True) -> None:
+        """Push the cached tariff setup to /v1.6/tariffStrategy/add."""
+        await self.api_client.set_tariff_strategy(
+            self.family_id,
+            low_price_strategy=self._tariff_setup["low"],
+            high_price_strategy=self._tariff_setup["high"],
+            enable_switch_notice=enable_switch_notice,
+        )
+        await self.async_request_refresh()
+
+    async def _async_reconcile_tariff_setup_from_cloud(self) -> None:
+        """Read the cloud's authoritative tariff setup and overwrite the cache.
+
+        Out-of-band edits via the SunEnergyXT app would otherwise be silently
+        overwritten by the next entity push, because the cache only knew what
+        HA itself sent. After this reconcile the cache mirrors the cloud's
+        current view, so a subsequent partial-field push carries the cloud's
+        other fields back unchanged.
+
+        Failures are logged at debug level and do not abort the regular
+        history fetch — the cache simply stays on whatever it had before
+        (defaults or last-known).
+        """
         try:
-            strategy_data = {}
+            cloud = await self.api_client.fetch_tariff_setup(self.family_id)
+        except SunlitApiError as err:
+            _LOGGER.debug("Tariff readback failed for %s: %s", self.family_name, err)
+            return
+
+        # Defensive: only act on a real dict. Anything else (None, MagicMock
+        # leaking through tests, an upstream change in fetch_tariff_setup)
+        # leaves the cache untouched.
+        if not isinstance(cloud, dict):
+            _LOGGER.debug(
+                "No active tariff strategy on cloud for %s; cache untouched",
+                self.family_name,
+            )
+            return
+
+        low_cloud = cloud.get("low")
+        high_cloud = cloud.get("high")
+        if not isinstance(low_cloud, dict) or not isinstance(high_cloud, dict):
+            return
+
+        # Reconcile field by field, only overwriting fields we already know
+        # about. Unknown fields the cloud might add later are ignored — they
+        # would round-trip via the all-or-nothing push anyway.
+        for band, cloud_block in (("low", low_cloud), ("high", high_cloud)):
+            for field in list(self._tariff_setup[band].keys()):
+                if field in cloud_block and cloud_block[field] is not None:
+                    self._tariff_setup[band][field] = cloud_block[field]
+
+    async def _async_update_data(self) -> dict[str, Any]:
+        """Fetch strategy history data from REST API.
+
+        Also reconciles the cached tariff-strategy setup against the cloud's
+        authoritative view, so out-of-band edits in the SunEnergyXT app are
+        not overwritten by the next entity-driven push.
+        """
+        # Reconcile the cache before returning data — runs once per interval.
+        await self._async_reconcile_tariff_setup_from_cloud()
+
+        try:
+            strategy_data: dict[str, Any] = {}
 
             # Fetch strategy history
             strategy_history = await self.api_client.fetch_space_strategy_history(
@@ -75,7 +191,7 @@ class SunlitStrategyHistoryCoordinator(DataUpdateCoordinator):
 
             return {"strategy": strategy_data}
 
-        except Exception as err:
+        except SunlitApiError as err:
             _LOGGER.warning(
                 "Error fetching strategy history for %s: %s", self.family_name, err
             )
