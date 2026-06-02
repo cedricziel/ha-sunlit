@@ -564,6 +564,67 @@ async def test_fetch_tariff_index_success(api_client, mock_session):
 
 
 @pytest.mark.asyncio
+async def test_fetch_rabot_day_price_success(api_client, mock_session):
+    """Test fetching the Rabot 24-hour day-ahead price feed."""
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "message": {"DE": "Ok"},
+            "content": {
+                "prices": [
+                    {
+                        "hour": h,
+                        "priceInCentPerKwh": 10.0 + h,
+                        "avgPriceInCentPerKwh": 12.20,
+                        "priceTag": "CHEAP" if h % 2 == 0 else "EXPENSIVE",
+                        "timestamp": f"2026-06-02 {h:02d}:00:00",
+                    }
+                    for h in range(24)
+                ],
+                "utcOffset": "UTC+2",
+                "rabotHasContractPrice": None,
+            },
+        },
+    )
+
+    data = await api_client.fetch_rabot_day_price(34038, "2026-06-02")
+
+    assert len(data["prices"]) == 24
+    assert data["prices"][0]["priceTag"] == "CHEAP"
+    assert data["utcOffset"] == "UTC+2"
+
+    call_args = mock_session.request.call_args
+    assert call_args[0][0] == "POST"
+    assert "/v1.6/rabot/day/price" in call_args[0][1]
+    assert call_args[1]["json"] == {
+        "spaceId": 34038,
+        "day": "2026-06-02",
+        "showTax": True,
+        "showStrategy": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_fetch_rabot_day_price_outside_window_returns_empty(api_client, mock_session):
+    """Out-of-archive days return code=0 with prices=[] (not an error)."""
+    setup_mock_response(
+        mock_session,
+        200,
+        {
+            "code": 0,
+            "message": {"DE": "Ok"},
+            "content": {"prices": [], "utcOffset": "UTC+2"},
+        },
+    )
+
+    data = await api_client.fetch_rabot_day_price(34038, "2024-01-01")
+
+    assert data["prices"] == []
+
+
+@pytest.mark.asyncio
 async def test_fetch_device_statistics_auth_error(api_client, mock_session):
     """Test authentication error when fetching device statistics."""
     # Setup 401 response

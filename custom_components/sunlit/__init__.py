@@ -29,6 +29,7 @@ from .coordinators import (
     SunlitFamilyCoordinator,
     SunlitMpptEnergyCoordinator,
     SunlitStrategyHistoryCoordinator,
+    SunlitTariffCalendarCoordinator,
 )
 from .event_manager import SunlitEventManager
 from .local.manager import LocalChannelManager
@@ -41,6 +42,7 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
     Platform.SELECT,
     Platform.NUMBER,
+    Platform.CALENDAR,
 ]
 
 
@@ -159,6 +161,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "strategy": strategy_coordinator,
             "mppt": mppt_coordinator,
         }
+
+        # Tariff calendar (Rabot day-ahead prices) — opt-in by data availability,
+        # NOT by rabotHasContract: the price feed is verified to be exposed for
+        # spaces without a contract too. First refresh fetches today (1 POST);
+        # if any hourly prices come back, register the coordinator so the
+        # calendar platform creates the two entities for this family.
+        tariff_calendar_coordinator = SunlitTariffCalendarCoordinator(
+            hass,
+            api_client=api_client,
+            family_id=str(family_info["id"]),
+            family_name=family_info["name"],
+            space_id=family_info["id"],
+        )
+        try:
+            await tariff_calendar_coordinator.async_config_entry_first_refresh()
+        except Exception as err:
+            _LOGGER.debug(
+                "Tariff calendar first refresh failed for %s: %s — skipping",
+                family_info.get("name"),
+                err,
+            )
+        if tariff_calendar_coordinator.daily_prices:
+            coordinators[family_id]["tariff_calendar"] = tariff_calendar_coordinator
+        else:
+            _LOGGER.debug(
+                "No Rabot prices available for %s — skipping tariff calendar",
+                family_info.get("name"),
+            )
 
     # Spin up the opt-in local-mode TCP channel. The manager watches each
     # family's device coordinator and, for batteries with local mode enabled
