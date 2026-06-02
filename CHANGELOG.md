@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/cedricziel/ha-sunlit/compare/v1.10.0...v1.11.0) (2026-06-02)
+
+
+### Features
+
+* add tariff strategy switch via cloud API (closes [#174](https://github.com/cedricziel/ha-sunlit/issues/174)) ([#201](https://github.com/cedricziel/ha-sunlit/issues/201)) ([dc81be0](https://github.com/cedricziel/ha-sunlit/commit/dc81be039a658684fb2bcb8d36ddb1abf76e279c))
+
 ## [1.10.0](https://github.com/cedricziel/ha-sunlit/compare/v1.9.2...v1.10.0) (2026-05-29)
 
 
