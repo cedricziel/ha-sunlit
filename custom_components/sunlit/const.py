@@ -4,6 +4,10 @@ from datetime import timedelta
 
 DOMAIN = "sunlit"
 
+# Services
+SERVICE_IMPORT_PRICE_HISTORY = "import_price_history"
+ATTR_DAYS = "days"
+
 # Integration metadata
 INTEGRATION_NAME = "ha-sunlit"
 GITHUB_URL = "https://github.com/cedricziel/ha-sunlit"
