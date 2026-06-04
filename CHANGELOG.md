@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/cedricziel/ha-sunlit/compare/v1.11.0...v1.12.0) (2026-06-04)
+
+
+### Features
+
+* **calendar:** add tariff windows calendar for Rabot day-ahead prices ([#213](https://github.com/cedricziel/ha-sunlit/issues/213)) ([1ffb3af](https://github.com/cedricziel/ha-sunlit/commit/1ffb3af4210bc68ffe25c1f2ca73de25d648b66d))
+
 ## [1.11.0](https://github.com/cedricziel/ha-sunlit/compare/v1.10.0...v1.11.0) (2026-06-02)
 
 
