@@ -373,24 +373,29 @@ class SunlitFamilyCoordinator(DataUpdateCoordinator):
                 if inverter_sn_list:
                     family_data["inverter_sn_list"] = ", ".join(inverter_sn_list)
 
-                # Binary flags
-                family_data["ev3600_auto_strategy_exist"] = charging_box_data.get(
-                    "ev3600AutoStrategyExist", False
+                # Binary flags. Coerce via bool() because the cloud emits
+                # explicit `null` for flags that haven't been initialised
+                # (e.g. tariffStrategyExist before a tariff strategy is
+                # configured). dict.get(key, False) returns the cloud's None
+                # in that case, which surfaces as `unknown` in HA rather
+                # than `off`. bool(None) collapses both branches to False.
+                family_data["ev3600_auto_strategy_exist"] = bool(
+                    charging_box_data.get("ev3600AutoStrategyExist")
                 )
-                family_data["ev3600_auto_strategy_running"] = charging_box_data.get(
-                    "ev3600AutoStrategyRunning", False
+                family_data["ev3600_auto_strategy_running"] = bool(
+                    charging_box_data.get("ev3600AutoStrategyRunning")
                 )
-                family_data["tariff_strategy_exist"] = charging_box_data.get(
-                    "tariffStrategyExist", False
+                family_data["tariff_strategy_exist"] = bool(
+                    charging_box_data.get("tariffStrategyExist")
                 )
-                family_data["enable_local_smart_strategy"] = charging_box_data.get(
-                    "enableLocalSmartStrategy", False
+                family_data["enable_local_smart_strategy"] = bool(
+                    charging_box_data.get("enableLocalSmartStrategy")
                 )
-                family_data["ac_couple_enabled"] = charging_box_data.get(
-                    "acCoupleEnabled", False
+                family_data["ac_couple_enabled"] = bool(
+                    charging_box_data.get("acCoupleEnabled")
                 )
-                family_data["charging_box_boost_on"] = charging_box_data.get(
-                    "boostOn", False
+                family_data["charging_box_boost_on"] = bool(
+                    charging_box_data.get("boostOn")
                 )
         except Exception as err:
             _LOGGER.debug("Could not fetch charging box strategy: %s", err)

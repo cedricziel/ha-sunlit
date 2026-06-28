@@ -340,3 +340,63 @@ async def test_family_coordinator_positive_daily_values_unchanged(
     # Verify positive values unchanged
     assert family_data["daily_yield"] == 25.3
     assert family_data["daily_earnings"] == 5.2
+
+
+async def test_charging_box_strategy_null_booleans_normalized_to_false(
+    hass: HomeAssistant,
+    enable_custom_integrations,
+    space_index_response,
+):
+    """Cloud returns explicit ``null`` for uninitialised boolean flags.
+
+    Real-world ``chargingBoxCheckStrategy`` responses include
+    ``"tariffStrategyExist": null`` when no tariff strategy has been
+    configured yet (see fixtures/api/charging_box_strategy_family_10001.json).
+    ``dict.get(key, False)`` returns the cloud's None in that case, which
+    surfaces as ``unknown`` in HA instead of ``off``. The coordinator must
+    coerce these to a proper ``False`` so the binary sensors report a
+    deterministic state.
+    """
+    api_client = AsyncMock()
+    api_client.fetch_space_index.return_value = space_index_response["content"]
+    api_client.fetch_device_list.return_value = []
+    api_client.fetch_space_soc.return_value = {
+        "hwSbmsLimitedDiscSocMin": 10,
+        "hwSbmsLimitedChgSocMax": 95,
+    }
+    api_client.fetch_space_current_strategy.return_value = {
+        "strategy": "SELF_CONSUMPTION"
+    }
+    # Mirror the shape of the captured production response: real booleans
+    # for most flags, explicit None for the uninitialised tariff flag.
+    api_client.get_charging_box_strategy.return_value = {
+        "ev3600AutoStrategyExist": False,
+        "ev3600AutoStrategyRunning": False,
+        "tariffStrategyExist": None,
+        "enableLocalSmartStrategy": False,
+        "acCoupleEnabled": False,
+        "boostOn": False,
+    }
+
+    coordinator = SunlitFamilyCoordinator(
+        hass,
+        api_client,
+        "34038",
+        "Test Family",
+    )
+
+    data = await coordinator._async_update_data()
+    family_data = data["family"]
+
+    # Every boolean flag must be a real bool — never None.
+    for key in (
+        "ev3600_auto_strategy_exist",
+        "ev3600_auto_strategy_running",
+        "tariff_strategy_exist",
+        "enable_local_smart_strategy",
+        "ac_couple_enabled",
+        "charging_box_boost_on",
+    ):
+        assert family_data[key] is False, (
+            f"{key} should be False, got {family_data[key]!r}"
+        )
