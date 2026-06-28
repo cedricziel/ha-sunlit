@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/cedricziel/ha-sunlit/compare/v1.12.0...v1.12.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **family:** coerce charging-box booleans to False on null ([#230](https://github.com/cedricziel/ha-sunlit/issues/230)) ([0eb97cf](https://github.com/cedricziel/ha-sunlit/commit/0eb97cf8a25607b015c7a48dae68bcb3759c2c8e))
+
 ## [1.12.0](https://github.com/cedricziel/ha-sunlit/compare/v1.11.0...v1.12.0) (2026-06-04)
 
 
