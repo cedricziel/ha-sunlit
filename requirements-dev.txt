@@ -3,6 +3,20 @@ pytest
 pytest-asyncio<2.0.0
 pytest-cov
 pytest-timeout
+# aiohttp 3.14 added a required `stream_writer` kwarg to
+# ClientResponse.__init__, which every released aioresponses still calls
+# without — every aioresponses-based test then raises:
+#   TypeError: ClientResponse.__init__() missing 1 required keyword-only
+#   argument: 'stream_writer'
+# Upstream fix: https://github.com/pnuckowski/aioresponses/pull/288 (issue
+# #289), not yet released.
+#
+# Constrain aiohttp here in dev deps because pytest-homeassistant-custom-
+# component pulls HA 2026.7.0b2 in CI, which accepts aiohttp 3.14. HA core
+# 2026.6.4 in requirements.txt already pins aiohttp<3.14 transitively, so
+# this only affects the test env. Drop once an aioresponses release with
+# the upstream fix ships.
+aiohttp<3.14
 aioresponses
 pytest-homeassistant-custom-component
 
