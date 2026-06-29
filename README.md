@@ -283,6 +283,24 @@ neutrally-priced hours. Each contiguous run of matching hours becomes one
 - Past days are fetched **on demand** when you scroll back in the Calendar
   dashboard. The endpoint's verified horizon is roughly the last 12 months.
 
+#### Backfill price history into long-term statistics (optional)
+
+The calendar shows past blocks the moment you scroll to them, but the
+recorder only starts tracking long-term statistics for the `electricity_price`
+sensor when the integration begins recording. Run the
+`sunlit.import_price_history` service once after install to backfill up to
+~365 days of historical hourly prices onto that sensor's statistics — months
+of price history then appear in the Statistics card on day one:
+
+```yaml
+service: sunlit.import_price_history
+data:
+  days: 365    # optional; default is the full available window (~365)
+```
+
+The service is idempotent (re-running overwrites the same hourly buckets) and
+re-runnable as the available archive grows by one day each calendar day.
+
 **Example automations** (HA's Calendar trigger fires once at event start/end
 with an optional offset):
 
