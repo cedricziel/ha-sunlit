@@ -213,10 +213,13 @@ class TestStateClassForSensor:
             ), f"Failed for {sensor}"
 
     def test_total_sensors(self):
-        """Only monetary totals use TOTAL (MONETARY forbids TOTAL_INCREASING)."""
+        """Only daily_earnings uses TOTAL (MONETARY forbids TOTAL_INCREASING).
+
+        lifetime_earnings is integration-managed long-term statistics (no
+        state_class) — covered by TestLifetimeStatsSensors.
+        """
         total_sensors = [
             "daily_earnings",  # resets daily -> carries a last_reset (see entity)
-            "lifetime_earnings",
         ]
         for sensor in total_sensors:
             assert (
@@ -419,22 +422,24 @@ class TestLifetimeStatsSensors:
     """Test classification of lifetime yield & earnings sensors (issue #155)."""
 
     def test_lifetime_yield(self):
-        """lifetime_yield is a cumulative energy sensor in kWh."""
+        """lifetime_yield is energy in kWh with integration-managed statistics.
+
+        It has no state_class: the integration owns its long-term statistics
+        (historical backfill + ongoing hourly import) so the recorder must not
+        also auto-compile them. See statistics.py.
+        """
         assert get_device_class_for_sensor("lifetime_yield") == SensorDeviceClass.ENERGY
-        assert (
-            get_state_class_for_sensor("lifetime_yield")
-            == SensorStateClass.TOTAL_INCREASING
-        )
+        assert get_state_class_for_sensor("lifetime_yield") is None
         assert get_unit_for_sensor("lifetime_yield") == UnitOfEnergy.KILO_WATT_HOUR
         assert get_icon_for_sensor("lifetime_yield") == "mdi:solar-power-variant"
 
     def test_lifetime_earnings(self):
-        """lifetime_earnings is a cumulative monetary sensor."""
+        """lifetime_earnings is monetary with integration-managed statistics."""
         assert (
             get_device_class_for_sensor("lifetime_earnings")
             == SensorDeviceClass.MONETARY
         )
-        assert get_state_class_for_sensor("lifetime_earnings") == SensorStateClass.TOTAL
+        assert get_state_class_for_sensor("lifetime_earnings") is None
         assert get_unit_for_sensor("lifetime_earnings") == "EUR"
         assert get_icon_for_sensor("lifetime_earnings") == "mdi:cash"
 
