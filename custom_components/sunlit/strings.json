@@ -58,5 +58,11 @@
         }
       }
     }
+  },
+  "services": {
+    "import_history": {
+      "name": "Import historical statistics",
+      "description": "Backfill historical generation and earnings from the Sunlit / SunEnergyXT cloud into Home Assistant's long-term statistics, so pre-install history shows up in the Energy Dashboard and Statistics cards. Safe to run more than once; existing daily buckets are overwritten rather than duplicated."
+    }
   }
 }

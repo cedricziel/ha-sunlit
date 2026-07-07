@@ -39,7 +39,11 @@ API_RABOT_DAY_PRICE = "/v1.6/rabot/day/price"
 API_TARIFF_STRATEGY_ADD = "/v1.6/tariffStrategy/add"
 API_STRATEGY_SETTING_DETAIL = "/v1.8/strategy/setting/detail"
 API_SPACE_STATISTICS_DYNAMIC_ENERGY = "/v1.1/space/statistics/dynamic/energy"
+API_SPACE_STATISTICS_DYNAMIC_EARNING = "/v1.1/space/statistics/dynamic/earning"
 API_NOTIFICATION_LIST = "/v1.5/notification/list"
+
+# Services
+SERVICE_IMPORT_HISTORY = "import_history"
 
 # Configuration keys
 CONF_EMAIL = "email"

@@ -1,6 +1,9 @@
 {
     "domain": "sunlit",
     "name": "SunEnergyXT (previously Sunlit Solar)",
+    "after_dependencies": [
+        "recorder"
+    ],
     "codeowners": [
         "@cedricziel"
     ],
