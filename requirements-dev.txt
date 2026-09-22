@@ -13,10 +13,10 @@ pytest-timeout
 #
 # Constrain aiohttp here in dev deps because pytest-homeassistant-custom-
 # component pulls HA 2026.7.0b2 in CI, which accepts aiohttp 3.14. HA core
-# 2026.6.4 in requirements.txt already pins aiohttp<3.14 transitively, so
+# 2026.6.4 in requirements.txt already pins aiohttp<3.15 transitively, so
 # this only affects the test env. Drop once an aioresponses release with
 # the upstream fix ships.
-aiohttp<3.14
+aiohttp<3.15
 aioresponses
 pytest-homeassistant-custom-component
 
