@@ -6,6 +6,7 @@ import logging
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
+    BinarySensorEntity,
     BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -13,6 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
+from .dynamic_entities import async_setup_dynamic_entities
 from .entities.device_binary_sensor import SunlitDeviceBinarySensor
 from .entities.family_binary_sensor import SunlitFamilyBinarySensor
 
@@ -161,72 +163,106 @@ async def async_setup_entry(
         # Fallback for old structure
         coordinators = integration_data
 
-    sensors = []
+    def build_sensors(created_keys: set[str]) -> list[BinarySensorEntity]:
+        """Build binary sensors whose keys have appeared but have no entity yet.
 
-    # Process multiple family coordinators
-    for family_id, coordinator_set in coordinators.items():
-        # Use the new specialized coordinators
-        if not isinstance(coordinator_set, dict):
-            # Handle old coordinator structure for backwards compatibility
-            _LOGGER.warning(
-                "Old coordinator structure detected, skipping family %s", family_id
-            )
-            continue
+        Both loops below are driven by keys the cloud actually reported, so a
+        device that was offline at startup contributes nothing on the first
+        pass and gets its sensors on a later coordinator update instead.
+        """
+        sensors: list[BinarySensorEntity] = []
 
-        family_coordinator = coordinator_set.get("family")
-        device_coordinator = coordinator_set.get("device")
+        # Process multiple family coordinators
+        for family_id, coordinator_set in coordinators.items():
+            # Use the new specialized coordinators
+            if not isinstance(coordinator_set, dict):
+                # Handle old coordinator structure for backwards compatibility
+                _LOGGER.warning(
+                    "Old coordinator structure detected, skipping family %s", family_id
+                )
+                continue
 
-        # Skip if essential coordinators are missing
-        if not family_coordinator or not device_coordinator:
-            _LOGGER.warning("Missing essential coordinators for family %s", family_id)
-            continue
+            family_coordinator = coordinator_set.get("family")
+            device_coordinator = coordinator_set.get("device")
 
-        # Create family binary sensors
-        if family_coordinator.data and "family" in family_coordinator.data:
-            for key, config in FAMILY_BINARY_SENSORS.items():
-                if key in family_coordinator.data["family"]:
-                    sensor_description = BinarySensorEntityDescription(
-                        key=key,
-                        name=config["name"],
-                        device_class=config.get("device_class"),
-                    )
-                    sensor = SunlitFamilyBinarySensor(
-                        coordinator=family_coordinator,
-                        description=sensor_description,
-                        entry_id=config_entry.entry_id,
-                        family_id=family_coordinator.family_id,
-                        family_name=family_coordinator.family_name,
-                        icon=config.get("icon"),
-                    )
-                    sensors.append(sensor)
+            # Skip if essential coordinators are missing
+            if not family_coordinator or not device_coordinator:
+                _LOGGER.warning(
+                    "Missing essential coordinators for family %s", family_id
+                )
+                continue
 
-        # Create device binary sensors
-        if device_coordinator.data and "devices" in device_coordinator.data:
-            for device_id, device_data in device_coordinator.data["devices"].items():
-                if (
-                    device_coordinator.devices
-                    and device_id in device_coordinator.devices
-                ):
-                    device_info = device_coordinator.devices[device_id]
+            # Create family binary sensors
+            if family_coordinator.data and "family" in family_coordinator.data:
+                for key, config in FAMILY_BINARY_SENSORS.items():
+                    if key in family_coordinator.data["family"]:
+                        entity_key = f"{family_id}:family:{key}"
+                        if entity_key in created_keys:
+                            continue
+                        created_keys.add(entity_key)
 
-                    for key, config in DEVICE_BINARY_SENSORS.items():
-                        if key in device_data:
-                            sensor_description = BinarySensorEntityDescription(
-                                key=key,
-                                name=config["name"],
-                                device_class=config.get("device_class"),
-                            )
-                            sensor = SunlitDeviceBinarySensor(
-                                coordinator=device_coordinator,
-                                description=sensor_description,
-                                entry_id=config_entry.entry_id,
-                                family_id=device_coordinator.family_id,
-                                family_name=device_coordinator.family_name,
-                                device_id=device_id,
-                                device_info_data=device_info,
-                                icon=config.get("icon"),
-                                inverted=config.get("inverted", False),
-                            )
-                            sensors.append(sensor)
+                        sensor_description = BinarySensorEntityDescription(
+                            key=key,
+                            name=config["name"],
+                            device_class=config.get("device_class"),
+                        )
+                        sensor = SunlitFamilyBinarySensor(
+                            coordinator=family_coordinator,
+                            description=sensor_description,
+                            entry_id=config_entry.entry_id,
+                            family_id=family_coordinator.family_id,
+                            family_name=family_coordinator.family_name,
+                            icon=config.get("icon"),
+                        )
+                        sensors.append(sensor)
 
-    async_add_entities(sensors, True)
+            # Create device binary sensors
+            if device_coordinator.data and "devices" in device_coordinator.data:
+                for device_id, device_data in device_coordinator.data[
+                    "devices"
+                ].items():
+                    if (
+                        device_coordinator.devices
+                        and device_id in device_coordinator.devices
+                    ):
+                        device_info = device_coordinator.devices[device_id]
+
+                        for key, config in DEVICE_BINARY_SENSORS.items():
+                            if key in device_data:
+                                entity_key = f"{family_id}:{device_id}:{key}"
+                                if entity_key in created_keys:
+                                    continue
+                                created_keys.add(entity_key)
+
+                                sensor_description = BinarySensorEntityDescription(
+                                    key=key,
+                                    name=config["name"],
+                                    device_class=config.get("device_class"),
+                                )
+                                sensor = SunlitDeviceBinarySensor(
+                                    coordinator=device_coordinator,
+                                    description=sensor_description,
+                                    entry_id=config_entry.entry_id,
+                                    family_id=device_coordinator.family_id,
+                                    family_name=device_coordinator.family_name,
+                                    device_id=device_id,
+                                    device_info_data=device_info,
+                                    icon=config.get("icon"),
+                                    inverted=config.get("inverted", False),
+                                )
+                                sensors.append(sensor)
+
+        return sensors
+
+    platform_coordinators: list = []
+    for coordinator_set in coordinators.values():
+        if isinstance(coordinator_set, dict):
+            platform_coordinators.append(coordinator_set.get("family"))
+            platform_coordinators.append(coordinator_set.get("device"))
+
+    async_setup_dynamic_entities(
+        config_entry,
+        platform_coordinators,
+        async_add_entities,
+        build_sensors,
+    )

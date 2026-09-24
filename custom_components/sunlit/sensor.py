@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components.sensor import SensorEntityDescription
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -22,6 +22,7 @@ from .const import (
     INVERTER_SENSORS,
     METER_SENSORS,
 )
+from .dynamic_entities import async_setup_dynamic_entities
 from .entities.battery_module_sensor import SunlitBatteryModuleSensor
 from .entities.battery_sensor import SunlitBatterySensor
 from .entities.family_sensor import SunlitFamilySensor
@@ -65,143 +66,203 @@ async def async_setup_entry(
         # Fallback for old structure
         coordinators = integration_data
 
-    sensors = []
+    def build_sensors(created_keys: set[str]) -> list[SensorEntity]:
+        """Build sensors for data that has appeared but has no entity yet.
 
-    # Process multiple family coordinators
-    for family_id, coordinator_set in coordinators.items():
-        # Use the new specialized coordinators
-        if not isinstance(coordinator_set, dict):
-            # Handle old coordinator structure for backwards compatibility
-            _LOGGER.warning(
-                "Old coordinator structure detected, skipping family %s", family_id
-            )
-            continue
+        Family keys and device lists come from coordinator snapshots, so a
+        device that is offline while Home Assistant starts contributes
+        nothing on the first pass; its sensors are created on a later
+        coordinator update instead of never.
+        """
+        sensors: list[SensorEntity] = []
 
-        family_coordinator = coordinator_set.get("family")
-        device_coordinator = coordinator_set.get("device")
-        strategy_coordinator = coordinator_set.get("strategy")
-        mppt_coordinator = coordinator_set.get("mppt")
+        for family_id, coordinator_set in coordinators.items():
+            # Use the new specialized coordinators
+            if not isinstance(coordinator_set, dict):
+                # Handle old coordinator structure for backwards compatibility
+                _LOGGER.warning(
+                    "Old coordinator structure detected, skipping family %s", family_id
+                )
+                continue
 
-        # Skip if essential coordinators are missing
-        if not family_coordinator or not device_coordinator:
-            _LOGGER.warning("Missing essential coordinators for family %s", family_id)
-            continue
+            family_coordinator = coordinator_set.get("family")
+            device_coordinator = coordinator_set.get("device")
+            strategy_coordinator = coordinator_set.get("strategy")
+            mppt_coordinator = coordinator_set.get("mppt")
 
-        if family_coordinator.data:
-            # Create family aggregate sensors from family coordinator
-            if "family" in family_coordinator.data:
-                # Skip binary sensor fields (they're handled by binary_sensor platform)
-                skip_fields = {"has_fault", "battery_full"}
-                family_data = family_coordinator.data["family"]
+            # Skip if essential coordinators are missing
+            if not family_coordinator or not device_coordinator:
+                _LOGGER.warning(
+                    "Missing essential coordinators for family %s", family_id
+                )
+                continue
 
-                # Add strategy data if available
-                if (
-                    strategy_coordinator
-                    and strategy_coordinator.data
-                    and "strategy" in strategy_coordinator.data
-                ):
-                    family_data.update(strategy_coordinator.data["strategy"])
+            if family_coordinator.data:
+                # Create family aggregate sensors from family coordinator
+                if "family" in family_coordinator.data:
+                    # Skip binary sensor fields (they're handled by binary_sensor platform)
+                    skip_fields = {"has_fault", "battery_full"}
+                    # Copy: the merges below only determine which keys deserve an
+                    # entity. Each sensor reads its value from its own
+                    # coordinator, so writing the merged keys back into the live
+                    # family payload would pollute it on every update.
+                    family_data = dict(family_coordinator.data["family"])
 
-                # Add the family-level MPPT energy total if available.
-                # (mppt_coordinator.data["mppt_energy"] is keyed by device id and
-                # feeds the per-device/module sensors, not family sensors.)
-                if (
-                    mppt_coordinator
-                    and mppt_coordinator.data
-                    and "total_mppt_energy" in mppt_coordinator.data
-                ):
-                    family_data["total_mppt_energy"] = mppt_coordinator.data[
-                        "total_mppt_energy"
-                    ]
-
-                # Add device aggregates if available
-                if (
-                    device_coordinator
-                    and device_coordinator.data
-                    and "aggregates" in device_coordinator.data
-                ):
-                    family_data.update(device_coordinator.data["aggregates"])
-
-                for key in family_data:
-                    if key in FAMILY_SENSORS and key not in skip_fields:
-                        sensor_description = build_sensor_description(
-                            key, FAMILY_SENSORS[key]
-                        )
-                        # Use appropriate coordinator based on data source
-                        if key in [
-                            "last_strategy_type",
-                            "last_strategy_change",
-                            "last_strategy_status",
-                            "strategy_changes_today",
-                            "strategy_history",
-                        ]:
-                            coord = (
-                                strategy_coordinator
-                                if strategy_coordinator
-                                else family_coordinator
-                            )
-                        elif "mppt" in key and "energy" in key:
-                            coord = (
-                                mppt_coordinator
-                                if mppt_coordinator
-                                else family_coordinator
-                            )
-                        elif key in [
-                            "total_solar_power",
-                            "total_solar_energy",
-                            "total_grid_export_energy",
-                            "daily_grid_export_energy",
-                        ]:
-                            # These aggregates come from device coordinator only
-                            # Don't fall back to family coordinator as it doesn't have these keys
-                            coord = device_coordinator
-                        else:
-                            coord = family_coordinator
-
-                        sensor = SunlitFamilySensor(
-                            coordinator=coord,
-                            description=sensor_description,
-                            entry_id=config_entry.entry_id,
-                            family_id=family_coordinator.family_id,
-                            family_name=family_coordinator.family_name,
-                        )
-                        # Set icon if available
-                        icon = get_icon_for_sensor(key)
-                        if icon:
-                            sensor._attr_icon = icon
-                        sensors.append(sensor)
-
-            # Create individual device sensors from device coordinator
-            if device_coordinator.data and "devices" in device_coordinator.data:
-                for device_id, device_data in device_coordinator.data[
-                    "devices"
-                ].items():
+                    # Add strategy data if available
                     if (
-                        device_coordinator.devices
-                        and device_id in device_coordinator.devices
+                        strategy_coordinator
+                        and strategy_coordinator.data
+                        and "strategy" in strategy_coordinator.data
                     ):
-                        device_info = device_coordinator.devices[device_id]
-                        device_type = device_info.get("deviceType")
+                        family_data.update(strategy_coordinator.data["strategy"])
 
-                        # Determine which sensors to create based on device type
-                        sensor_map = {}
-                        if device_type in [DEVICE_TYPE_METER, DEVICE_TYPE_METER_PRO]:
-                            sensor_map = METER_SENSORS
-                        elif device_type in [
-                            DEVICE_TYPE_INVERTER,
-                            DEVICE_TYPE_INVERTER_SOLAR,
-                        ]:
-                            sensor_map = INVERTER_SENSORS
-                        elif device_type == DEVICE_TYPE_BATTERY:
-                            sensor_map = BATTERY_SENSORS
+                    # Add the family-level MPPT energy total if available.
+                    # (mppt_coordinator.data["mppt_energy"] is keyed by device id and
+                    # feeds the per-device/module sensors, not family sensors.)
+                    if (
+                        mppt_coordinator
+                        and mppt_coordinator.data
+                        and "total_mppt_energy" in mppt_coordinator.data
+                    ):
+                        family_data["total_mppt_energy"] = mppt_coordinator.data[
+                            "total_mppt_energy"
+                        ]
 
-                        # Create ALL sensors defined for this device type
-                        # This ensures sensors are created even if data is not yet available
-                        # Skip binary sensor fields (handled by binary_sensor platform)
-                        skip_device_fields = {"fault", "off"}
-                        for key, name in sensor_map.items():
-                            if key not in skip_device_fields:
-                                sensor_description = build_sensor_description(key, name)
+                    # Add device aggregates if available
+                    if (
+                        device_coordinator
+                        and device_coordinator.data
+                        and "aggregates" in device_coordinator.data
+                    ):
+                        family_data.update(device_coordinator.data["aggregates"])
+
+                    for key in family_data:
+                        if key in FAMILY_SENSORS and key not in skip_fields:
+                            entity_key = f"{family_id}:family:{key}"
+                            if entity_key in created_keys:
+                                continue
+                            created_keys.add(entity_key)
+
+                            sensor_description = build_sensor_description(
+                                key, FAMILY_SENSORS[key]
+                            )
+                            # Use appropriate coordinator based on data source
+                            if key in [
+                                "last_strategy_type",
+                                "last_strategy_change",
+                                "last_strategy_status",
+                                "strategy_changes_today",
+                                "strategy_history",
+                            ]:
+                                coord = (
+                                    strategy_coordinator
+                                    if strategy_coordinator
+                                    else family_coordinator
+                                )
+                            elif "mppt" in key and "energy" in key:
+                                coord = (
+                                    mppt_coordinator
+                                    if mppt_coordinator
+                                    else family_coordinator
+                                )
+                            elif key in [
+                                "total_solar_power",
+                                "total_solar_energy",
+                                "total_grid_export_energy",
+                                "daily_grid_export_energy",
+                            ]:
+                                # These aggregates come from device coordinator only
+                                # Don't fall back to family coordinator as it doesn't have these keys
+                                coord = device_coordinator
+                            else:
+                                coord = family_coordinator
+
+                            sensor = SunlitFamilySensor(
+                                coordinator=coord,
+                                description=sensor_description,
+                                entry_id=config_entry.entry_id,
+                                family_id=family_coordinator.family_id,
+                                family_name=family_coordinator.family_name,
+                            )
+                            # Set icon if available
+                            icon = get_icon_for_sensor(key)
+                            if icon:
+                                sensor._attr_icon = icon
+                            sensors.append(sensor)
+
+                # Create individual device sensors from device coordinator
+                if device_coordinator.data and "devices" in device_coordinator.data:
+                    # Sensors come from sensor_map, not from the reported keys,
+                    # so the payload itself is not read here.
+                    for device_id in device_coordinator.data["devices"]:
+                        if (
+                            device_coordinator.devices
+                            and device_id in device_coordinator.devices
+                        ):
+                            device_info = device_coordinator.devices[device_id]
+                            device_type = device_info.get("deviceType")
+
+                            # Determine which sensors to create based on device type
+                            sensor_map = {}
+                            if device_type in [
+                                DEVICE_TYPE_METER,
+                                DEVICE_TYPE_METER_PRO,
+                            ]:
+                                sensor_map = METER_SENSORS
+                            elif device_type in [
+                                DEVICE_TYPE_INVERTER,
+                                DEVICE_TYPE_INVERTER_SOLAR,
+                            ]:
+                                sensor_map = INVERTER_SENSORS
+                            elif device_type == DEVICE_TYPE_BATTERY:
+                                sensor_map = BATTERY_SENSORS
+
+                            # Create ALL sensors defined for this device type
+                            # This ensures sensors are created even if data is not yet available
+                            # Skip binary sensor fields (handled by binary_sensor platform)
+                            skip_device_fields = {"fault", "off"}
+                            for key, name in sensor_map.items():
+                                if key not in skip_device_fields:
+                                    entity_key = f"{family_id}:{device_id}:{key}"
+                                    if entity_key in created_keys:
+                                        continue
+                                    created_keys.add(entity_key)
+
+                                    sensor_description = build_sensor_description(
+                                        key, name
+                                    )
+                                    # Pass mppt_coordinator for battery devices
+                                    extra_kwargs = {}
+                                    if device_type == DEVICE_TYPE_BATTERY:
+                                        extra_kwargs["mppt_coordinator"] = (
+                                            mppt_coordinator
+                                        )
+
+                                    sensor = create_device_sensor(
+                                        device_type=device_type,
+                                        coordinator=device_coordinator,
+                                        description=sensor_description,
+                                        entry_id=config_entry.entry_id,
+                                        family_id=device_coordinator.family_id,
+                                        family_name=device_coordinator.family_name,
+                                        device_id=device_id,
+                                        device_info_data=device_info,
+                                        **extra_kwargs,
+                                    )
+                                    # Set icon if available
+                                    icon = get_icon_for_sensor(key, device_type)
+                                    if icon:
+                                        sensor._attr_icon = icon
+                                    sensors.append(sensor)
+
+                            # Always add status sensor for all devices (text state)
+                            status_key = f"{family_id}:{device_id}:status"
+                            if status_key not in created_keys:
+                                created_keys.add(status_key)
+                                sensor_description = SensorEntityDescription(
+                                    key="status",
+                                    name="Status",
+                                )
                                 # Pass mppt_coordinator for battery devices
                                 extra_kwargs = {}
                                 if device_type == DEVICE_TYPE_BATTERY:
@@ -218,79 +279,78 @@ async def async_setup_entry(
                                     device_info_data=device_info,
                                     **extra_kwargs,
                                 )
-                                # Set icon if available
-                                icon = get_icon_for_sensor(key, device_type)
-                                if icon:
-                                    sensor._attr_icon = icon
+                                # Set status icon
+                                sensor._attr_icon = "mdi:information-outline"
                                 sensors.append(sensor)
 
-                        # Always add status sensor for all devices (text state)
-                        sensor_description = SensorEntityDescription(
-                            key="status",
-                            name="Status",
-                        )
-                        # Pass mppt_coordinator for battery devices
-                        extra_kwargs = {}
-                        if device_type == DEVICE_TYPE_BATTERY:
-                            extra_kwargs["mppt_coordinator"] = mppt_coordinator
-
-                        sensor = create_device_sensor(
-                            device_type=device_type,
-                            coordinator=device_coordinator,
-                            description=sensor_description,
-                            entry_id=config_entry.entry_id,
-                            family_id=device_coordinator.family_id,
-                            family_name=device_coordinator.family_name,
-                            device_id=device_id,
-                            device_info_data=device_info,
-                            **extra_kwargs,
-                        )
-                        # Set status icon
-                        sensor._attr_icon = "mdi:information-outline"
-                        sensors.append(sensor)
-
-                        # For battery devices, create virtual devices for battery modules
-                        if device_type == DEVICE_TYPE_BATTERY:
-                            # Get actual number of battery modules from device coordinator
-                            module_count = device_coordinator.get_battery_module_count(
-                                device_id
-                            )
-
-                            _LOGGER.debug(
-                                "Creating battery module sensors for device %s: %d modules",
-                                device_id,
-                                module_count,
-                            )
-
-                            # Create virtual devices only for existing battery modules
-                            for module_num in range(1, module_count + 1):
-                                # Create sensors for this battery module
-                                for (
-                                    suffix,
-                                    friendly_name,
-                                ) in BATTERY_MODULE_SENSORS.items():
-                                    sensor_key = f"battery{module_num}{suffix}"
-
-                                    sensor_description = build_sensor_description(
-                                        sensor_key, friendly_name
+                            # For battery devices, create virtual devices for battery modules
+                            if device_type == DEVICE_TYPE_BATTERY:
+                                # Get actual number of battery modules from device coordinator
+                                module_count = (
+                                    device_coordinator.get_battery_module_count(
+                                        device_id
                                     )
+                                )
 
-                                    sensor = SunlitBatteryModuleSensor(
-                                        coordinator=device_coordinator,
-                                        description=sensor_description,
-                                        entry_id=config_entry.entry_id,
-                                        family_id=device_coordinator.family_id,
-                                        family_name=device_coordinator.family_name,
-                                        device_id=device_id,
-                                        device_info_data=device_info,
-                                        module_number=module_num,
-                                        mppt_coordinator=mppt_coordinator,
-                                    )
+                                _LOGGER.debug(
+                                    "Creating battery module sensors for device %s: %d modules",
+                                    device_id,
+                                    module_count,
+                                )
 
-                                    # Set icon if available
-                                    icon = get_icon_for_sensor(sensor_key, device_type)
-                                    if icon:
-                                        sensor._attr_icon = icon
-                                    sensors.append(sensor)
+                                # Create virtual devices only for existing battery modules
+                                for module_num in range(1, module_count + 1):
+                                    # Create sensors for this battery module
+                                    for (
+                                        suffix,
+                                        friendly_name,
+                                    ) in BATTERY_MODULE_SENSORS.items():
+                                        sensor_key = f"battery{module_num}{suffix}"
 
-    async_add_entities(sensors, True)
+                                        entity_key = (
+                                            f"{family_id}:{device_id}:{sensor_key}"
+                                        )
+                                        if entity_key in created_keys:
+                                            continue
+                                        created_keys.add(entity_key)
+
+                                        sensor_description = build_sensor_description(
+                                            sensor_key, friendly_name
+                                        )
+
+                                        sensor = SunlitBatteryModuleSensor(
+                                            coordinator=device_coordinator,
+                                            description=sensor_description,
+                                            entry_id=config_entry.entry_id,
+                                            family_id=device_coordinator.family_id,
+                                            family_name=device_coordinator.family_name,
+                                            device_id=device_id,
+                                            device_info_data=device_info,
+                                            module_number=module_num,
+                                            mppt_coordinator=mppt_coordinator,
+                                        )
+
+                                        # Set icon if available
+                                        icon = get_icon_for_sensor(
+                                            sensor_key, device_type
+                                        )
+                                        if icon:
+                                            sensor._attr_icon = icon
+                                        sensors.append(sensor)
+
+        return sensors
+
+    platform_coordinators: list = []
+    for coordinator_set in coordinators.values():
+        if isinstance(coordinator_set, dict):
+            platform_coordinators.append(coordinator_set.get("family"))
+            platform_coordinators.append(coordinator_set.get("device"))
+            platform_coordinators.append(coordinator_set.get("strategy"))
+            platform_coordinators.append(coordinator_set.get("mppt"))
+
+    async_setup_dynamic_entities(
+        config_entry,
+        platform_coordinators,
+        async_add_entities,
+        build_sensors,
+    )
