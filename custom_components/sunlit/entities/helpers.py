@@ -124,10 +124,15 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     # Stored energy fluctuates (rises and falls) -> MEASUREMENT, never TOTAL*.
     if "storedenergy" in key.lower().replace("_", ""):
         return SensorStateClass.MEASUREMENT
+    # Integration-managed long-term statistics: lifetime_yield / lifetime_earnings
+    # opt OUT of the recorder's automatic statistics so the integration owns their
+    # whole series (historical backfill + ongoing). See statistics.py.
+    if key in ("lifetime_yield", "lifetime_earnings"):
+        return None
     # Monetary totals must use TOTAL — MONETARY forbids TOTAL_INCREASING. The
     # daily-resetting one (daily_earnings) carries a last_reset (see the entity's
     # last_reset property) so the midnight reset is handled correctly.
-    if key in ("lifetime_earnings", "daily_earnings"):
+    if key == "daily_earnings":
         return SensorStateClass.TOTAL
     # Energy: lifetime totals AND daily counters are modelled as TOTAL_INCREASING.
     # For the daily counters, TOTAL_INCREASING auto-detects the midnight reset
@@ -135,7 +140,6 @@ def get_state_class_for_sensor(key: str) -> SensorStateClass | None:
     # long-term statistics stay correct across the reset.
     if "energy" in key.lower() or key in (
         "total_yield",
-        "lifetime_yield",
         "daily_yield",
         "total_power_generation",
     ):
