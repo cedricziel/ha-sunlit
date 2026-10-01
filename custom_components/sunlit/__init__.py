@@ -6,11 +6,13 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import voluptuous as vol
 
 from .api_client import SunlitApiClient
 from .const import (
+    ATTR_DAYS,
     CONF_ACCESS_TOKEN,
     CONF_BATTERIES,
     CONF_FAMILIES,
@@ -23,6 +25,7 @@ from .const import (
     OPT_SOC_THRESHOLD_CRITICAL_LOW,
     OPT_SOC_THRESHOLD_HIGH,
     OPT_SOC_THRESHOLD_LOW,
+    SERVICE_IMPORT_PRICE_HISTORY,
 )
 from .coordinators import (
     SunlitDeviceCoordinator,
@@ -33,6 +36,12 @@ from .coordinators import (
 )
 from .event_manager import SunlitEventManager
 from .local.manager import LocalChannelManager
+from .price_statistics import (
+    DEFAULT_DAYS,
+    MAX_DAYS,
+    MIN_DAYS,
+    async_import_all_price_history,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -215,9 +224,48 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Add update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_update_options))
 
+    _async_register_services(hass)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
+
+
+def _async_register_services(hass: HomeAssistant) -> None:
+    """Register integration-wide services (only once across all entries)."""
+    if hass.services.has_service(DOMAIN, SERVICE_IMPORT_PRICE_HISTORY):
+        return
+
+    async def _handle_import_price_history(call: ServiceCall) -> None:
+        """Backfill historical Rabot prices for every family that has a calendar."""
+        days = call.data.get(ATTR_DAYS, DEFAULT_DAYS)
+        coordinators = [
+            family_coords["tariff_calendar"]
+            for entry_data in hass.data.get(DOMAIN, {}).values()
+            for family_coords in entry_data["coordinators"].values()
+            if "tariff_calendar" in family_coords
+        ]
+        if not coordinators:
+            _LOGGER.warning(
+                "sunlit.import_price_history called but no tariff calendar coordinator"
+                " is active — nothing to backfill"
+            )
+            return
+        total = await async_import_all_price_history(hass, coordinators, days)
+        _LOGGER.info("Price history backfill complete: %s rows imported", total)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_IMPORT_PRICE_HISTORY,
+        _handle_import_price_history,
+        schema=vol.Schema(
+            {
+                vol.Optional(ATTR_DAYS, default=DEFAULT_DAYS): vol.All(
+                    vol.Coerce(int), vol.Range(min=MIN_DAYS, max=MAX_DAYS)
+                ),
+            }
+        ),
+    )
 
 
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -233,5 +281,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         local_manager = entry_data.get("local_manager")
         if local_manager is not None:
             await local_manager.async_stop()
+
+        # Remove integration-wide services when the last entry is gone.
+        if not hass.data[DOMAIN] and hass.services.has_service(
+            DOMAIN, SERVICE_IMPORT_PRICE_HISTORY
+        ):
+            hass.services.async_remove(DOMAIN, SERVICE_IMPORT_PRICE_HISTORY)
 
     return unload_ok
