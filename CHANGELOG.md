@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.2](https://github.com/cedricziel/ha-sunlit/compare/v1.12.1...v1.12.2) (2026-11-07)
+
+
+### Bug Fixes
+
+* drop aiohttp from manifest requirements and add MIT license ([#249](https://github.com/cedricziel/ha-sunlit/issues/249)) ([d4517f0](https://github.com/cedricziel/ha-sunlit/commit/d4517f05454cccf138a85b7713a8fdb56c629180))
+
 ## [1.12.1](https://github.com/cedricziel/ha-sunlit/compare/v1.12.0...v1.12.1) (2026-06-28)
 
 
