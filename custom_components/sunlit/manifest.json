@@ -9,9 +9,7 @@
     "documentation": "https://github.com/cedricziel/ha-sunlit",
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/cedricziel/ha-sunlit/issues",
-    "requirements": [
-        "aiohttp"
-    ],
+    "requirements": [],
     "version": "1.12.1",
     "zeroconf": [
         {
