@@ -322,12 +322,19 @@ To integrate with HomeAssistant's Energy Dashboard:
 1. Go to **Settings** → **Dashboards** → **Energy**
 2. Under **Solar Panels**, click **Add Solar Production**
 3. Select the family **Lifetime Yield** sensor (`sensor.sunlit_[family]_lifetime_yield`) —
-   it is a cumulative `total_increasing` kWh sensor, so HA derives daily/monthly/yearly
-   automatically (no Riemann-sum helper needed for solar).
+   a cumulative kWh series, so HA derives daily/monthly/yearly automatically
+   (no Riemann-sum helper needed for solar).
+
+> **Backfill pre-install history:** the integration **owns** the long-term
+> statistics for `lifetime_yield` and `lifetime_earnings` (they have no
+> `state_class`), so it can fill in history from the cloud. Run **Developer
+> Tools → Actions → _Sunlit: Import historical statistics_** (`sunlit.import_history`)
+> once and years of past generation & earnings appear on these same sensors as
+> one continuous series. The import is idempotent — safe to re-run. Between
+> imports the series is kept current automatically (hourly).
 
 > Tip: for per-period figures (this month, this year) use a HA **Statistics** card or a
-> **`utility_meter`** helper on `lifetime_yield` — the integration deliberately does not
-> ship separate month/year total sensors.
+> **`utility_meter`** helper on `lifetime_yield`.
 
 ### Grid Consumption
 
