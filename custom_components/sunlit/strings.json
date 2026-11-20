@@ -58,5 +58,17 @@
         }
       }
     }
+  },
+  "services": {
+    "import_price_history": {
+      "name": "Import Rabot price history",
+      "description": "Backfill historical Rabot day-ahead electricity prices into Home Assistant's long-term statistics for the family's electricity_price sensor. Useful right after install, so the Statistics card shows months of price history. Idempotent; safe to re-run.",
+      "fields": {
+        "days": {
+          "name": "Days",
+          "description": "How many days of history to import (max ~365, the verified backward horizon of rabot/day/price). Default is the full available window."
+        }
+      }
+    }
   }
 }
